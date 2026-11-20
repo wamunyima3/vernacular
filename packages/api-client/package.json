@@ -1,0 +1,25 @@
+{
+  "name": "@vernacular/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed client for the Vernacular API, generated from contracts/openapi.yaml.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "gen": "openapi-typescript ../../contracts/openapi.yaml -o src/schema.d.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "@vernacular/eslint-config": "workspace:*",
+    "@vernacular/tsconfig": "workspace:*",
+    "eslint": "^9",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5"
+  }
+}
