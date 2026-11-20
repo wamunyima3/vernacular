@@ -5,8 +5,347 @@
 package dbgen
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type ItemKind string
+
+const (
+	ItemKindEntry   ItemKind = "entry"
+	ItemKindSense   ItemKind = "sense"
+	ItemKindExample ItemKind = "example"
+	ItemKindPhrase  ItemKind = "phrase"
+)
+
+func (e *ItemKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemKind(s)
+	case string:
+		*e = ItemKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemKind: %T", src)
+	}
+	return nil
+}
+
+type NullItemKind struct {
+	ItemKind ItemKind
+	Valid    bool // Valid is true if ItemKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemKind), nil
+}
+
+type PartOfSpeech string
+
+const (
+	PartOfSpeechNoun         PartOfSpeech = "noun"
+	PartOfSpeechVerb         PartOfSpeech = "verb"
+	PartOfSpeechAdjective    PartOfSpeech = "adjective"
+	PartOfSpeechAdverb       PartOfSpeech = "adverb"
+	PartOfSpeechPronoun      PartOfSpeech = "pronoun"
+	PartOfSpeechNumeral      PartOfSpeech = "numeral"
+	PartOfSpeechConjunction  PartOfSpeech = "conjunction"
+	PartOfSpeechPreposition  PartOfSpeech = "preposition"
+	PartOfSpeechInterjection PartOfSpeech = "interjection"
+	PartOfSpeechPhrase       PartOfSpeech = "phrase"
+	PartOfSpeechIdeophone    PartOfSpeech = "ideophone"
+)
+
+func (e *PartOfSpeech) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PartOfSpeech(s)
+	case string:
+		*e = PartOfSpeech(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PartOfSpeech: %T", src)
+	}
+	return nil
+}
+
+type NullPartOfSpeech struct {
+	PartOfSpeech PartOfSpeech
+	Valid        bool // Valid is true if PartOfSpeech is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPartOfSpeech) Scan(value interface{}) error {
+	if value == nil {
+		ns.PartOfSpeech, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PartOfSpeech.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPartOfSpeech) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PartOfSpeech), nil
+}
+
+type Register string
+
+const (
+	RegisterNeutral    Register = "neutral"
+	RegisterFormal     Register = "formal"
+	RegisterInformal   Register = "informal"
+	RegisterTown       Register = "town"
+	RegisterRespectful Register = "respectful"
+	RegisterVulgar     Register = "vulgar"
+	RegisterArchaic    Register = "archaic"
+)
+
+func (e *Register) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Register(s)
+	case string:
+		*e = Register(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Register: %T", src)
+	}
+	return nil
+}
+
+type NullRegister struct {
+	Register Register
+	Valid    bool // Valid is true if Register is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRegister) Scan(value interface{}) error {
+	if value == nil {
+		ns.Register, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Register.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRegister) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Register), nil
+}
+
+type ReviewDecision string
+
+const (
+	ReviewDecisionAccept  ReviewDecision = "accept"
+	ReviewDecisionCorrect ReviewDecision = "correct"
+	ReviewDecisionReject  ReviewDecision = "reject"
+)
+
+func (e *ReviewDecision) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReviewDecision(s)
+	case string:
+		*e = ReviewDecision(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReviewDecision: %T", src)
+	}
+	return nil
+}
+
+type NullReviewDecision struct {
+	ReviewDecision ReviewDecision
+	Valid          bool // Valid is true if ReviewDecision is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReviewDecision) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReviewDecision, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReviewDecision.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReviewDecision) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReviewDecision), nil
+}
+
+type SourceKind string
+
+const (
+	SourceKindLicensed    SourceKind = "licensed"
+	SourceKindContributor SourceKind = "contributor"
+	SourceKindMachine     SourceKind = "machine"
+)
+
+func (e *SourceKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SourceKind(s)
+	case string:
+		*e = SourceKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SourceKind: %T", src)
+	}
+	return nil
+}
+
+type NullSourceKind struct {
+	SourceKind SourceKind
+	Valid      bool // Valid is true if SourceKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSourceKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.SourceKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SourceKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSourceKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SourceKind), nil
+}
+
+type TrustStatus string
+
+const (
+	TrustStatusVerified TrustStatus = "verified"
+	TrustStatusReviewed TrustStatus = "reviewed"
+	TrustStatusSourced  TrustStatus = "sourced"
+	TrustStatusMachine  TrustStatus = "machine"
+	TrustStatusDisputed TrustStatus = "disputed"
+)
+
+func (e *TrustStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TrustStatus(s)
+	case string:
+		*e = TrustStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TrustStatus: %T", src)
+	}
+	return nil
+}
+
+type NullTrustStatus struct {
+	TrustStatus TrustStatus
+	Valid       bool // Valid is true if TrustStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTrustStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.TrustStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TrustStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTrustStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TrustStatus), nil
+}
+
+type AuditLog struct {
+	ID        int64
+	TableName string
+	RowID     string
+	Action    string
+	ActorID   pgtype.Text
+	Before    []byte
+	After     []byte
+	At        pgtype.Timestamptz
+}
+
+type Concept struct {
+	ID         pgtype.UUID
+	GlossEn    string
+	Definition string
+	Domain     string
+	Core       bool
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type Entry struct {
+	ID           pgtype.UUID
+	LanguageCode string
+	Headword     string
+	HeadwordFold pgtype.Text
+	PartOfSpeech PartOfSpeech
+	NounClass    pgtype.Text
+	Plural       pgtype.Text
+	Root         pgtype.Text
+	Variety      pgtype.Text
+	Register     Register
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type Example struct {
+	ID            pgtype.UUID
+	SenseID       pgtype.UUID
+	Text          string
+	TranslationEn string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type Item struct {
+	ID           pgtype.UUID
+	Kind         ItemKind
+	LanguageCode string
+	Status       TrustStatus
+	AuthorID     pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type ItemSource struct {
+	ItemID    pgtype.UUID
+	SourceID  pgtype.UUID
+	Reference string
+	Model     pgtype.Text
+	CreatedAt pgtype.Timestamptz
+}
 
 type Language struct {
 	Code      string
@@ -16,4 +355,87 @@ type Language struct {
 	Status    string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type Phrase struct {
+	ID           pgtype.UUID
+	LanguageCode string
+	ConceptID    pgtype.UUID
+	Pack         string
+	Text         string
+	TextFold     pgtype.Text
+	SourceEn     string
+	SourceEnFold pgtype.Text
+	Notes        string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type Release struct {
+	ID          pgtype.UUID
+	Name        string
+	PublishedAt pgtype.Timestamptz
+	Counts      []byte
+	Changelog   string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type ReleaseItem struct {
+	ReleaseID pgtype.UUID
+	ItemID    pgtype.UUID
+	Snapshot  []byte
+}
+
+type Review struct {
+	ID         pgtype.UUID
+	ItemID     pgtype.UUID
+	ReviewerID string
+	Decision   ReviewDecision
+	Correction []byte
+	Comment    string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type Sense struct {
+	ID         pgtype.UUID
+	EntryID    pgtype.UUID
+	ConceptID  pgtype.UUID
+	Position   int16
+	Gloss      string
+	Definition string
+	Notes      string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type Source struct {
+	ID            pgtype.UUID
+	Kind          SourceKind
+	Name          string
+	RightsHolder  string
+	Licence       string
+	Url           pgtype.Text
+	PermissionKey pgtype.Text
+	AllowedUses   []string
+	Notes         string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type Variant struct {
+	ID        pgtype.UUID
+	EntryID   pgtype.UUID
+	Spelling  string
+	Fold      pgtype.Text
+	Note      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type Variety struct {
+	LanguageCode string
+	Code         string
+	Name         string
 }

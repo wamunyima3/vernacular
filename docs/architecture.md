@@ -136,7 +136,7 @@ erDiagram
   RELEASE ||--o{ RELEASE_ITEM : freezes
 ```
 
-`ITEM` stands for any reviewable row (entry, sense, example, phrase, candidate). Phase 0 decides whether this is a polymorphic `item_id` with a type column, or a review table per type (task P0-ENG-01). Every table has `created_at`, `updated_at` and a row in `audit_log` for each change (NFR-8).
+`ITEM` is the `items` table: every reviewable row (entry, sense, example, phrase) shares its ID with an `items` row that holds the trust status ([ADR-0006](adr/0006-items-table.md)). AI candidates are items with status `machine`. Every table has `created_at` and `updated_at`, and the `track()` trigger writes a row to `audit_log` for each change (NFR-8). Search folding is the SQL function `fold()`.
 
 ## 8. Contract-first flow
 

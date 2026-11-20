@@ -63,11 +63,13 @@ Done when: at least one licensed source per language is signed, and the schema a
 
 - [x] **P0-CNT-01** Download Google SMOL and GATITOS and list exactly which Zambian languages they cover (S) → [findings](docs/sources/smol-gatitos.md)
 - [x] **P0-CNT-02** Draft the Bemba and Nyanja style guides in `docs/style-guides/` (M) → DQ-5
-- [ ] **P0-CNT-03** Draft the core concept list (~4,000), starting from GATITOS and adding Zambian everyday terms (L, split before starting) → LEX-7
+- [ ] **P0-CNT-03** Core concept list (~4,000) → LEX-7
+  - [ ] **P0-CNT-03a** Seed concepts from the English side of GATITOS en→bem, with a repeatable import command (S)
+  - [ ] **P0-CNT-03b** Add Zambian everyday terms by domain (health, farming, money, government, family) (M)
 
 ### Engineering
 
-- [ ] **P0-ENG-01** Full core schema as goose migrations: language, concept, entry, variant, sense, example, phrase, source, review, release, audit log (M) → LEX-3, LEX-6, LEX-7, PRV-2, NFR-8
+- [x] **P0-ENG-01** Full core schema as goose migrations: language, concept, entry, variant, sense, example, phrase, source, review, release, audit log (M) → LEX-3, LEX-6, LEX-7, PRV-2, NFR-8
 - [ ] **P0-ENG-02** Shared trust fields (`status`, `sources`, `reviews`, `release`) as one OpenAPI component, reused by every item schema (S) → PRV-1, ADR-0004
 - [ ] **P0-ENG-03** Uniform error body (`code`, `message`, `docs_url`) and error middleware (S) → §10 errors
 - [ ] **P0-ENG-04** Text normalisation package: NFC, case and accent folding (`golang.org/x/text`) with table tests (S) → NFR-7
