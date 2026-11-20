@@ -25,3 +25,10 @@ ORDER BY random();
 INSERT INTO reviews (item_id, reviewer_id, decision, comment)
 VALUES ($1, $2, $3, $4)
 RETURNING id;
+
+-- name: DeleteOwnReviews :many
+-- Deletes the given reviews if this reviewer made them; the caller checks that
+-- all were found and still undoable, and rolls back otherwise.
+DELETE FROM reviews
+WHERE id = ANY(@ids::uuid[]) AND reviewer_id = @reviewer_id
+RETURNING item_id, created_at;

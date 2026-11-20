@@ -4,13 +4,17 @@ import { ErrorCard } from "@/components/error-card"
 import { NoticeCard } from "@/components/notice-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Toaster } from "@/components/ui/sonner"
 import { apiAs } from "@/lib/api"
 import { apiErrorMessage } from "@/lib/api-error"
 
 import { requireSession } from "../../auth/session"
 import { getLanguages } from "../../languages/get-languages"
-import { readSession, reviewUrl } from "../review-url"
+import { type Params, readLast, readSession, reviewUrl } from "../review-url"
 import { ReviewCard } from "./review-card"
+import { UndoToast } from "./undo-toast"
+
+const aboveActionBar = { bottom: "calc(5rem + env(safe-area-inset-bottom))" }
 
 const contribute = (
   <Button nativeButton={false} render={<Link href="/contribute" />}>
@@ -18,12 +22,20 @@ const contribute = (
   </Button>
 )
 
-/** The current card of a review session, or why there is none. */
-export async function ReviewQueue({
-  params,
-}: {
-  params: Record<string, string | string[] | undefined>
-}) {
+/** The current card of a review session, or why there is none, with Undo for the last decision. */
+export function ReviewQueue({ params }: { params: Params }) {
+  const last = readLast(params)
+  return (
+    <>
+      {/* Above the fixed action bar, clear of the safe area. */}
+      <Toaster position="bottom-center" offset={aboveActionBar} mobileOffset={aboveActionBar} />
+      {last && <UndoToast last={last} params={params} />}
+      <Current params={params} />
+    </>
+  )
+}
+
+async function Current({ params }: { params: Params }) {
   const asked = readSession(params)
   const languages = getLanguages()
   const { session } = await requireSession("/review")
@@ -57,32 +69,13 @@ export async function ReviewQueue({
   ])
   const nameOf = (code: string) =>
     (names.ok ? names.languages.find((l) => l.code === code)?.name : undefined) ?? code
-  const current = { ...asked, language }
+  const current = { language, skip: asked.skip, done: asked.done }
 
   if (response.status === 204) {
-    const others = approved.filter((code) => code !== language)
-    return (
-      <NoticeCard
-        title={`Nothing left to review in ${nameOf(language)}.`}
-        actions={
-          others.length === 0
-            ? contribute
-            : others.map((code) => (
-                <Button
-                  key={code}
-                  nativeButton={false}
-                  render={<Link href={reviewUrl({ language: code, skip: [], done: 0 })} />}
-                >
-                  Switch to {nameOf(code)}
-                </Button>
-              ))
-        }
-      >
-        {current.done > 0
-          ? `You reviewed ${current.done} this session. Thank you.`
-          : "New words arrive from sources, contributors and AI candidates."}
-      </NoticeCard>
-    )
+    const others = approved
+      .filter((code) => code !== language)
+      .map((code) => ({ code, name: nameOf(code) }))
+    return <EmptyQueue name={nameOf(language)} done={current.done} others={others} />
   }
   if (!card)
     return (
@@ -95,6 +88,40 @@ export async function ReviewQueue({
       languageName={nameOf(language)}
       session={current}
     />
+  )
+}
+
+/** No cards left: switch to another approved language, or contribute. */
+function EmptyQueue({
+  name,
+  done,
+  others,
+}: {
+  name: string
+  done: number
+  others: { code: string; name: string }[]
+}) {
+  return (
+    <NoticeCard
+      title={`Nothing left to review in ${name}.`}
+      actions={
+        others.length === 0
+          ? contribute
+          : others.map((l) => (
+              <Button
+                key={l.code}
+                nativeButton={false}
+                render={<Link href={reviewUrl({ language: l.code, skip: [], done: 0 })} />}
+              >
+                Switch to {l.name}
+              </Button>
+            ))
+      }
+    >
+      {done > 0
+        ? `You reviewed ${done} this session. Thank you.`
+        : "New words arrive from sources, contributors and AI candidates."}
+    </NoticeCard>
   )
 }
 

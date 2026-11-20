@@ -54,3 +54,11 @@ func (h *Handler) CreateReviews(ctx context.Context, req gen.CreateReviewsReques
 	}
 	return gen.CreateReviews201JSONResponse{Data: out}, nil
 }
+
+// DeleteReviews implements DELETE /v1/reviews.
+func (h *Handler) DeleteReviews(ctx context.Context, req gen.DeleteReviewsRequestObject) (gen.DeleteReviewsResponseObject, error) {
+	if err := h.svc.Undo(ctx, req.Params.Ids); err != nil {
+		return nil, err
+	}
+	return gen.DeleteReviews204Response{}, nil
+}

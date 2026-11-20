@@ -147,6 +147,29 @@ paths:
               schema: { $ref: "#/components/schemas/ReviewList" }
         default:
           $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteReviews
+      summary: Undo your own decision (reviewers)
+      description: |
+        Takes back the reviews one decision recorded, all or none. Only their reviewer can,
+        within 10 minutes and while the items are still in the queue (`conflict` otherwise).
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 50
+            items: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Undone; the items are back in the reviewer's queue
+        default:
+          $ref: "#/components/responses/Error"
   /v1/sources:
     get:
       operationId: listSources

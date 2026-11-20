@@ -95,3 +95,12 @@ func (e Errors) NotFound(w http.ResponseWriter, _ *http.Request) {
 func (e Errors) MethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
 	e.Write(w, http.StatusMethodNotAllowed, gen.ErrorCodeMethodNotAllowed, "Method not allowed")
 }
+
+// Status is the HTTP status an error will be sent with, or 0 when it is not
+// a Problem (and will be sent as a 500).
+func Status(err error) int {
+	if p, ok := errors.AsType[*Problem](err); ok {
+		return p.Status
+	}
+	return 0
+}

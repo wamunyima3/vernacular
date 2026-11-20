@@ -2,7 +2,6 @@ package contributions_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
@@ -77,8 +76,7 @@ func TestProposeRefused(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := svc.Propose(tt.ctx, tt.in)
-			p, ok := errors.AsType[*httpx.Problem](err)
-			if !ok || p.Status != tt.status {
+			if httpx.Status(err) != tt.status {
 				t.Errorf("err = %v, want status %d", err, tt.status)
 			}
 		})

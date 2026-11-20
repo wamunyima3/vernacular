@@ -42,3 +42,13 @@ func (s *Store) create(ctx context.Context, itemID uuid.UUID, reviewerID string,
 	}
 	return id, nil
 }
+
+// deleteOwn deletes the reviewer's reviews among ids and returns what they
+// were about. Reviews by others are left alone and not returned.
+func (s *Store) deleteOwn(ctx context.Context, ids []uuid.UUID, reviewerID string) ([]dbgen.DeleteOwnReviewsRow, error) {
+	rows, err := s.q.DeleteOwnReviews(ctx, dbgen.DeleteOwnReviewsParams{Ids: ids, ReviewerID: reviewerID})
+	if err != nil {
+		return nil, fmt.Errorf("delete reviews: %w", err)
+	}
+	return rows, nil
+}

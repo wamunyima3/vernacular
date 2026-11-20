@@ -56,7 +56,7 @@ func TestRegisterLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := reg.Create(ctx, input); problemStatus(err) != 409 {
+	if _, err := reg.Create(ctx, input); httpx.Status(err) != 409 {
 		t.Errorf("duplicate name: err = %v, want 409", err)
 	}
 
@@ -80,7 +80,7 @@ func TestRegisterLifecycle(t *testing.T) {
 	}
 	for _, u := range uploads {
 		_, err := reg.UploadPermission(ctx, src.ID, bytes.NewReader(u.body))
-		if problemStatus(err) != u.wantStatus || (u.wantStatus == 0 && err != nil) {
+		if httpx.Status(err) != u.wantStatus || (u.wantStatus == 0 && err != nil) {
 			t.Errorf("upload %s: err = %v, want status %d", u.name, err, u.wantStatus)
 		}
 	}
@@ -103,11 +103,4 @@ func TestRegisterLifecycle(t *testing.T) {
 	if err := reg.Delete(ctx, src.ID); !errors.Is(err, httpx.ErrNotFound) {
 		t.Errorf("delete again: err = %v, want not found", err)
 	}
-}
-
-func problemStatus(err error) int {
-	if p, ok := errors.AsType[*httpx.Problem](err); ok {
-		return p.Status
-	}
-	return 0
 }

@@ -121,7 +121,12 @@ export interface paths {
          *     Each reviewer decides on an item once (`conflict` otherwise).
          */
         post: operations["createReviews"];
-        delete?: never;
+        /**
+         * Undo your own decision (reviewers)
+         * @description Takes back the reviews one decision recorded, all or none. Only their reviewer can,
+         *     within 10 minutes and while the items are still in the queue (`conflict` otherwise).
+         */
+        delete: operations["deleteReviews"];
         options?: never;
         head?: never;
         patch?: never;
@@ -592,6 +597,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewList"];
                 };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteReviews: {
+        parameters: {
+            query: {
+                ids: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Undone; the items are back in the reviewer's queue */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Error"];
         };

@@ -7,6 +7,7 @@ package dbgen
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -34,6 +35,44 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (uui
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteOwnReviews = `-- name: DeleteOwnReviews :many
+DELETE FROM reviews
+WHERE id = ANY($1::uuid[]) AND reviewer_id = $2
+RETURNING item_id, created_at
+`
+
+type DeleteOwnReviewsParams struct {
+	Ids        []uuid.UUID
+	ReviewerID string
+}
+
+type DeleteOwnReviewsRow struct {
+	ItemID    uuid.UUID
+	CreatedAt time.Time
+}
+
+// Deletes the given reviews if this reviewer made them; the caller checks that
+// all were found and still undoable, and rolls back otherwise.
+func (q *Queries) DeleteOwnReviews(ctx context.Context, arg DeleteOwnReviewsParams) ([]DeleteOwnReviewsRow, error) {
+	rows, err := q.db.Query(ctx, deleteOwnReviews, arg.Ids, arg.ReviewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteOwnReviewsRow
+	for rows.Next() {
+		var i DeleteOwnReviewsRow
+		if err := rows.Scan(&i.ItemID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const nextReviewCard = `-- name: NextReviewCard :many

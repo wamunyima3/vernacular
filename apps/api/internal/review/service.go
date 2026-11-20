@@ -6,6 +6,8 @@ package review
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -124,6 +126,46 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 		return nil, err
 	}
 	return out, nil
+}
+
+// UndoWindow is how long a reviewer can take back a decision.
+const UndoWindow = 10 * time.Minute
+
+// Undo takes back the reviews one decision recorded, all or none, putting
+// the items back in the reviewer's queue. Reviews by others count as not found.
+func (s *Service) Undo(ctx context.Context, ids []uuid.UUID) error {
+	me, err := accounts.Require(ctx, nil)
+	if err != nil {
+		return err
+	}
+	return database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+		deleted, err := NewStore(tx).deleteOwn(ctx, ids, me.ID)
+		if err != nil {
+			return err
+		}
+		distinct := make(map[uuid.UUID]bool, len(ids))
+		for _, id := range ids {
+			distinct[id] = true
+		}
+		if len(deleted) != len(distinct) {
+			return httpx.ErrNotFound
+		}
+		its := newItems(tx)
+		for _, d := range deleted {
+			if time.Since(d.CreatedAt) > UndoWindow {
+				return httpx.Conflict(fmt.Sprintf("Decisions can only be undone within %v", UndoWindow))
+			}
+			item, _, err := its.Lock(ctx, d.ItemID)
+			if err != nil {
+				return err
+			}
+			// P1-REV-03 replaces this with a status recompute, so a promoting accept can be undone.
+			if !item.Open {
+				return httpx.Conflict("This item is " + string(item.Status) + " and can no longer be changed")
+			}
+		}
+		return nil
+	})
 }
 
 // checkTarget locks one item and applies the blind-review rules (CON-2, CON-3).

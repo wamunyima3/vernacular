@@ -126,7 +126,7 @@ func TestDecideRefused(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := svc.Decide(tt.ctx, []review.Decision{{SenseID: tt.id, Decision: dbgen.ReviewDecisionAccept}}, "")
-			if p, ok := errors.AsType[*httpx.Problem](err); !ok || p.Status != tt.status {
+			if httpx.Status(err) != tt.status {
 				t.Errorf("err = %v, want status %d", err, tt.status)
 			}
 		})
@@ -141,7 +141,41 @@ func TestDecideTwice(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionReject}}, "wrong")
-	if p, ok := errors.AsType[*httpx.Problem](err); !ok || p.Status != 409 {
+	if httpx.Status(err) != 409 {
 		t.Errorf("second decision = %v, want conflict", err)
+	}
+}
+
+func TestUndo(t *testing.T) {
+	tx := dbtest.Tx(t)
+	water, _ := fixture(t, tx)
+	svc := review.NewService(tx)
+	decide := func() uuid.UUID {
+		t.Helper()
+		r, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r[0].ID
+	}
+
+	id := decide()
+	other := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "r2", Role: gen.RoleContributor})
+	if got := httpx.Status(svc.Undo(other, []uuid.UUID{id})); got != 404 {
+		t.Errorf("undo by another reviewer: status %d, want 404", got)
+	}
+	if err := svc.Undo(reviewer(t), []uuid.UUID{id}); err != nil {
+		t.Fatal(err)
+	}
+	if card, ok, _ := svc.Next(reviewer(t), "tst", nil); !ok || card.GlossEn != "zz water" {
+		t.Errorf("after undo the next card is %q, want zz water back", card.GlossEn)
+	}
+
+	id = decide()
+	if _, err := tx.Exec(t.Context(), `UPDATE reviews SET created_at = now() - interval '11 minutes' WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if got := httpx.Status(svc.Undo(reviewer(t), []uuid.UUID{id})); got != 409 {
+		t.Errorf("undo after the window: status %d, want 409", got)
 	}
 }
