@@ -153,16 +153,18 @@ Change the contract first, run `make gen`, then implement. CI fails if the gener
 
 ## 9. Cross-cutting rules
 
-| Concern     | Rule                                                                                                       |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Text        | UTF-8, NFC on input and storage. Search folds case and accents unless asked otherwise (NFR-7).             |
-| Errors      | Every error body is `{code, message, docs_url}`, built in one place: `internal/platform/httpx`.            |
-| Config      | Environment variables only, parsed once at startup into a typed struct. Documented in `.env.example`.      |
-| Logging     | `log/slog` JSON with a request ID on every line.                                                           |
-| Security    | API keys hashed at rest, TLS at the edge, rate limits per key and per IP (NFR-5).                          |
-| Versioning  | `/v1` in the path. Breaking changes get `/v2` and six months of overlap (NFR-4).                           |
-| Caching     | `ETag` tied to the release number, gzip/br compression (NFR-3).                                            |
-| Portability | Containers, PostgreSQL and S3-compatible storage only, so the system runs anywhere (§12 hosting decision). |
+| Concern     | Rule                                                                                                           |
+| ----------- | -------------------------------------------------------------------------------------------------------------- |
+| Text        | UTF-8, NFC on input and storage. Search folds case and accents unless asked otherwise (NFR-7).                 |
+| Errors      | Every error body is `{code, message, docs_url}`, built in one place: `internal/platform/httpx`.                |
+| Validation  | Every request is checked against the contract by middleware before a handler runs (`internal/server`).         |
+| Storage     | Files go through `internal/platform/blob` (gocloud.dev): S3-compatible in production, a folder in development. |
+| Config      | Environment variables only, parsed once at startup into a typed struct. Documented in `.env.example`.          |
+| Logging     | `log/slog` JSON with a request ID on every line.                                                               |
+| Security    | API keys hashed at rest, TLS at the edge, rate limits per key and per IP (NFR-5).                              |
+| Versioning  | `/v1` in the path. Breaking changes get `/v2` and six months of overlap (NFR-4).                               |
+| Caching     | `ETag` tied to the release number, gzip/br compression (NFR-3).                                                |
+| Portability | Containers, PostgreSQL and S3-compatible storage only, so the system runs anywhere (§12 hosting decision).     |
 
 ## 10. Technology
 

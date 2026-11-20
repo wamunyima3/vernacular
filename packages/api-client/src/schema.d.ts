@@ -61,6 +61,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The source register
+         * @description Every source the dataset draws on, with its licence (DQ-1). Public, so anyone can
+         *     check where data came from. Permission documents are admin-only.
+         */
+        get: operations["listSources"];
+        put?: never;
+        /** Add a source to the register (admin) */
+        post: operations["createSource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        /** One source */
+        get: operations["getSource"];
+        /** Replace a source's details (admin) */
+        put: operations["updateSource"];
+        post?: never;
+        /**
+         * Remove a source no item cites yet (admin)
+         * @description A source that items cite cannot be deleted (`conflict`).
+         */
+        delete: operations["deleteSource"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sources/{id}/permission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        /** Download the permission document (admin) */
+        get: operations["downloadPermission"];
+        /**
+         * Upload the signed permission document (admin)
+         * @description The raw file as the body, at most 10 MB. The server checks the bytes and accepts
+         *     PDF, PNG or JPEG only. Replaces any earlier upload.
+         */
+        put: operations["uploadPermission"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -117,6 +187,42 @@ export interface components {
             approvals: components["schemas"]["Approval"][];
         };
         /**
+         * @description `licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output.
+         * @enum {string}
+         */
+        SourceKind: "licensed" | "contributor" | "machine";
+        /**
+         * @description `train` means the data may be used to train models (AI-7).
+         * @enum {string}
+         */
+        AllowedUse: "redistribute" | "derive" | "commercial" | "train";
+        SourceInput: {
+            kind: components["schemas"]["SourceKind"];
+            /** @example GATITOS */
+            name: string;
+            /** @example Google LLC */
+            rights_holder: string;
+            /** @example CC BY 4.0 */
+            licence: string;
+            /** Format: uri */
+            url?: string;
+            /** @description What the licence allows */
+            allowed_uses: components["schemas"]["AllowedUse"][];
+            notes?: string;
+        };
+        Source: components["schemas"]["SourceInput"] & {
+            /** Format: uuid */
+            id: string;
+            has_permission_document: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SourceList: {
+            data: components["schemas"]["Source"][];
+        };
+        /**
          * @description How far an item has been checked (ADR-0004). Only `verified` is returned by default;
          *     `disputed` is never returned.
          * @enum {string}
@@ -164,7 +270,7 @@ export interface components {
          * @example not_found
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "unauthorized" | "forbidden" | "not_found" | "method_not_allowed" | "rate_limited" | "internal" | "unavailable";
+        ErrorCode: "bad_request" | "unauthorized" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "payload_too_large" | "rate_limited" | "internal" | "unavailable";
         Error: {
             code: components["schemas"]["ErrorCode"];
             /** @example Entry not found */
@@ -184,7 +290,9 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        SourceId: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -252,6 +360,173 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All sources, by name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The source */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceInput"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    downloadPermission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    uploadPermission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
+                };
+            };
             default: components["responses"]["Error"];
         };
     };

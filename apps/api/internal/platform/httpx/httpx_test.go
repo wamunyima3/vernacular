@@ -23,9 +23,9 @@ func TestRouterErrorsAreUniform(t *testing.T) {
 		wantStatus   int
 		wantCode     gen.ErrorCode
 	}{
-		{http.MethodGet, "/panic", http.StatusInternalServerError, gen.Internal},
-		{http.MethodGet, "/missing", http.StatusNotFound, gen.NotFound},
-		{http.MethodPost, "/ok", http.StatusMethodNotAllowed, gen.MethodNotAllowed},
+		{http.MethodGet, "/panic", http.StatusInternalServerError, gen.ErrorCodeInternal},
+		{http.MethodGet, "/missing", http.StatusNotFound, gen.ErrorCodeNotFound},
+		{http.MethodPost, "/ok", http.StatusMethodNotAllowed, gen.ErrorCodeMethodNotAllowed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {

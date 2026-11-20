@@ -14,3 +14,6 @@ WHERE s.token = $1
   AND s.expires_at > now()
   AND NOT (coalesce(u.banned, false) AND (u.ban_expires IS NULL OR u.ban_expires > now()))
 GROUP BY u.id;
+
+-- name: SetRole :execrows
+UPDATE users SET role = $2 WHERE email = $1;

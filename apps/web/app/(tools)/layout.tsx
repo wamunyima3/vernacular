@@ -9,6 +9,9 @@ export default function ToolsLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <SiteHeader>
+        <Link href="/sources" className="text-muted-foreground hover:text-foreground">
+          Sources
+        </Link>
         <Link href="/account" className="text-muted-foreground hover:text-foreground">
           Account
         </Link>

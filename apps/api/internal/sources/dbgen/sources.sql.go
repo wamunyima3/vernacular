@@ -9,7 +9,86 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createSource = `-- name: CreateSource :one
+INSERT INTO sources (kind, name, rights_holder, licence, url, allowed_uses, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, kind, name, rights_holder, licence, url, permission_key, allowed_uses, notes, created_at, updated_at
+`
+
+type CreateSourceParams struct {
+	Kind         SourceKind
+	Name         string
+	RightsHolder string
+	Licence      string
+	Url          pgtype.Text
+	AllowedUses  []string
+	Notes        string
+}
+
+func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Source, error) {
+	row := q.db.QueryRow(ctx, createSource,
+		arg.Kind,
+		arg.Name,
+		arg.RightsHolder,
+		arg.Licence,
+		arg.Url,
+		arg.AllowedUses,
+		arg.Notes,
+	)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Name,
+		&i.RightsHolder,
+		&i.Licence,
+		&i.Url,
+		&i.PermissionKey,
+		&i.AllowedUses,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteSource = `-- name: DeleteSource :execrows
+DELETE FROM sources WHERE id = $1
+`
+
+func (q *Queries) DeleteSource(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSource, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getSource = `-- name: GetSource :one
+SELECT id, kind, name, rights_holder, licence, url, permission_key, allowed_uses, notes, created_at, updated_at FROM sources WHERE id = $1
+`
+
+func (q *Queries) GetSource(ctx context.Context, id uuid.UUID) (Source, error) {
+	row := q.db.QueryRow(ctx, getSource, id)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Name,
+		&i.RightsHolder,
+		&i.Licence,
+		&i.Url,
+		&i.PermissionKey,
+		&i.AllowedUses,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const getSourceByName = `-- name: GetSourceByName :one
 SELECT id, kind, name, licence FROM sources WHERE name = $1
@@ -30,6 +109,116 @@ func (q *Queries) GetSourceByName(ctx context.Context, name string) (GetSourceBy
 		&i.Kind,
 		&i.Name,
 		&i.Licence,
+	)
+	return i, err
+}
+
+const listSources = `-- name: ListSources :many
+SELECT id, kind, name, rights_holder, licence, url, permission_key, allowed_uses, notes, created_at, updated_at FROM sources ORDER BY name
+`
+
+func (q *Queries) ListSources(ctx context.Context) ([]Source, error) {
+	rows, err := q.db.Query(ctx, listSources)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Source
+	for rows.Next() {
+		var i Source
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.RightsHolder,
+			&i.Licence,
+			&i.Url,
+			&i.PermissionKey,
+			&i.AllowedUses,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setPermissionKey = `-- name: SetPermissionKey :one
+UPDATE sources SET permission_key = $2 WHERE id = $1 RETURNING id, kind, name, rights_holder, licence, url, permission_key, allowed_uses, notes, created_at, updated_at
+`
+
+type SetPermissionKeyParams struct {
+	ID            uuid.UUID
+	PermissionKey pgtype.Text
+}
+
+func (q *Queries) SetPermissionKey(ctx context.Context, arg SetPermissionKeyParams) (Source, error) {
+	row := q.db.QueryRow(ctx, setPermissionKey, arg.ID, arg.PermissionKey)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Name,
+		&i.RightsHolder,
+		&i.Licence,
+		&i.Url,
+		&i.PermissionKey,
+		&i.AllowedUses,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateSource = `-- name: UpdateSource :one
+UPDATE sources SET kind = $2, name = $3, rights_holder = $4, licence = $5, url = $6,
+    allowed_uses = $7, notes = $8
+WHERE id = $1
+RETURNING id, kind, name, rights_holder, licence, url, permission_key, allowed_uses, notes, created_at, updated_at
+`
+
+type UpdateSourceParams struct {
+	ID           uuid.UUID
+	Kind         SourceKind
+	Name         string
+	RightsHolder string
+	Licence      string
+	Url          pgtype.Text
+	AllowedUses  []string
+	Notes        string
+}
+
+func (q *Queries) UpdateSource(ctx context.Context, arg UpdateSourceParams) (Source, error) {
+	row := q.db.QueryRow(ctx, updateSource,
+		arg.ID,
+		arg.Kind,
+		arg.Name,
+		arg.RightsHolder,
+		arg.Licence,
+		arg.Url,
+		arg.AllowedUses,
+		arg.Notes,
+	)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Name,
+		&i.RightsHolder,
+		&i.Licence,
+		&i.Url,
+		&i.PermissionKey,
+		&i.AllowedUses,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

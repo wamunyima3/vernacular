@@ -32,6 +32,16 @@ export const errorCodes: Record<ErrorCode, { status: number; meaning: string; ac
     meaning: "The route exists but does not accept this HTTP method.",
     action: "Use the method listed in the API reference.",
   },
+  conflict: {
+    status: 409,
+    meaning: "The change clashes with existing data, such as a duplicate name.",
+    action: "Read the message, change the request and try again.",
+  },
+  payload_too_large: {
+    status: 413,
+    meaning: "The request body is bigger than this endpoint accepts.",
+    action: "Send a smaller file. Limits are listed in the API reference.",
+  },
   rate_limited: {
     status: 429,
     meaning: "The key or IP address has used up its request allowance.",

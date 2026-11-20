@@ -22,7 +22,7 @@ func (e Errors) Recover(next http.Handler) http.Handler {
 				panic(rec)
 			}
 			e.Log.ErrorContext(r.Context(), "panic", "panic", rec, "path", r.URL.Path, "stack", string(debug.Stack()))
-			e.Write(w, http.StatusInternalServerError, gen.Internal, "Internal server error")
+			e.Write(w, http.StatusInternalServerError, gen.ErrorCodeInternal, "Internal server error")
 		}()
 		next.ServeHTTP(w, r)
 	})

@@ -17,6 +17,7 @@ tags:
   - name: system
   - name: languages
   - name: accounts
+  - name: sources
 paths:
   /healthz:
     get:
@@ -63,7 +64,133 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/sources:
+    get:
+      operationId: listSources
+      summary: The source register
+      description: |
+        Every source the dataset draws on, with its licence (DQ-1). Public, so anyone can
+        check where data came from. Permission documents are admin-only.
+      tags: [sources]
+      responses:
+        "200":
+          description: All sources, by name
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SourceList" }
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createSource
+      summary: Add a source to the register (admin)
+      tags: [sources]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SourceInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Source" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/sources/{id}:
+    parameters:
+      - $ref: "#/components/parameters/SourceId"
+    get:
+      operationId: getSource
+      summary: One source
+      tags: [sources]
+      responses:
+        "200":
+          description: The source
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Source" }
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: updateSource
+      summary: Replace a source's details (admin)
+      tags: [sources]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SourceInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Source" }
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteSource
+      summary: Remove a source no item cites yet (admin)
+      description: A source that items cite cannot be deleted (`conflict`).
+      tags: [sources]
+      security:
+        - session: []
+      responses:
+        "204":
+          description: Deleted
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/sources/{id}/permission:
+    parameters:
+      - $ref: "#/components/parameters/SourceId"
+    put:
+      operationId: uploadPermission
+      summary: Upload the signed permission document (admin)
+      description: |
+        The raw file as the body, at most 10 MB. The server checks the bytes and accepts
+        PDF, PNG or JPEG only. Replaces any earlier upload.
+      tags: [sources]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Source" }
+        default:
+          $ref: "#/components/responses/Error"
+    get:
+      operationId: downloadPermission
+      summary: Download the permission document (admin)
+      tags: [sources]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: The file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  parameters:
+    SourceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
   securitySchemes:
     session:
       type: http
@@ -144,6 +271,65 @@ components:
         approvals:
           type: array
           items: { $ref: "#/components/schemas/Approval" }
+    SourceKind:
+      type: string
+      description: "`licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output."
+      enum: [licensed, contributor, machine]
+    AllowedUse:
+      type: string
+      description: "`train` means the data may be used to train models (AI-7)."
+      enum: [redistribute, derive, commercial, train]
+    SourceInput:
+      type: object
+      required: [kind, name, rights_holder, licence, allowed_uses]
+      properties:
+        kind: { $ref: "#/components/schemas/SourceKind" }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: GATITOS
+        rights_holder:
+          type: string
+          minLength: 1
+          example: Google LLC
+        licence:
+          type: string
+          minLength: 1
+          example: CC BY 4.0
+        url:
+          type: string
+          format: uri
+        allowed_uses:
+          type: array
+          description: What the licence allows
+          items: { $ref: "#/components/schemas/AllowedUse" }
+        notes:
+          type: string
+    Source:
+      allOf:
+        - $ref: "#/components/schemas/SourceInput"
+        - type: object
+          required: [id, has_permission_document, created_at, updated_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            has_permission_document:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+    SourceList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Source" }
     TrustStatus:
       type: string
       description: |
@@ -213,6 +399,8 @@ components:
           forbidden,
           not_found,
           method_not_allowed,
+          conflict,
+          payload_too_large,
           rate_limited,
           internal,
           unavailable,

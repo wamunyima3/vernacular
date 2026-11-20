@@ -8,6 +8,8 @@ overrides:
       - db_type: uuid
         nullable: true
         go_type: github.com/google/uuid.NullUUID
+      - db_type: timestamptz
+        go_type: time.Time
 sql:
   - engine: postgresql
     schema: db/migrations

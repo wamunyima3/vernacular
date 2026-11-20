@@ -6,6 +6,8 @@ SHELL := /bin/bash
 export
 
 DATABASE_URL ?= postgres://vernacular:vernacular@localhost:5432/vernacular?sslmode=disable
+# Development object store: a local folder (.data is git-ignored).
+BLOB_URL     ?= file://$(CURDIR)/.data/blobs?create_dir=true
 API_DIR      := apps/api
 # Go dev tools are pinned in apps/api/tools/go.mod, outside the app's own go.mod.
 GO_TOOL      := go tool -modfile=tools/go.mod
@@ -52,6 +54,10 @@ ingest: ## Import a registered source, e.g. make ingest FEED=gatitos-en-bem
 seed: ## Import our core concept lists and every open source we hold a licence for
 	cd $(API_DIR) && go run ./cmd/ingest -all
 	for f in data/concepts/*.csv; do (cd $(API_DIR) && go run ./cmd/ingest -concepts ../../$$f) || exit 1; done
+
+.PHONY: admin
+admin: ## Give a signed-up user a role, e.g. make admin EMAIL=you@example.org [ROLE=admin]
+	cd $(API_DIR) && go run ./cmd/admin -email "$(EMAIL)" -role "$(or $(ROLE),admin)"
 
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI contract and SQL queries

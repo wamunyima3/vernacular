@@ -31,7 +31,7 @@ type Principal struct {
 
 // HasRole reports whether the caller has any of the roles. Admins have every role.
 func (p Principal) HasRole(roles ...gen.Role) bool {
-	return p.Role == gen.Admin || slices.Contains(roles, p.Role)
+	return p.Role == gen.RoleAdmin || slices.Contains(roles, p.Role)
 }
 
 // CanReview reports whether the caller may review items in a language.
@@ -41,7 +41,7 @@ func (p Principal) CanReview(language string) bool {
 
 // IsSenior reports whether the caller is a senior reviewer for a language.
 func (p Principal) IsSenior(language string) bool {
-	return slices.Contains(p.Approvals, Approval{Language: language, Level: gen.Senior})
+	return slices.Contains(p.Approvals, Approval{Language: language, Level: gen.ReviewerLevelSenior})
 }
 
 type ctxKey struct{}

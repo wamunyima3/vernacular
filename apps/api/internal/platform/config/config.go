@@ -15,6 +15,7 @@ type Config struct {
 	DatabaseURL        string     `env:"DATABASE_URL,required"`
 	CORSAllowedOrigins []string   `env:"CORS_ALLOWED_ORIGINS" envDefault:"http://localhost:3000" envSeparator:","`
 	DocsBaseURL        string     `env:"DOCS_BASE_URL"        envDefault:"http://localhost:3000/docs/errors"`
+	BlobURL            string     `env:"BLOB_URL,required"` // see internal/platform/blob
 }
 
 // Load parses the environment into a Config.

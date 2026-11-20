@@ -3,14 +3,19 @@
 package server
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+
+	"github.com/getkin/kin-openapi/openapi3filter"
+	validator "github.com/oapi-codegen/nethttp-middleware"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/health"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
+	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
 
 // Every module names its handler type Handler, so aliases give each embedded field a unique name.
@@ -18,6 +23,7 @@ type (
 	accountsOps  = accounts.Handler
 	healthOps    = health.Handler
 	languagesOps = languages.Handler
+	sourcesOps   = sources.Handler
 )
 
 // api satisfies gen.StrictServerInterface by embedding one handler per module.
@@ -26,6 +32,7 @@ type api struct {
 	*accountsOps
 	*healthOps
 	*languagesOps
+	*sourcesOps
 }
 
 var _ gen.StrictServerInterface = api{}
@@ -42,18 +49,20 @@ type Deps struct {
 	DB        health.Pinger
 	Accounts  accounts.Authenticator
 	Languages languages.Lister
+	Sources   *sources.Register
 }
 
 // New returns the full HTTP handler for the API.
 func New(opts Options, deps Deps) http.Handler {
 	errs := httpx.Errors{DocsBaseURL: opts.DocsBaseURL, Log: opts.Log}
 	r := httpx.NewRouter(httpx.RouterOptions{Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs})
-	r.Use(accounts.Middleware(deps.Accounts, errs))
+	r.Use(validateRequests(errs), accounts.Middleware(deps.Accounts, errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
 		accountsOps:  accounts.NewHandler(),
 		healthOps:    health.NewHandler(deps.DB, errs),
 		languagesOps: languages.NewHandler(deps.Languages),
+		sourcesOps:   sources.NewHandler(deps.Sources),
 	}, nil, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  errs.RequestError,
 		ResponseErrorHandlerFunc: errs.ResponseError,
@@ -61,5 +70,31 @@ func New(opts Options, deps Deps) http.Handler {
 	return gen.HandlerWithOptions(strict, gen.ChiServerOptions{
 		BaseRouter:       r,
 		ErrorHandlerFunc: errs.RequestError,
+	})
+}
+
+// validateRequests checks every request against the contract before any
+// handler runs, so handlers can trust required fields, enums and formats.
+// Authentication is left to accounts.Middleware.
+func validateRequests(errs httpx.Errors) func(http.Handler) http.Handler {
+	spec, err := gen.GetSpec()
+	if err != nil {
+		panic(fmt.Sprintf("embedded OpenAPI spec is invalid: %v", err)) // a build defect, caught by every test
+	}
+	spec.Servers = nil // match any host
+	codes := map[int]gen.ErrorCode{
+		http.StatusNotFound:              gen.ErrorCodeNotFound,
+		http.StatusMethodNotAllowed:      gen.ErrorCodeMethodNotAllowed,
+		http.StatusRequestEntityTooLarge: gen.ErrorCodePayloadTooLarge,
+	}
+	return validator.OapiRequestValidatorWithOptions(spec, &validator.Options{
+		Options: openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc},
+		ErrorHandler: func(w http.ResponseWriter, message string, status int) {
+			code, ok := codes[status]
+			if !ok {
+				code, status = gen.ErrorCodeBadRequest, http.StatusBadRequest
+			}
+			errs.Write(w, status, code, message)
+		},
 	})
 }

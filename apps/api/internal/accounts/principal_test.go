@@ -10,16 +10,16 @@ import (
 )
 
 var (
-	developer = accounts.Principal{ID: "d", Role: gen.Developer}
-	admin     = accounts.Principal{ID: "a", Role: gen.Admin}
-	reviewer  = accounts.Principal{ID: "r", Role: gen.Contributor, Approvals: []accounts.Approval{
-		{Language: "bem", Level: gen.Reviewer},
-		{Language: "nya", Level: gen.Senior},
+	developer = accounts.Principal{ID: "d", Role: gen.RoleDeveloper}
+	admin     = accounts.Principal{ID: "a", Role: gen.RoleAdmin}
+	reviewer  = accounts.Principal{ID: "r", Role: gen.RoleContributor, Approvals: []accounts.Approval{
+		{Language: "bem", Level: gen.ReviewerLevelReviewer},
+		{Language: "nya", Level: gen.ReviewerLevelSenior},
 	}}
 )
 
 func TestRequire(t *testing.T) {
-	contributors := func(p accounts.Principal) bool { return p.HasRole(gen.Contributor) }
+	contributors := func(p accounts.Principal) bool { return p.HasRole(gen.RoleContributor) }
 	reviewsBemba := func(p accounts.Principal) bool { return p.CanReview("bem") }
 	seniorBemba := func(p accounts.Principal) bool { return p.IsSenior("bem") }
 

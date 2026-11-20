@@ -67,8 +67,8 @@ func TestTrustStatusMatchesContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	contract := []string{
-		string(gen.Verified), string(gen.Reviewed), string(gen.Sourced),
-		string(gen.Machine), string(gen.Disputed),
+		string(gen.TrustStatusVerified), string(gen.TrustStatusReviewed), string(gen.TrustStatusSourced),
+		string(gen.TrustStatusMachine), string(gen.TrustStatusDisputed),
 	}
 	if !slices.Equal(db, contract) {
 		t.Errorf("database trust_status = %v, contract = %v", db, contract)

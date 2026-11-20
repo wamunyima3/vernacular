@@ -92,7 +92,7 @@ func TestListLanguages(t *testing.T) {
 			name:       "store failure becomes a uniform internal error",
 			deps:       server.Deps{Languages: fakeLanguages{err: errors.New("db down")}},
 			wantStatus: http.StatusInternalServerError,
-			wantError:  gen.Internal,
+			wantError:  gen.ErrorCodeInternal,
 		},
 	}
 	for _, tt := range tests {
@@ -150,15 +150,15 @@ func TestUnknownRouteUsesErrorBody(t *testing.T) {
 	if status := get(t, newServer(server.Deps{}), "/v1/nope", &body); status != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", status)
 	}
-	if body.Code != gen.NotFound {
-		t.Fatalf("code = %q, want %q", body.Code, gen.NotFound)
+	if body.Code != gen.ErrorCodeNotFound {
+		t.Fatalf("code = %q, want %q", body.Code, gen.ErrorCodeNotFound)
 	}
 }
 
 func TestGetMe(t *testing.T) {
 	auth := fakeAuth{"good": {
-		ID: "u1", Name: "Mwila", Email: "mwila@example.org", Role: gen.Contributor,
-		Approvals: []accounts.Approval{{Language: "bem", Level: gen.Reviewer}},
+		ID: "u1", Name: "Mwila", Email: "mwila@example.org", Role: gen.RoleContributor,
+		Approvals: []accounts.Approval{{Language: "bem", Level: gen.ReviewerLevelReviewer}},
 	}}
 	tests := []struct {
 		name       string
@@ -166,10 +166,10 @@ func TestGetMe(t *testing.T) {
 		wantStatus int
 		wantCode   gen.ErrorCode
 	}{
-		{"no token", "", http.StatusUnauthorized, gen.Unauthorized},
-		{"unknown token", "Bearer nope", http.StatusUnauthorized, gen.Unauthorized},
-		{"not a bearer token", "Basic abc", http.StatusUnauthorized, gen.Unauthorized},
-		{"lookup failure", "Bearer boom", http.StatusInternalServerError, gen.Internal},
+		{"no token", "", http.StatusUnauthorized, gen.ErrorCodeUnauthorized},
+		{"unknown token", "Bearer nope", http.StatusUnauthorized, gen.ErrorCodeUnauthorized},
+		{"not a bearer token", "Basic abc", http.StatusUnauthorized, gen.ErrorCodeUnauthorized},
+		{"lookup failure", "Bearer boom", http.StatusInternalServerError, gen.ErrorCodeInternal},
 		{"valid session", "Bearer good", http.StatusOK, ""},
 	}
 	for _, tt := range tests {
@@ -186,7 +186,7 @@ func TestGetMe(t *testing.T) {
 			if status != tt.wantStatus || body.Code != tt.wantCode {
 				t.Fatalf("got %d %q, want %d %q", status, body.Code, tt.wantStatus, tt.wantCode)
 			}
-			if status == http.StatusOK && (body.Id != "u1" || body.Role != gen.Contributor || len(body.Approvals) != 1) {
+			if status == http.StatusOK && (body.Id != "u1" || body.Role != gen.RoleContributor || len(body.Approvals) != 1) {
 				t.Errorf("me = %+v", body.Me)
 			}
 		})

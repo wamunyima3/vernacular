@@ -90,9 +90,9 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 
 ### Sources and ingestion
 
-- [ ] **P1-SRC-01** Source register slice (M) → DQ-1, US-25
-  - [ ] api: CRUD for sources, permission document upload (S3-compatible)
-  - [ ] web: `(tools)/sources` screen
+- [x] **P1-SRC-01** Source register slice (M) → DQ-1, US-25
+  - [x] api: CRUD for sources, permission document upload (S3-compatible)
+  - [x] web: `(tools)/sources` screen
   - [x] test: an ingest is refused for a source without a register row
 - [x] **P1-SRC-02** Ingestion framework: `cmd/ingest` with one parser per source behind a shared interface (M) → US-30
 - [ ] **P1-SRC-03** Normaliser: orthography rules, duplicate merge, concept linking (M) → LEX-3, LEX-7

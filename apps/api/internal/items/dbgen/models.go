@@ -7,6 +7,7 @@ package dbgen
 import (
 	"database/sql/driver"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -339,8 +340,8 @@ type Account struct {
 	RefreshTokenExpiresAt pgtype.Timestamptz
 	Scope                 pgtype.Text
 	Password              pgtype.Text
-	CreatedAt             pgtype.Timestamptz
-	UpdatedAt             pgtype.Timestamptz
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 type AuditLog struct {
@@ -351,7 +352,7 @@ type AuditLog struct {
 	ActorID   pgtype.Text
 	Before    []byte
 	After     []byte
-	At        pgtype.Timestamptz
+	At        time.Time
 }
 
 type Concept struct {
@@ -360,8 +361,8 @@ type Concept struct {
 	Definition string
 	Domain     string
 	Core       bool
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Entry struct {
@@ -375,8 +376,8 @@ type Entry struct {
 	Root         pgtype.Text
 	Variety      pgtype.Text
 	Register     Register
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type Example struct {
@@ -384,8 +385,8 @@ type Example struct {
 	SenseID       uuid.UUID
 	Text          string
 	TranslationEn string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type Item struct {
@@ -394,8 +395,8 @@ type Item struct {
 	LanguageCode string
 	Status       TrustStatus
 	AuthorID     pgtype.Text
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type ItemSource struct {
@@ -403,7 +404,7 @@ type ItemSource struct {
 	SourceID  uuid.UUID
 	Reference string
 	Model     pgtype.Text
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 }
 
 type Language struct {
@@ -412,8 +413,8 @@ type Language struct {
 	OwnName   string
 	Wave      int16
 	Status    string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Phrase struct {
@@ -426,8 +427,8 @@ type Phrase struct {
 	SourceEn     string
 	SourceEnFold pgtype.Text
 	Notes        string
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type Release struct {
@@ -436,8 +437,8 @@ type Release struct {
 	PublishedAt pgtype.Timestamptz
 	Counts      []byte
 	Changelog   string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type ReleaseItem struct {
@@ -453,8 +454,8 @@ type Review struct {
 	Decision   ReviewDecision
 	Correction []byte
 	Comment    string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type ReviewerApproval struct {
@@ -462,8 +463,8 @@ type ReviewerApproval struct {
 	LanguageCode string
 	Level        ReviewerLevel
 	ApprovedBy   pgtype.Text
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type Sense struct {
@@ -474,16 +475,16 @@ type Sense struct {
 	Gloss      string
 	Definition string
 	Notes      string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Session struct {
 	ID             string
-	ExpiresAt      pgtype.Timestamptz
+	ExpiresAt      time.Time
 	Token          string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	IpAddress      pgtype.Text
 	UserAgent      pgtype.Text
 	UserID         string
@@ -500,8 +501,8 @@ type Source struct {
 	PermissionKey pgtype.Text
 	AllowedUses   []string
 	Notes         string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type User struct {
@@ -510,8 +511,8 @@ type User struct {
 	Email         string
 	EmailVerified bool
 	Image         pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 	Role          string
 	Banned        pgtype.Bool
 	BanReason     pgtype.Text
@@ -524,8 +525,8 @@ type Variant struct {
 	Spelling  string
 	Fold      pgtype.Text
 	Note      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Variety struct {
@@ -538,7 +539,7 @@ type Verification struct {
 	ID         string
 	Identifier string
 	Value      string
-	ExpiresAt  pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ExpiresAt  time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }

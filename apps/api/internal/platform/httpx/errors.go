@@ -35,38 +35,58 @@ func (e Errors) Write(w http.ResponseWriter, status int, code gen.ErrorCode, mes
 
 // RequestError handles requests the generated code could not parse.
 func (e Errors) RequestError(w http.ResponseWriter, _ *http.Request, err error) {
-	e.Write(w, http.StatusBadRequest, gen.BadRequest, err.Error())
+	e.Write(w, http.StatusBadRequest, gen.ErrorCodeBadRequest, err.Error())
 }
 
-// Errors a handler can return instead of building the response itself.
+// Problem is an error a handler returns to answer with a specific status and
+// code. Any other error becomes a logged 500.
+type Problem struct {
+	Status  int
+	Code    gen.ErrorCode
+	Message string
+}
+
+func (p *Problem) Error() string { return p.Message }
+
+// Common problems. Compare with errors.Is.
 var (
-	ErrUnauthorized = errors.New("sign-in required")
-	ErrForbidden    = errors.New("not allowed")
-	ErrNotFound     = errors.New("not found")
+	ErrUnauthorized = &Problem{http.StatusUnauthorized, gen.ErrorCodeUnauthorized, "Sign in to use this endpoint"}
+	ErrForbidden    = &Problem{http.StatusForbidden, gen.ErrorCodeForbidden, "Your account is not allowed to do this"}
+	ErrNotFound     = &Problem{http.StatusNotFound, gen.ErrorCodeNotFound, "Not found"}
 )
 
-// ResponseError handles errors returned by handlers: the sentinels above map
-// to their status, and anything else is logged and returned as a bare 500.
+// BadRequest is a 400 with a message for the caller.
+func BadRequest(msg string) error {
+	return &Problem{http.StatusBadRequest, gen.ErrorCodeBadRequest, msg}
+}
+
+// Conflict is a 409 with a message for the caller.
+func Conflict(msg string) error {
+	return &Problem{http.StatusConflict, gen.ErrorCodeConflict, msg}
+}
+
+// TooLarge is a 413 with a message for the caller.
+func TooLarge(msg string) error {
+	return &Problem{http.StatusRequestEntityTooLarge, gen.ErrorCodePayloadTooLarge, msg}
+}
+
+// ResponseError handles errors returned by handlers: a Problem is sent as is,
+// and anything else is logged and returned as a bare 500.
 func (e Errors) ResponseError(w http.ResponseWriter, r *http.Request, err error) {
-	switch {
-	case errors.Is(err, ErrUnauthorized):
-		e.Write(w, http.StatusUnauthorized, gen.Unauthorized, "Sign in to use this endpoint")
-	case errors.Is(err, ErrForbidden):
-		e.Write(w, http.StatusForbidden, gen.Forbidden, "Your account is not allowed to do this")
-	case errors.Is(err, ErrNotFound):
-		e.Write(w, http.StatusNotFound, gen.NotFound, "Not found")
-	default:
-		e.Log.ErrorContext(r.Context(), "handler failed", "err", err, "path", r.URL.Path)
-		e.Write(w, http.StatusInternalServerError, gen.Internal, "Internal server error")
+	if p, ok := errors.AsType[*Problem](err); ok {
+		e.Write(w, p.Status, p.Code, p.Message)
+		return
 	}
+	e.Log.ErrorContext(r.Context(), "handler failed", "err", err, "path", r.URL.Path)
+	e.Write(w, http.StatusInternalServerError, gen.ErrorCodeInternal, "Internal server error")
 }
 
 // NotFound answers unknown routes.
 func (e Errors) NotFound(w http.ResponseWriter, _ *http.Request) {
-	e.Write(w, http.StatusNotFound, gen.NotFound, "Route not found")
+	e.Write(w, http.StatusNotFound, gen.ErrorCodeNotFound, "Route not found")
 }
 
 // MethodNotAllowed answers known routes called with the wrong method.
 func (e Errors) MethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
-	e.Write(w, http.StatusMethodNotAllowed, gen.MethodNotAllowed, "Method not allowed")
+	e.Write(w, http.StatusMethodNotAllowed, gen.ErrorCodeMethodNotAllowed, "Method not allowed")
 }

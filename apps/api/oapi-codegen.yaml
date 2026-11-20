@@ -6,6 +6,12 @@ generate:
   chi-server: true
   strict-server: true
   models: true
+  # The spec is embedded so requests are validated against it (internal/server).
+  embedded-spec: true
 output-options:
   # Keep shared components (Trust) even before an operation uses them.
   skip-prune: true
+compatibility:
+  # Enum constants are always <Type><Value> (gen.ErrorCodeNotFound), so adding a
+  # value to one enum never renames another's constants.
+  always-prefix-enum-values: true

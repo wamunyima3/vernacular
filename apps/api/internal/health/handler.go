@@ -30,7 +30,7 @@ func (h *Handler) GetHealth(ctx context.Context, _ gen.GetHealthRequestObject) (
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	if err := h.db.Ping(ctx); err != nil {
-		body := h.errors.Body(gen.Unavailable, "Database unreachable")
+		body := h.errors.Body(gen.ErrorCodeUnavailable, "Database unreachable")
 		return gen.GetHealth503JSONResponse{ErrorJSONResponse: gen.ErrorJSONResponse(body)}, nil
 	}
 	return gen.GetHealth200JSONResponse{Status: "ok"}, nil

@@ -13,9 +13,11 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
+	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
 
 func main() {
@@ -42,12 +44,19 @@ func run() error {
 	}
 	defer pool.Close()
 
+	bucket, err := blob.Open(ctx, cfg.BlobURL)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = bucket.Close() }()
+
 	handler := server.New(
 		server.Options{Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL},
 		server.Deps{
 			DB:        pool,
 			Accounts:  accounts.NewStore(pool),
 			Languages: languages.NewService(languages.NewStore(pool)),
+			Sources:   sources.NewRegister(pool, bucket),
 		},
 	)
 

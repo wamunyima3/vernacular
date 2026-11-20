@@ -47,3 +47,20 @@ func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionU
 	)
 	return i, err
 }
+
+const setRole = `-- name: SetRole :execrows
+UPDATE users SET role = $2 WHERE email = $1
+`
+
+type SetRoleParams struct {
+	Email string
+	Role  string
+}
+
+func (q *Queries) SetRole(ctx context.Context, arg SetRoleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRole, arg.Email, arg.Role)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

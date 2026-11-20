@@ -5,46 +5,84 @@ package gen
 
 import (
 	"bytes"
+	"compress/flate"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AllowedUse.
+const (
+	AllowedUseCommercial   AllowedUse = "commercial"
+	AllowedUseDerive       AllowedUse = "derive"
+	AllowedUseRedistribute AllowedUse = "redistribute"
+	AllowedUseTrain        AllowedUse = "train"
+)
+
+// Valid indicates whether the value is a known member of the AllowedUse enum.
+func (e AllowedUse) Valid() bool {
+	switch e {
+	case AllowedUseCommercial:
+		return true
+	case AllowedUseDerive:
+		return true
+	case AllowedUseRedistribute:
+		return true
+	case AllowedUseTrain:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
-	BadRequest       ErrorCode = "bad_request"
-	Forbidden        ErrorCode = "forbidden"
-	Internal         ErrorCode = "internal"
-	MethodNotAllowed ErrorCode = "method_not_allowed"
-	NotFound         ErrorCode = "not_found"
-	RateLimited      ErrorCode = "rate_limited"
-	Unauthorized     ErrorCode = "unauthorized"
-	Unavailable      ErrorCode = "unavailable"
+	ErrorCodeBadRequest       ErrorCode = "bad_request"
+	ErrorCodeConflict         ErrorCode = "conflict"
+	ErrorCodeForbidden        ErrorCode = "forbidden"
+	ErrorCodeInternal         ErrorCode = "internal"
+	ErrorCodeMethodNotAllowed ErrorCode = "method_not_allowed"
+	ErrorCodeNotFound         ErrorCode = "not_found"
+	ErrorCodePayloadTooLarge  ErrorCode = "payload_too_large"
+	ErrorCodeRateLimited      ErrorCode = "rate_limited"
+	ErrorCodeUnauthorized     ErrorCode = "unauthorized"
+	ErrorCodeUnavailable      ErrorCode = "unavailable"
 )
 
 // Valid indicates whether the value is a known member of the ErrorCode enum.
 func (e ErrorCode) Valid() bool {
 	switch e {
-	case BadRequest:
+	case ErrorCodeBadRequest:
 		return true
-	case Forbidden:
+	case ErrorCodeConflict:
 		return true
-	case Internal:
+	case ErrorCodeForbidden:
 		return true
-	case MethodNotAllowed:
+	case ErrorCodeInternal:
 		return true
-	case NotFound:
+	case ErrorCodeMethodNotAllowed:
 		return true
-	case RateLimited:
+	case ErrorCodeNotFound:
 		return true
-	case Unauthorized:
+	case ErrorCodePayloadTooLarge:
 		return true
-	case Unavailable:
+	case ErrorCodeRateLimited:
+		return true
+	case ErrorCodeUnauthorized:
+		return true
+	case ErrorCodeUnavailable:
 		return true
 	default:
 		return false
@@ -53,13 +91,13 @@ func (e ErrorCode) Valid() bool {
 
 // Defines values for HealthStatus.
 const (
-	Ok HealthStatus = "ok"
+	HealthStatusOk HealthStatus = "ok"
 )
 
 // Valid indicates whether the value is a known member of the HealthStatus enum.
 func (e HealthStatus) Valid() bool {
 	switch e {
-	case Ok:
+	case HealthStatusOk:
 		return true
 	default:
 		return false
@@ -68,16 +106,16 @@ func (e HealthStatus) Valid() bool {
 
 // Defines values for LanguageStatus.
 const (
-	Active  LanguageStatus = "active"
-	Planned LanguageStatus = "planned"
+	LanguageStatusActive  LanguageStatus = "active"
+	LanguageStatusPlanned LanguageStatus = "planned"
 )
 
 // Valid indicates whether the value is a known member of the LanguageStatus enum.
 func (e LanguageStatus) Valid() bool {
 	switch e {
-	case Active:
+	case LanguageStatusActive:
 		return true
-	case Planned:
+	case LanguageStatusPlanned:
 		return true
 	default:
 		return false
@@ -86,16 +124,16 @@ func (e LanguageStatus) Valid() bool {
 
 // Defines values for ReviewerLevel.
 const (
-	Reviewer ReviewerLevel = "reviewer"
-	Senior   ReviewerLevel = "senior"
+	ReviewerLevelReviewer ReviewerLevel = "reviewer"
+	ReviewerLevelSenior   ReviewerLevel = "senior"
 )
 
 // Valid indicates whether the value is a known member of the ReviewerLevel enum.
 func (e ReviewerLevel) Valid() bool {
 	switch e {
-	case Reviewer:
+	case ReviewerLevelReviewer:
 		return true
-	case Senior:
+	case ReviewerLevelSenior:
 		return true
 	default:
 		return false
@@ -104,19 +142,40 @@ func (e ReviewerLevel) Valid() bool {
 
 // Defines values for Role.
 const (
-	Admin       Role = "admin"
-	Contributor Role = "contributor"
-	Developer   Role = "developer"
+	RoleAdmin       Role = "admin"
+	RoleContributor Role = "contributor"
+	RoleDeveloper   Role = "developer"
 )
 
 // Valid indicates whether the value is a known member of the Role enum.
 func (e Role) Valid() bool {
 	switch e {
-	case Admin:
+	case RoleAdmin:
 		return true
-	case Contributor:
+	case RoleContributor:
 		return true
-	case Developer:
+	case RoleDeveloper:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SourceKind.
+const (
+	SourceKindContributor SourceKind = "contributor"
+	SourceKindLicensed    SourceKind = "licensed"
+	SourceKindMachine     SourceKind = "machine"
+)
+
+// Valid indicates whether the value is a known member of the SourceKind enum.
+func (e SourceKind) Valid() bool {
+	switch e {
+	case SourceKindContributor:
+		return true
+	case SourceKindLicensed:
+		return true
+	case SourceKindMachine:
 		return true
 	default:
 		return false
@@ -125,30 +184,33 @@ func (e Role) Valid() bool {
 
 // Defines values for TrustStatus.
 const (
-	Disputed TrustStatus = "disputed"
-	Machine  TrustStatus = "machine"
-	Reviewed TrustStatus = "reviewed"
-	Sourced  TrustStatus = "sourced"
-	Verified TrustStatus = "verified"
+	TrustStatusDisputed TrustStatus = "disputed"
+	TrustStatusMachine  TrustStatus = "machine"
+	TrustStatusReviewed TrustStatus = "reviewed"
+	TrustStatusSourced  TrustStatus = "sourced"
+	TrustStatusVerified TrustStatus = "verified"
 )
 
 // Valid indicates whether the value is a known member of the TrustStatus enum.
 func (e TrustStatus) Valid() bool {
 	switch e {
-	case Disputed:
+	case TrustStatusDisputed:
 		return true
-	case Machine:
+	case TrustStatusMachine:
 		return true
-	case Reviewed:
+	case TrustStatusReviewed:
 		return true
-	case Sourced:
+	case TrustStatusSourced:
 		return true
-	case Verified:
+	case TrustStatusVerified:
 		return true
 	default:
 		return false
 	}
 }
+
+// AllowedUse `train` means the data may be used to train models (AI-7).
+type AllowedUse string
 
 // Approval defines model for Approval.
 type Approval struct {
@@ -248,6 +310,58 @@ type ReviewerLevel string
 // Role Global account role. Review rights are per language, in `approvals`.
 type Role string
 
+// Source defines model for Source.
+type Source struct {
+	// AllowedUses What the licence allows
+	AllowedUses           []AllowedUse       `json:"allowed_uses"`
+	CreatedAt             time.Time          `json:"created_at"`
+	HasPermissionDocument bool               `json:"has_permission_document"`
+	Id                    openapi_types.UUID `json:"id"`
+
+	// Kind `licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output.
+	Kind SourceKind `json:"kind"`
+
+	// Licence Example: CC BY 4.0
+	Licence string `json:"licence"`
+
+	// Name Example: GATITOS
+	Name  string  `json:"name"`
+	Notes *string `json:"notes,omitempty"`
+
+	// RightsHolder Example: Google LLC
+	RightsHolder string    `json:"rights_holder"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Url          *string   `json:"url,omitempty"`
+}
+
+// SourceInput defines model for SourceInput.
+type SourceInput struct {
+	// AllowedUses What the licence allows
+	AllowedUses []AllowedUse `json:"allowed_uses"`
+
+	// Kind `licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output.
+	Kind SourceKind `json:"kind"`
+
+	// Licence Example: CC BY 4.0
+	Licence string `json:"licence"`
+
+	// Name Example: GATITOS
+	Name  string  `json:"name"`
+	Notes *string `json:"notes,omitempty"`
+
+	// RightsHolder Example: Google LLC
+	RightsHolder string  `json:"rights_holder"`
+	Url          *string `json:"url,omitempty"`
+}
+
+// SourceKind `licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output.
+type SourceKind string
+
+// SourceList defines model for SourceList.
+type SourceList struct {
+	Data []Source `json:"data"`
+}
+
 // SourceRef defines model for SourceRef.
 type SourceRef struct {
 	// Licence Example: CC BY 4.0
@@ -287,6 +401,15 @@ type Trust struct {
 // `disputed` is never returned.
 type TrustStatus string
 
+// SourceId defines model for SourceId.
+type SourceId = openapi_types.UUID
+
+// CreateSourceJSONRequestBody defines body for CreateSource for application/json ContentType.
+type CreateSourceJSONRequestBody = SourceInput
+
+// UpdateSourceJSONRequestBody defines body for UpdateSource for application/json ContentType.
+type UpdateSourceJSONRequestBody = SourceInput
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetHealth Liveness and database readiness
@@ -298,6 +421,27 @@ type ServerInterface interface {
 	// GetMe The signed-in user, with role and review approvals
 	// (GET /v1/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// ListSources The source register
+	// (GET /v1/sources)
+	ListSources(w http.ResponseWriter, r *http.Request)
+	// CreateSource Add a source to the register (admin)
+	// (POST /v1/sources)
+	CreateSource(w http.ResponseWriter, r *http.Request)
+	// DeleteSource Remove a source no item cites yet (admin)
+	// (DELETE /v1/sources/{id})
+	DeleteSource(w http.ResponseWriter, r *http.Request, id SourceId)
+	// GetSource One source
+	// (GET /v1/sources/{id})
+	GetSource(w http.ResponseWriter, r *http.Request, id SourceId)
+	// UpdateSource Replace a source's details (admin)
+	// (PUT /v1/sources/{id})
+	UpdateSource(w http.ResponseWriter, r *http.Request, id SourceId)
+	// DownloadPermission Download the permission document (admin)
+	// (GET /v1/sources/{id}/permission)
+	DownloadPermission(w http.ResponseWriter, r *http.Request, id SourceId)
+	// UploadPermission Upload the signed permission document (admin)
+	// (PUT /v1/sources/{id}/permission)
+	UploadPermission(w http.ResponseWriter, r *http.Request, id SourceId)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -319,6 +463,48 @@ func (_ Unimplemented) ListLanguages(w http.ResponseWriter, r *http.Request) {
 // GetMe The signed-in user, with role and review approvals
 // (GET /v1/me)
 func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListSources The source register
+// (GET /v1/sources)
+func (_ Unimplemented) ListSources(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateSource Add a source to the register (admin)
+// (POST /v1/sources)
+func (_ Unimplemented) CreateSource(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteSource Remove a source no item cites yet (admin)
+// (DELETE /v1/sources/{id})
+func (_ Unimplemented) DeleteSource(w http.ResponseWriter, r *http.Request, id SourceId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetSource One source
+// (GET /v1/sources/{id})
+func (_ Unimplemented) GetSource(w http.ResponseWriter, r *http.Request, id SourceId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateSource Replace a source's details (admin)
+// (PUT /v1/sources/{id})
+func (_ Unimplemented) UpdateSource(w http.ResponseWriter, r *http.Request, id SourceId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DownloadPermission Download the permission document (admin)
+// (GET /v1/sources/{id}/permission)
+func (_ Unimplemented) DownloadPermission(w http.ResponseWriter, r *http.Request, id SourceId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UploadPermission Upload the signed permission document (admin)
+// (PUT /v1/sources/{id}/permission)
+func (_ Unimplemented) UploadPermission(w http.ResponseWriter, r *http.Request, id SourceId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -364,6 +550,164 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSources operation middleware
+func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSources(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSource operation middleware
+func (siw *ServerInterfaceWrapper) CreateSource(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSource(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteSource operation middleware
+func (siw *ServerInterfaceWrapper) DeleteSource(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSource operation middleware
+func (siw *ServerInterfaceWrapper) GetSource(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSource operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSource(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSource(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadPermission operation middleware
+func (siw *ServerInterfaceWrapper) DownloadPermission(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadPermission(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UploadPermission operation middleware
+func (siw *ServerInterfaceWrapper) UploadPermission(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id SourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadPermission(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -494,6 +838,27 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/me", wrapper.GetMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/sources", wrapper.ListSources)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/sources", wrapper.CreateSource)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/sources/{id}", wrapper.DeleteSource)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/sources/{id}", wrapper.GetSource)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/sources/{id}", wrapper.UpdateSource)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/sources/{id}/permission", wrapper.DownloadPermission)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/sources/{id}/permission", wrapper.UploadPermission)
 	})
 
 	return r
@@ -626,6 +991,280 @@ func (response GetMedefaultJSONResponse) VisitGetMeResponse(w http.ResponseWrite
 	return err
 }
 
+type ListSourcesRequestObject struct {
+}
+
+type ListSourcesResponseObject interface {
+	VisitListSourcesResponse(w http.ResponseWriter) error
+}
+
+type ListSources200JSONResponse SourceList
+
+func (response ListSources200JSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSourcesdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListSourcesdefaultJSONResponse) VisitListSourcesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSourceRequestObject struct {
+	Body *CreateSourceJSONRequestBody
+}
+
+type CreateSourceResponseObject interface {
+	VisitCreateSourceResponse(w http.ResponseWriter) error
+}
+
+type CreateSource201JSONResponse Source
+
+func (response CreateSource201JSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSourcedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateSourcedefaultJSONResponse) VisitCreateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSourceRequestObject struct {
+	Id SourceId `json:"id"`
+}
+
+type DeleteSourceResponseObject interface {
+	VisitDeleteSourceResponse(w http.ResponseWriter) error
+}
+
+type DeleteSource204Response struct {
+}
+
+func (response DeleteSource204Response) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteSourcedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteSourcedefaultJSONResponse) VisitDeleteSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSourceRequestObject struct {
+	Id SourceId `json:"id"`
+}
+
+type GetSourceResponseObject interface {
+	VisitGetSourceResponse(w http.ResponseWriter) error
+}
+
+type GetSource200JSONResponse Source
+
+func (response GetSource200JSONResponse) VisitGetSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSourcedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetSourcedefaultJSONResponse) VisitGetSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSourceRequestObject struct {
+	Id   SourceId `json:"id"`
+	Body *UpdateSourceJSONRequestBody
+}
+
+type UpdateSourceResponseObject interface {
+	VisitUpdateSourceResponse(w http.ResponseWriter) error
+}
+
+type UpdateSource200JSONResponse Source
+
+func (response UpdateSource200JSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSourcedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UpdateSourcedefaultJSONResponse) VisitUpdateSourceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DownloadPermissionRequestObject struct {
+	Id SourceId `json:"id"`
+}
+
+type DownloadPermissionResponseObject interface {
+	VisitDownloadPermissionResponse(w http.ResponseWriter) error
+}
+
+type DownloadPermission200ApplicationoctetStreamResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response DownloadPermission200ApplicationoctetStreamResponse) VisitDownloadPermissionResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type DownloadPermissiondefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DownloadPermissiondefaultJSONResponse) VisitDownloadPermissionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadPermissionRequestObject struct {
+	Id   SourceId `json:"id"`
+	Body io.Reader
+}
+
+type UploadPermissionResponseObject interface {
+	VisitUploadPermissionResponse(w http.ResponseWriter) error
+}
+
+type UploadPermission200JSONResponse Source
+
+func (response UploadPermission200JSONResponse) VisitUploadPermissionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadPermissiondefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UploadPermissiondefaultJSONResponse) VisitUploadPermissionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetHealth Liveness and database readiness
@@ -637,6 +1276,27 @@ type StrictServerInterface interface {
 	// GetMe The signed-in user, with role and review approvals
 	// (GET /v1/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// ListSources The source register
+	// (GET /v1/sources)
+	ListSources(ctx context.Context, request ListSourcesRequestObject) (ListSourcesResponseObject, error)
+	// CreateSource Add a source to the register (admin)
+	// (POST /v1/sources)
+	CreateSource(ctx context.Context, request CreateSourceRequestObject) (CreateSourceResponseObject, error)
+	// DeleteSource Remove a source no item cites yet (admin)
+	// (DELETE /v1/sources/{id})
+	DeleteSource(ctx context.Context, request DeleteSourceRequestObject) (DeleteSourceResponseObject, error)
+	// GetSource One source
+	// (GET /v1/sources/{id})
+	GetSource(ctx context.Context, request GetSourceRequestObject) (GetSourceResponseObject, error)
+	// UpdateSource Replace a source's details (admin)
+	// (PUT /v1/sources/{id})
+	UpdateSource(ctx context.Context, request UpdateSourceRequestObject) (UpdateSourceResponseObject, error)
+	// DownloadPermission Download the permission document (admin)
+	// (GET /v1/sources/{id}/permission)
+	DownloadPermission(ctx context.Context, request DownloadPermissionRequestObject) (DownloadPermissionResponseObject, error)
+	// UploadPermission Upload the signed permission document (admin)
+	// (PUT /v1/sources/{id}/permission)
+	UploadPermission(ctx context.Context, request UploadPermissionRequestObject) (UploadPermissionResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -748,4 +1408,343 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	} else if response != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
 	}
+}
+
+// ListSources operation middleware
+func (sh *strictHandler) ListSources(w http.ResponseWriter, r *http.Request) {
+	var request ListSourcesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListSources(ctx, request.(ListSourcesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSources")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSourcesResponseObject); ok {
+		if err := validResponse.VisitListSourcesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSource operation middleware
+func (sh *strictHandler) CreateSource(w http.ResponseWriter, r *http.Request) {
+	var request CreateSourceRequestObject
+
+	var body CreateSourceJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateSource(ctx, request.(CreateSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSourceResponseObject); ok {
+		if err := validResponse.VisitCreateSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteSource operation middleware
+func (sh *strictHandler) DeleteSource(w http.ResponseWriter, r *http.Request, id SourceId) {
+	var request DeleteSourceRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteSource(ctx, request.(DeleteSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteSourceResponseObject); ok {
+		if err := validResponse.VisitDeleteSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetSource operation middleware
+func (sh *strictHandler) GetSource(w http.ResponseWriter, r *http.Request, id SourceId) {
+	var request GetSourceRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSource(ctx, request.(GetSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSourceResponseObject); ok {
+		if err := validResponse.VisitGetSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSource operation middleware
+func (sh *strictHandler) UpdateSource(w http.ResponseWriter, r *http.Request, id SourceId) {
+	var request UpdateSourceRequestObject
+
+	request.Id = id
+
+	var body UpdateSourceJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateSource(ctx, request.(UpdateSourceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSource")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSourceResponseObject); ok {
+		if err := validResponse.VisitUpdateSourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DownloadPermission operation middleware
+func (sh *strictHandler) DownloadPermission(w http.ResponseWriter, r *http.Request, id SourceId) {
+	var request DownloadPermissionRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DownloadPermission(ctx, request.(DownloadPermissionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DownloadPermission")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DownloadPermissionResponseObject); ok {
+		if err := validResponse.VisitDownloadPermissionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UploadPermission operation middleware
+func (sh *strictHandler) UploadPermission(w http.ResponseWriter, r *http.Request, id SourceId) {
+	var request UploadPermissionRequestObject
+
+	request.Id = id
+
+	request.Body = r.Body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UploadPermission(ctx, request.(UploadPermissionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UploadPermission")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UploadPermissionResponseObject); ok {
+		if err := validResponse.VisitUploadPermissionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
+// Stored as a slice of fixed-width chunks rather than one concatenated
+// const string: with thousands of chunks the chained `+` fold is several
+// times slower for the Go compiler than parsing a slice literal.
+var swaggerSpec = []string{
+	"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",
+}
+
+// decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
+// after base64-decoding and flate-decompressing the embedded blob.
+func decodeSpec() ([]byte, error) {
+	encoded := strings.Join(swaggerSpec, "")
+	compressed, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr := flate.NewReader(bytes.NewReader(compressed))
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(zr); err != nil {
+		return nil, fmt.Errorf("read flate: %w", err)
+	}
+	if err := zr.Close(); err != nil {
+		return nil, fmt.Errorf("close flate reader: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cache of the decoded OpenAPI spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	return res
+}
+
+// GetSpec returns the OpenAPI specification corresponding to the generated
+// code in this file. External references in the spec are resolved through
+// PathToRawSpec; externally-referenced files must be embedded in their
+// corresponding Go packages (via the import-mapping feature). URL-based
+// external refs are not supported.
+func GetSpec() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// GetSpecJSON returns the raw JSON bytes of the embedded OpenAPI
+// specification: decompressed but not unmarshaled. External references
+// are not resolved here; the bytes are the spec exactly as embedded by
+// codegen. The result is cached at package init time, so repeated calls
+// are cheap.
+func GetSpecJSON() ([]byte, error) {
+	return rawSpec()
+}
+
+// GetSwagger returns the OpenAPI specification corresponding to the
+// generated code in this file.
+//
+// Deprecated: GetSwagger predates kin-openapi renaming openapi3.Swagger
+// to openapi3.T. Use [GetSpec] instead. This wrapper is retained for
+// backwards compatibility.
+func GetSwagger() (*openapi3.T, error) {
+	return GetSpec()
 }
