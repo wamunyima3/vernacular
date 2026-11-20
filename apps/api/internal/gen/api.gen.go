@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -40,6 +41,33 @@ func (e LanguageStatus) Valid() bool {
 	case Active:
 		return true
 	case Planned:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TrustStatus.
+const (
+	Disputed TrustStatus = "disputed"
+	Machine  TrustStatus = "machine"
+	Reviewed TrustStatus = "reviewed"
+	Sourced  TrustStatus = "sourced"
+	Verified TrustStatus = "verified"
+)
+
+// Valid indicates whether the value is a known member of the TrustStatus enum.
+func (e TrustStatus) Valid() bool {
+	switch e {
+	case Disputed:
+		return true
+	case Machine:
+		return true
+	case Reviewed:
+		return true
+	case Sourced:
+		return true
+	case Verified:
 		return true
 	default:
 		return false
@@ -102,6 +130,52 @@ type LanguageCode = string
 type LanguageList struct {
 	Data []Language `json:"data"`
 }
+
+// ReviewSummary Counts only. Reviewer identities are not exposed per item.
+type ReviewSummary struct {
+	Accepts        int        `json:"accepts"`
+	Corrections    int        `json:"corrections"`
+	LastReviewedAt *time.Time `json:"last_reviewed_at,omitempty"`
+}
+
+// SourceRef defines model for SourceRef.
+type SourceRef struct {
+	// Licence Example: CC BY 4.0
+	Licence string `json:"licence"`
+
+	// Model Model version, present only for machine-generated items
+	//
+	// Example: claude-opus-5-5
+	Model *string `json:"model,omitempty"`
+
+	// Name Example: GATITOS
+	Name string `json:"name"`
+
+	// Reference Page, line or row in the source
+	Reference *string `json:"reference,omitempty"`
+	Url       *string `json:"url,omitempty"`
+}
+
+// Trust Provenance carried by every item (PRV-1). Item schemas include it as a `trust`
+// property; never copy these fields into an item schema.
+type Trust struct {
+	// Release Dataset release the item belongs to, absent until first released
+	//
+	// Example: 2027.1
+	Release *string `json:"release,omitempty"`
+
+	// Reviews Counts only. Reviewer identities are not exposed per item.
+	Reviews ReviewSummary `json:"reviews"`
+	Sources []SourceRef   `json:"sources"`
+
+	// Status How far an item has been checked (ADR-0004). Only `verified` is returned by default;
+	// `disputed` is never returned.
+	Status TrustStatus `json:"status"`
+}
+
+// TrustStatus How far an item has been checked (ADR-0004). Only `verified` is returned by default;
+// `disputed` is never returned.
+type TrustStatus string
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {

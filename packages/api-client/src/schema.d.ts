@@ -77,6 +77,48 @@ export interface components {
         LanguageList: {
             data: components["schemas"]["Language"][];
         };
+        /**
+         * @description How far an item has been checked (ADR-0004). Only `verified` is returned by default;
+         *     `disputed` is never returned.
+         * @enum {string}
+         */
+        TrustStatus: "verified" | "reviewed" | "sourced" | "machine" | "disputed";
+        SourceRef: {
+            /** @example GATITOS */
+            name: string;
+            /** @example CC BY 4.0 */
+            licence: string;
+            /** Format: uri */
+            url?: string;
+            /** @description Page, line or row in the source */
+            reference?: string;
+            /**
+             * @description Model version, present only for machine-generated items
+             * @example claude-opus-5-5
+             */
+            model?: string;
+        };
+        /** @description Counts only. Reviewer identities are not exposed per item. */
+        ReviewSummary: {
+            accepts: number;
+            corrections: number;
+            /** Format: date-time */
+            last_reviewed_at?: string;
+        };
+        /**
+         * @description Provenance carried by every item (PRV-1). Item schemas include it as a `trust`
+         *     property; never copy these fields into an item schema.
+         */
+        Trust: {
+            status: components["schemas"]["TrustStatus"];
+            sources: components["schemas"]["SourceRef"][];
+            reviews: components["schemas"]["ReviewSummary"];
+            /**
+             * @description Dataset release the item belongs to, absent until first released
+             * @example 2027.1
+             */
+            release?: string;
+        };
         Error: {
             /**
              * @description Stable machine-readable code

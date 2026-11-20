@@ -2,10 +2,12 @@
 package db_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
 )
 
@@ -75,6 +77,22 @@ func TestConstraintsRejectBadRows(t *testing.T) {
 				t.Error("insert succeeded, want a constraint error")
 			}
 		})
+	}
+}
+
+// The contract's TrustStatus and the database enum must list the same values.
+func TestTrustStatusMatchesContract(t *testing.T) {
+	tx := dbtest.Tx(t)
+	var db []string
+	if err := tx.QueryRow(t.Context(), "SELECT enum_range(NULL::trust_status)::text[]").Scan(&db); err != nil {
+		t.Fatal(err)
+	}
+	contract := []string{
+		string(gen.Verified), string(gen.Reviewed), string(gen.Sourced),
+		string(gen.Machine), string(gen.Disputed),
+	}
+	if !slices.Equal(db, contract) {
+		t.Errorf("database trust_status = %v, contract = %v", db, contract)
 	}
 }
 

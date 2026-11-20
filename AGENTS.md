@@ -6,7 +6,7 @@ Read first: [tasks.md](tasks.md) → [docs/architecture.md](docs/architecture.md
 
 ## 1. Product rules that code must never break
 
-1. **Every returned item carries trust fields:** `status`, `sources` (with licence), `reviews` and `release`. Reuse the `Trust` schema; never write a new one.
+1. **Every returned item carries trust fields:** `status`, `sources` (with licence), `reviews` and `release`. Add them as a `trust` property that references `#/components/schemas/Trust`; never copy the fields.
 2. **Only two independent human accepts make an item `verified`.** The single promotion function lives in the `review` module. Nothing else writes `status = 'verified'`.
 3. **`machine` items are returned only when the caller asks, and they are always labelled.** `disputed` items are never returned.
 4. **No source is ingested without a source register row** (DQ-1). Never scrape apps or sites that have not given permission.

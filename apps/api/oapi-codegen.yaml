@@ -6,3 +6,6 @@ generate:
   chi-server: true
   strict-server: true
   models: true
+output-options:
+  # Keep shared components (Trust) even before an operation uses them.
+  skip-prune: true

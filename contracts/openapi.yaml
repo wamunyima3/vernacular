@@ -92,6 +92,63 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/Language" }
+    TrustStatus:
+      type: string
+      description: |
+        How far an item has been checked (ADR-0004). Only `verified` is returned by default;
+        `disputed` is never returned.
+      enum: [verified, reviewed, sourced, machine, disputed]
+    SourceRef:
+      type: object
+      required: [name, licence]
+      properties:
+        name:
+          type: string
+          example: GATITOS
+        licence:
+          type: string
+          example: CC BY 4.0
+        url:
+          type: string
+          format: uri
+        reference:
+          type: string
+          description: Page, line or row in the source
+        model:
+          type: string
+          description: Model version, present only for machine-generated items
+          example: claude-opus-5-5
+    ReviewSummary:
+      type: object
+      description: Counts only. Reviewer identities are not exposed per item.
+      required: [accepts, corrections]
+      properties:
+        accepts:
+          type: integer
+          minimum: 0
+        corrections:
+          type: integer
+          minimum: 0
+        last_reviewed_at:
+          type: string
+          format: date-time
+    Trust:
+      type: object
+      description: |
+        Provenance carried by every item (PRV-1). Item schemas include it as a `trust`
+        property; never copy these fields into an item schema.
+      required: [status, sources, reviews]
+      properties:
+        status: { $ref: "#/components/schemas/TrustStatus" }
+        sources:
+          type: array
+          items: { $ref: "#/components/schemas/SourceRef" }
+        reviews: { $ref: "#/components/schemas/ReviewSummary" }
+        release:
+          type: string
+          description: Dataset release the item belongs to, absent until first released
+          pattern: "^[0-9]{4}\\.[0-9]+$"
+          example: "2027.1"
     Error:
       type: object
       required: [code, message, docs_url]
