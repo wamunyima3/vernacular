@@ -39,7 +39,7 @@ Goal: a documented, runnable skeleton with quality gates, so feature work can st
   - [x] slice: portal home lists the supported languages from the live API
 - [x] **S-08** Quality gates and CI: golangci-lint, ESLint, Prettier, jscpd, lefthook, generated-code drift check, GitHub Actions (M)
 - [x] **S-09** `/simplify` pass over the scaffold (S)
-- [ ] **S-10** Rewrite README (S)
+- [x] **S-10** Rewrite README (S)
 
 ---
 
