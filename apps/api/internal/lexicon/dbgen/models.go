@@ -243,6 +243,57 @@ func AllReviewDecisionValues() []ReviewDecision {
 	}
 }
 
+type ReviewPriority string
+
+const (
+	ReviewPriorityQuick    ReviewPriority = "quick"
+	ReviewPriorityStandard ReviewPriority = "standard"
+	ReviewPriorityFull     ReviewPriority = "full"
+)
+
+func (e *ReviewPriority) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReviewPriority(s)
+	case string:
+		*e = ReviewPriority(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReviewPriority: %T", src)
+	}
+	return nil
+}
+
+type NullReviewPriority struct {
+	ReviewPriority ReviewPriority
+	Valid          bool // Valid is true if ReviewPriority is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReviewPriority) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReviewPriority, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReviewPriority.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReviewPriority) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReviewPriority), nil
+}
+
+func AllReviewPriorityValues() []ReviewPriority {
+	return []ReviewPriority{
+		ReviewPriorityQuick,
+		ReviewPriorityStandard,
+		ReviewPriorityFull,
+	}
+}
+
 type ReviewerLevel string
 
 const (
@@ -461,13 +512,15 @@ type Example struct {
 }
 
 type Item struct {
-	ID           uuid.UUID
-	Kind         ItemKind
-	LanguageCode string
-	Status       TrustStatus
-	AuthorID     pgtype.Text
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID             uuid.UUID
+	Kind           ItemKind
+	LanguageCode   string
+	Status         TrustStatus
+	AuthorID       pgtype.Text
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ReviewPriority ReviewPriority
+	Agreement      int16
 }
 
 type ItemSource struct {

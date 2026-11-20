@@ -67,25 +67,26 @@ func TestGenerateStoresMachineCandidates(t *testing.T) {
 	}
 
 	rows, err := tx.Query(ctx, `
-		SELECT e.headword, coalesce(e.noun_class, ''), coalesce(e.plural, ''), i.status::text,
+		SELECT e.headword, coalesce(e.noun_class, ''), coalesce(e.plural, ''), i.status::text, i.review_priority::text,
 		       (SELECT string_agg(coalesce(isrc.model, '-'), ',' ORDER BY isrc.model) FROM item_sources isrc WHERE isrc.item_id = s.id)
 		FROM senses s JOIN entries e ON e.id = s.entry_id JOIN items i ON i.id = s.id
 		WHERE s.concept_id = $1 ORDER BY e.headword`, conceptID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	type row struct{ headword, class, plural, status, models string }
+	type row struct{ headword, class, plural, status, priority, models string }
 	got, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (row, error) {
 		var x row
-		return x, r.Scan(&x.headword, &x.class, &x.plural, &x.status, &x.models)
+		return x, r.Scan(&x.headword, &x.class, &x.plural, &x.status, &x.priority, &x.models)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []row{
-		{"zzamenshi", "", "", "sourced", "claude-test-1,-"}, // status kept, Claude added as evidence
-		{"zzbad", "", "", "machine", "claude-test-1"},
-		{"zzicimenshi", "7/8", "zzifimenshi", "machine", "claude-test-1"},
+		// Status kept, Claude added as evidence; both sources agree, so it is a quick confirm.
+		{"zzamenshi", "", "", "sourced", "quick", "claude-test-1,-"},
+		{"zzbad", "", "", "machine", "full", "claude-test-1"},
+		{"zzicimenshi", "7/8", "zzifimenshi", "machine", "full", "claude-test-1"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("senses = %+v, want %+v", got, want)

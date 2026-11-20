@@ -104,9 +104,11 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-AI-01** River job: generate Claude candidates per concept and phrase, stored as `machine` with provider, model version and date (M) → AI-1, AI-2, US-27
   - Concepts done (`make candidates LANG=bem`, `make dev-worker`); phrases follow once the phrase list exists (P1-API phrases). A live run needs `ANTHROPIC_API_KEY` (ADR-0009).
 - [x] **P1-AI-02** River job: generate Google Translate candidates (bem, ny only) (S) → AI-1, AI-2
-- [ ] **P1-AI-03** Agreement scoring and review priority (M) → AI-3, US-21
+- [x] **P1-AI-03** Agreement scoring and review priority (M) → AI-3, US-21
 
 ### Review
+
+- [ ] **P1-AI-03a** Apply the /simplify findings on P1-AI-02/03 (S): read active languages from `languages` in `cmd/ingest` instead of the hard-coded list; review the other three reports
 
 - [x] **P1-REV-00** Give `items` and `item_sources` one owner (`internal/items`) with a store that lexicon calls, and have `sources` depend on a lexicon writer interface instead of `lexicon.NewStore` (S) → architecture §5
 - [ ] **P1-REV-01** Contribute slice: propose entry, sense, example or correction (M) → CON-1, US-18

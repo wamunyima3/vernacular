@@ -60,6 +60,11 @@ restem: ## Recompute search stems after changing a stemmer
 seed: ## Import our core concept lists and every open source we hold a licence for
 	cd $(API_DIR) && go run ./cmd/ingest -all
 	for f in data/concepts/*.csv; do (cd $(API_DIR) && go run ./cmd/ingest -concepts ../../$$f) || exit 1; done
+	$(MAKE) prioritise
+
+.PHONY: prioritise
+prioritise: ## Re-score review priority from agreement between sources
+	cd $(API_DIR) && go run ./cmd/ingest -prioritise
 
 .PHONY: admin
 admin: ## Give a signed-up user a role, e.g. make admin EMAIL=you@example.org [ROLE=admin]

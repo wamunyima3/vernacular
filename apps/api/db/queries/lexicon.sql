@@ -51,3 +51,11 @@ SELECT id FROM concepts WHERE core ORDER BY gloss_en;
 -- Serialises lexicon writes per language across concurrent transactions;
 -- released when the transaction ends.
 SELECT pg_advisory_xact_lock(hashtext('lexicon:' || @language_code::text));
+
+-- name: ListSensesOfConcept :many
+SELECT s.id FROM senses s JOIN entries e ON e.id = s.entry_id
+WHERE e.language_code = $1 AND s.concept_id = $2;
+
+-- name: ListConceptsWithSenses :many
+SELECT DISTINCT s.concept_id FROM senses s JOIN entries e ON e.id = s.entry_id
+WHERE e.language_code = $1 AND s.concept_id IS NOT NULL;
