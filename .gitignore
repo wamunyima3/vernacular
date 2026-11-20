@@ -1,0 +1,28 @@
+# deps and build output
+node_modules/
+.next/
+dist/
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# go
+apps/api/bin/
+*.test
+*.out
+
+# env and secrets
+.env
+.env.*
+!.env.example
+
+# reports
+.jscpd-report/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
