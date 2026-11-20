@@ -210,29 +210,3 @@ func PartsOfSpeech() []string {
 	}
 	return out
 }
-
-// ScoreAgreement sets the review priority of a concept's senses in one
-// language from how many sources agree on each (AI-3).
-func (s *Store) ScoreAgreement(ctx context.Context, language string, conceptID uuid.UUID) error {
-	ids, err := s.q.ListSensesOfConcept(ctx, dbgen.ListSensesOfConceptParams{
-		LanguageCode: language, ConceptID: uuid.NullUUID{UUID: conceptID, Valid: true},
-	})
-	if err != nil {
-		return fmt.Errorf("list senses: %w", err)
-	}
-	return s.items.Prioritise(ctx, ids)
-}
-
-// ScoreAllAgreement re-scores every concept in a language, after an import.
-func (s *Store) ScoreAllAgreement(ctx context.Context, language string) (int, error) {
-	concepts, err := s.q.ListConceptsWithSenses(ctx, language)
-	if err != nil {
-		return 0, fmt.Errorf("list concepts: %w", err)
-	}
-	for _, c := range concepts {
-		if err := s.ScoreAgreement(ctx, language, c.UUID); err != nil {
-			return 0, err
-		}
-	}
-	return len(concepts), nil
-}

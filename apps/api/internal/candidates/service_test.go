@@ -67,7 +67,7 @@ func TestGenerateStoresMachineCandidates(t *testing.T) {
 	}
 
 	rows, err := tx.Query(ctx, `
-		SELECT e.headword, coalesce(e.noun_class, ''), coalesce(e.plural, ''), i.status::text, i.review_priority::text,
+		SELECT e.headword, coalesce(e.noun_class, ''), coalesce(e.plural, ''), i.status::text, (SELECT ra.priority FROM review_agreement ra WHERE ra.item_id = s.id),
 		       (SELECT string_agg(coalesce(isrc.model, '-'), ',' ORDER BY isrc.model) FROM item_sources isrc WHERE isrc.item_id = s.id)
 		FROM senses s JOIN entries e ON e.id = s.entry_id JOIN items i ON i.id = s.id
 		WHERE s.concept_id = $1 ORDER BY e.headword`, conceptID)
@@ -95,5 +95,64 @@ func TestGenerateStoresMachineCandidates(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("sense %d = %+v, want %+v", i, got[i], want[i])
 		}
+	}
+}
+
+// A second provider changes which answers agree: now three sources have
+// answered, so a word two of them give is a standard review.
+func TestAgreementAcrossProviders(t *testing.T) {
+	ctx := context.Background()
+	tx := dbtest.Tx(t)
+	lex := lexicon.NewStore(tx)
+	if _, err := lex.AddCoreConcept(ctx, "zz fire", "everyday"); err != nil {
+		t.Fatal(err)
+	}
+	var conceptID uuid.UUID
+	if err := tx.QueryRow(ctx, "SELECT id FROM concepts WHERE gloss_en = 'zz fire'").Scan(&conceptID); err != nil {
+		t.Fatal(err)
+	}
+	run := func(source string, words ...string) {
+		t.Helper()
+		id, err := sources.Lookup(ctx, tx, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		gen := fixed{Model: source + "-test"}
+		for _, w := range words {
+			gen.Candidates = append(gen.Candidates, candidates.Candidate{Headword: w})
+		}
+		if _, err := candidates.NewService(tx, gen, id, "ai:test").Generate(ctx, conceptID, "bem"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	priorities := func() map[string]string {
+		t.Helper()
+		rows, err := tx.Query(ctx, `SELECT e.headword, ra.priority FROM review_agreement ra
+			JOIN senses s ON s.id = ra.item_id JOIN entries e ON e.id = s.entry_id WHERE ra.concept_id = $1`, conceptID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for rows.Next() {
+			var w, p string
+			if err := rows.Scan(&w, &p); err != nil {
+				t.Fatal(err)
+			}
+			got[w] = p
+		}
+		return got
+	}
+
+	run("Claude", "zzmulilo")
+	if got := priorities(); got["zzmulilo"] != "full" {
+		t.Errorf("one source alone = %v, want full", got)
+	}
+	run("Google Translate", "zzmulilo")
+	if got := priorities(); got["zzmulilo"] != "quick" {
+		t.Errorf("both providers agree = %v, want quick", got)
+	}
+	run("GATITOS", "zzmoto")
+	if got := priorities(); got["zzmulilo"] != "standard" || got["zzmoto"] != "full" {
+		t.Errorf("two of three agree = %v, want zzmulilo standard, zzmoto full", got)
 	}
 }

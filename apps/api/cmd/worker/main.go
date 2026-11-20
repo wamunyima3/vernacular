@@ -125,10 +125,9 @@ func newProviders(ctx context.Context, pool *pgxpool.Pool, cfg config) (map[stri
 		gens[candidates.ProviderGoogle] = candidates.NewGoogle(client)
 	}
 
-	sourceNames := map[string]string{candidates.ProviderClaude: "Claude", candidates.ProviderGoogle: "Google Translate"}
 	providers := map[string]*candidates.Service{}
 	for name, gen := range gens {
-		sourceID, err := sources.Lookup(ctx, pool, sourceNames[name])
+		sourceID, err := sources.Lookup(ctx, pool, candidates.SourceNames[name])
 		if err != nil {
 			return nil, err
 		}

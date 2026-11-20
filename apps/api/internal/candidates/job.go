@@ -18,11 +18,18 @@ import (
 // concurrency can match the provider's rate limit.
 const Queue = "ai"
 
-// Providers that generate candidates. Each has a source register row.
+// Providers that generate candidates.
 const (
 	ProviderClaude = "claude"
 	ProviderGoogle = "google"
 )
+
+// SourceNames maps each provider to the source register row its candidates
+// cite (DQ-1).
+var SourceNames = map[string]string{
+	ProviderClaude: "Claude",
+	ProviderGoogle: "Google Translate",
+}
 
 // GenerateArgs is one River job: one concept in one language from one provider.
 type GenerateArgs struct {

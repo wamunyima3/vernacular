@@ -1,6 +1,7 @@
 package candidates
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -16,6 +17,9 @@ var googleCodes = map[string]language.Tag{
 	"bem": language.Make("bem"),
 	"nya": language.Make("ny"),
 }
+
+// googleModel is Google's neural machine translation model.
+const googleModel = "nmt"
 
 // Google proposes the machine translation of each concept's gloss. It gives
 // one word or phrase and no grammar, so part of speech stays empty for
@@ -34,7 +38,7 @@ func (g *Google) Generate(ctx context.Context, r Request) (Result, error) {
 		return Result{}, fmt.Errorf("google translate does not offer %q", r.Language)
 	}
 	out, err := g.client.Translate(ctx, []string{r.Concept.GlossEn}, target, &translate.Options{
-		Source: language.English, Format: translate.Text, Model: "nmt",
+		Source: language.English, Format: translate.Text, Model: googleModel,
 	})
 	if err != nil {
 		return Result{}, fmt.Errorf("google translate: %w", err)
@@ -42,9 +46,6 @@ func (g *Google) Generate(ctx context.Context, r Request) (Result, error) {
 	if len(out) == 0 {
 		return Result{}, errors.New("google translate returned nothing")
 	}
-	model := "google-translate-nmt"
-	if out[0].Model != "" {
-		model = "google-translate-" + out[0].Model
-	}
+	model := "google-translate-" + cmp.Or(out[0].Model, googleModel)
 	return Result{Model: model, Candidates: []Candidate{{Headword: html.UnescapeString(out[0].Text)}}}, nil
 }

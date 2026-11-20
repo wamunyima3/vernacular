@@ -53,7 +53,6 @@ type Lexicon interface {
 	Concept(ctx context.Context, id uuid.UUID) (lexicon.Concept, error)
 	Add(ctx context.Context, p lexicon.Proposal) (lexicon.Added, error)
 	CoreConcepts(ctx context.Context) ([]uuid.UUID, error)
-	ScoreAgreement(ctx context.Context, language string, conceptID uuid.UUID) error
 }
 
 var newLexicon = func(tx pgx.Tx) Lexicon { return lexicon.NewStore(tx) }
@@ -113,8 +112,7 @@ func (s *Service) Generate(ctx context.Context, conceptID uuid.UUID, language st
 				stats.Senses++
 			}
 		}
-		// New evidence changes which answers agree (AI-3).
-		return lex.ScoreAgreement(ctx, language, conceptID)
+		return nil
 	})
 	return stats, err
 }

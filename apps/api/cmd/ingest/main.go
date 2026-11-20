@@ -4,7 +4,6 @@
 //	ingest -all                                        every feed in sources.Feeds
 //	ingest -concepts data/concepts/x.csv               one of our own core concept lists
 //	ingest -restem                                     recompute search stems after a stemmer change
-//	ingest -prioritise                                 re-score review priority from source agreement
 package main
 
 import (
@@ -21,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
@@ -39,7 +39,6 @@ func run(ctx context.Context) error {
 	concepts := flag.String("concepts", "", "CSV of core concepts (domain,gloss_en) to import instead of a feed")
 	all := flag.Bool("all", false, "import every feed")
 	restem := flag.Bool("restem", false, "recompute search stems for every active language")
-	prioritise := flag.Bool("prioritise", false, "re-score review priority for every active language")
 	flag.Parse()
 
 	pool, err := database.Connect(ctx, os.Getenv("DATABASE_URL"))
@@ -50,13 +49,7 @@ func run(ctx context.Context) error {
 
 	switch {
 	case *restem:
-		return eachLanguage(ctx, pool, "ingest:restem", "stems changed", func(l *lexicon.Store, lang string) (int, error) {
-			return l.Restem(ctx, lang)
-		})
-	case *prioritise:
-		return eachLanguage(ctx, pool, "ingest:prioritise", "concepts scored", func(l *lexicon.Store, lang string) (int, error) {
-			return l.ScoreAllAgreement(ctx, lang)
-		})
+		return restemActive(ctx, pool)
 	case *concepts != "":
 		return importConcepts(ctx, pool, *concepts)
 	case *all:
@@ -92,19 +85,23 @@ func importFeed(ctx context.Context, db database.Beginner, feed sources.Feed, fi
 	return nil
 }
 
-// eachLanguage runs a lexicon maintenance step for every active language in
-// one transaction, printing what it counted.
-func eachLanguage(ctx context.Context, db database.Beginner, actor, counted string,
-	step func(*lexicon.Store, string) (int, error),
-) error {
-	return database.InTx(ctx, db, actor, func(tx pgx.Tx) error {
+// restemActive recomputes search stems for every active language.
+func restemActive(ctx context.Context, db database.Beginner) error {
+	return database.InTx(ctx, db, "ingest:restem", func(tx pgx.Tx) error {
+		langs, err := languages.NewStore(tx).List(ctx)
+		if err != nil {
+			return err
+		}
 		lex := lexicon.NewStore(tx)
-		for _, lang := range []string{"bem", "nya"} {
-			n, err := step(lex, lang)
+		for _, l := range langs {
+			if l.Status != "active" {
+				continue
+			}
+			n, err := lex.Restem(ctx, l.Code)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%s: %d %s\n", lang, n, counted)
+			fmt.Printf("%s: %d stems changed\n", l.Code, n)
 		}
 		return nil
 	})

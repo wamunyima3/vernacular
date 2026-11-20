@@ -108,7 +108,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 
 ### Review
 
-- [ ] **P1-AI-03a** Apply the /simplify findings on P1-AI-02/03 (S): read active languages from `languages` in `cmd/ingest` instead of the hard-coded list. Main finding to decide: compute agreement and priority when the review queue reads them (P1-REV-02) instead of storing them on `items`, which removes `make prioritise` and the re-score hooks; if kept stored, score in `lexicon.Add` and batch the updates. Also keep provider → source name in `candidates`, next to the provider constants
+- [x] **P1-AI-03a** Apply the /simplify findings on P1-AI-02/03 (S): agreement and priority are now the `review_agreement` view, read by the queue; restem reads active languages; provider source names live in `candidates`
 
 - [x] **P1-REV-00** Give `items` and `item_sources` one owner (`internal/items`) with a store that lexicon calls, and have `sources` depend on a lexicon writer interface instead of `lexicon.NewStore` (S) → architecture §5
 - [ ] **P1-REV-01** Contribute slice: propose entry, sense, example or correction (M) → CON-1, US-18

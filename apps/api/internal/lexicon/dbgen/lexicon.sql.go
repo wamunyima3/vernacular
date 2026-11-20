@@ -138,31 +138,6 @@ func (q *Queries) GetConcept(ctx context.Context, id uuid.UUID) (GetConceptRow, 
 	return i, err
 }
 
-const listConceptsWithSenses = `-- name: ListConceptsWithSenses :many
-SELECT DISTINCT s.concept_id FROM senses s JOIN entries e ON e.id = s.entry_id
-WHERE e.language_code = $1 AND s.concept_id IS NOT NULL
-`
-
-func (q *Queries) ListConceptsWithSenses(ctx context.Context, languageCode string) ([]uuid.NullUUID, error) {
-	rows, err := q.db.Query(ctx, listConceptsWithSenses, languageCode)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.NullUUID
-	for rows.Next() {
-		var concept_id uuid.NullUUID
-		if err := rows.Scan(&concept_id); err != nil {
-			return nil, err
-		}
-		items = append(items, concept_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listCoreConcepts = `-- name: ListCoreConcepts :many
 SELECT id FROM concepts WHERE core ORDER BY gloss_en
 `
@@ -210,36 +185,6 @@ func (q *Queries) ListHeadwords(ctx context.Context, languageCode string) ([]Lis
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSensesOfConcept = `-- name: ListSensesOfConcept :many
-SELECT s.id FROM senses s JOIN entries e ON e.id = s.entry_id
-WHERE e.language_code = $1 AND s.concept_id = $2
-`
-
-type ListSensesOfConceptParams struct {
-	LanguageCode string
-	ConceptID    uuid.NullUUID
-}
-
-func (q *Queries) ListSensesOfConcept(ctx context.Context, arg ListSensesOfConceptParams) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listSensesOfConcept, arg.LanguageCode, arg.ConceptID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
