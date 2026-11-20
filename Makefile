@@ -49,8 +49,9 @@ ingest: ## Import a registered source, e.g. make ingest FEED=gatitos-en-bem
 	cd $(API_DIR) && go run ./cmd/ingest -feed $(FEED)
 
 .PHONY: seed
-seed: ## Import every open source we hold a licence for (GATITOS Bemba)
+seed: ## Import our core concept lists and every open source we hold a licence for
 	$(MAKE) ingest FEED=gatitos-en-bem
+	for f in data/concepts/*.csv; do (cd $(API_DIR) && go run ./cmd/ingest -concepts ../../$$f) || exit 1; done
 
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI contract and SQL queries

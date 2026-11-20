@@ -1,8 +1,11 @@
 -- name: UpsertConcept :one
--- Concepts are shared across languages; a later import can promote one to the core list.
-INSERT INTO concepts (gloss_en, core) VALUES ($1, $2)
-ON CONFLICT (gloss_en, definition) DO UPDATE SET core = concepts.core OR excluded.core
-RETURNING id;
+-- Concepts are shared across languages. A later import can promote one to the
+-- core list, or give a 'general' concept its domain, but never demotes it.
+INSERT INTO concepts (gloss_en, core, domain) VALUES ($1, $2, $3)
+ON CONFLICT (gloss_en, definition) DO UPDATE SET
+    core   = concepts.core OR excluded.core,
+    domain = CASE WHEN concepts.domain = 'general' THEN excluded.domain ELSE concepts.domain END
+RETURNING id, (xmax = 0) AS inserted;
 
 -- name: CreateItem :one
 INSERT INTO items (kind, language_code, status, author_id) VALUES ($1, $2, $3, $4)

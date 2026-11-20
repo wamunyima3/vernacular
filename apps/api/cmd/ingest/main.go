@@ -1,5 +1,7 @@
-// Command ingest imports a registered source file into the lexicon as
-// `sourced` data. Usage: ingest -feed gatitos-en-bem [-file local.jsonl]
+// Command ingest imports data into the lexicon.
+//
+//	ingest -feed gatitos-en-bem [-file local.jsonl]   a registered source, as `sourced` data
+//	ingest -concepts data/concepts/x.csv               one of our own core concept lists
 package main
 
 import (
@@ -28,7 +30,18 @@ func main() {
 func run(ctx context.Context) error {
 	name := flag.String("feed", "", "feed to import: "+feedNames())
 	file := flag.String("file", "", "read this local copy instead of downloading (checksum still verified)")
+	concepts := flag.String("concepts", "", "CSV of core concepts (domain,gloss_en) to import instead of a feed")
 	flag.Parse()
+
+	pool, err := database.Connect(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	if *concepts != "" {
+		return importConcepts(ctx, pool, *concepts)
+	}
 
 	feed, ok := sources.FeedByName(*name)
 	if !ok {
@@ -42,17 +55,25 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("checksum mismatch for %s: the file is not the pinned revision", feed.Name)
 	}
 
-	pool, err := database.Connect(ctx, os.Getenv("DATABASE_URL"))
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-
 	stats, err := sources.Ingest(ctx, pool, feed, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s: %d records, %d new entries, %d new senses\n", feed.Name, stats.Records, stats.Entries, stats.Senses)
+	return nil
+}
+
+func importConcepts(ctx context.Context, db database.Beginner, path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	added, err := sources.ImportConcepts(ctx, db, f)
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	fmt.Printf("%s: %d new core concepts\n", path, added)
 	return nil
 }
 

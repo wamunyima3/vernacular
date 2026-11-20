@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources/dbgen"
 )
 
@@ -47,58 +48,42 @@ type Stats struct {
 	Records, Entries, Senses int
 }
 
-// Beginner starts a transaction. A pool or an outer transaction both work.
-type Beginner interface {
-	Begin(ctx context.Context) (pgx.Tx, error)
-}
-
 // Ingest stores every record of a feed as `sourced` lexicon data, in one
 // transaction, with the audit actor set to the feed.
-func Ingest(ctx context.Context, db Beginner, feed Feed, r io.Reader) (Stats, error) {
+func Ingest(ctx context.Context, db database.Beginner, feed Feed, r io.Reader) (Stats, error) {
 	var stats Stats
-	tx, err := db.Begin(ctx)
-	if err != nil {
-		return stats, fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	src, err := dbgen.New(tx).GetSourceByName(ctx, feed.Source)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return stats, fmt.Errorf("%s: %w", feed.Source, ErrNotRegistered)
-	}
-	if err != nil {
-		return stats, fmt.Errorf("get source: %w", err)
-	}
-	if _, err := tx.Exec(ctx, "SELECT set_config('app.actor_id', $1, true)", "ingest:"+feed.Name); err != nil {
-		return stats, fmt.Errorf("set actor: %w", err)
-	}
-
-	lex := lexicon.NewStore(tx)
-	for rec, err := range feed.Parser.Parse(r) {
+	err := database.InTx(ctx, db, "ingest:"+feed.Name, func(tx pgx.Tx) error {
+		src, err := dbgen.New(tx).GetSourceByName(ctx, feed.Source)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%s: %w", feed.Source, ErrNotRegistered)
+		}
 		if err != nil {
-			return stats, err
+			return fmt.Errorf("get source: %w", err)
 		}
-		added, err := lex.AddSourced(ctx, lexicon.SourcedSense{
-			Language:  feed.Language,
-			Headword:  rec.Text,
-			GlossEn:   rec.English,
-			Core:      feed.Core,
-			SourceID:  src.ID,
-			Reference: rec.Reference,
-		})
-		if err != nil {
-			return stats, err
+		lex := lexicon.NewStore(tx)
+		for rec, err := range feed.Parser.Parse(r) {
+			if err != nil {
+				return err
+			}
+			added, err := lex.AddSourced(ctx, lexicon.SourcedSense{
+				Language: feed.Language, Headword: rec.Text, GlossEn: rec.English, Core: feed.Core,
+				SourceID: src.ID, Reference: rec.Reference,
+			})
+			if err != nil {
+				return err
+			}
+			stats.Records++
+			if added.Entry {
+				stats.Entries++
+			}
+			if added.Sense {
+				stats.Senses++
+			}
 		}
-		stats.Records++
-		if added.Entry {
-			stats.Entries++
-		}
-		if added.Sense {
-			stats.Senses++
-		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return stats, fmt.Errorf("commit: %w", err)
+		return nil
+	})
+	if err != nil {
+		return Stats{}, err
 	}
 	return stats, nil
 }

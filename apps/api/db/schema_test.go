@@ -16,7 +16,7 @@ func TestAuditRecordsActorAndChange(t *testing.T) {
 	exec(t, tx, "SELECT set_config('app.actor_id', 'user-1', true)")
 	var id string
 	if err := tx.QueryRow(t.Context(),
-		"INSERT INTO concepts (gloss_en) VALUES ('water') RETURNING id").Scan(&id); err != nil {
+		"INSERT INTO concepts (gloss_en) VALUES ('zz audit test') RETURNING id").Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	exec(t, tx, "UPDATE concepts SET domain = 'nature' WHERE id = $1", id)

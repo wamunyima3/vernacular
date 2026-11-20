@@ -130,20 +130,29 @@ func (q *Queries) LinkSource(ctx context.Context, arg LinkSourceParams) error {
 }
 
 const upsertConcept = `-- name: UpsertConcept :one
-INSERT INTO concepts (gloss_en, core) VALUES ($1, $2)
-ON CONFLICT (gloss_en, definition) DO UPDATE SET core = concepts.core OR excluded.core
-RETURNING id
+INSERT INTO concepts (gloss_en, core, domain) VALUES ($1, $2, $3)
+ON CONFLICT (gloss_en, definition) DO UPDATE SET
+    core   = concepts.core OR excluded.core,
+    domain = CASE WHEN concepts.domain = 'general' THEN excluded.domain ELSE concepts.domain END
+RETURNING id, (xmax = 0) AS inserted
 `
 
 type UpsertConceptParams struct {
 	GlossEn string
 	Core    bool
+	Domain  string
 }
 
-// Concepts are shared across languages; a later import can promote one to the core list.
-func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, upsertConcept, arg.GlossEn, arg.Core)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+type UpsertConceptRow struct {
+	ID       uuid.UUID
+	Inserted bool
+}
+
+// Concepts are shared across languages. A later import can promote one to the
+// core list, or give a 'general' concept its domain, but never demotes it.
+func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (UpsertConceptRow, error) {
+	row := q.db.QueryRow(ctx, upsertConcept, arg.GlossEn, arg.Core, arg.Domain)
+	var i UpsertConceptRow
+	err := row.Scan(&i.ID, &i.Inserted)
+	return i, err
 }

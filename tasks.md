@@ -63,9 +63,9 @@ Done when: at least one licensed source per language is signed, and the schema a
 
 - [x] **P0-CNT-01** Download Google SMOL and GATITOS and list exactly which Zambian languages they cover (S) → [findings](docs/sources/smol-gatitos.md)
 - [x] **P0-CNT-02** Draft the Bemba and Nyanja style guides in `docs/style-guides/` (M) → DQ-5
-- [ ] **P0-CNT-03** Core concept list (~4,000) → LEX-7
+- [x] **P0-CNT-03** Core concept list (~4,000) → LEX-7: 4,073 core concepts after `make seed`; senior reviewers should prune it in Phase 1
   - [x] **P0-CNT-03a** Seed concepts from the English side of GATITOS en→bem, with a repeatable import command (S): `make seed` gives 3,977 core concepts and 2,848 Bemba entries, all `sourced`
-  - [ ] **P0-CNT-03b** Add Zambian everyday terms by domain (health, farming, money, government, family) (M)
+  - [x] **P0-CNT-03b** Add Zambian everyday terms by domain (health, farming, money, government, family) (M): `data/concepts/zambian-everyday.csv`, 255 concepts
 
 ### Engineering
 

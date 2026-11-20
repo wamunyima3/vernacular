@@ -46,10 +46,11 @@ func NewStore(db dbgen.DBTX) *Store {
 // imports can be re-run.
 func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) {
 	var added Added
-	conceptID, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: in.GlossEn, Core: in.Core})
+	concept, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: in.GlossEn, Core: in.Core, Domain: DomainGeneral})
 	if err != nil {
 		return added, fmt.Errorf("upsert concept %q: %w", in.GlossEn, err)
 	}
+	conceptID := concept.ID
 
 	pos := dbgen.NullPartOfSpeech{PartOfSpeech: dbgen.PartOfSpeech(in.PartOfSpeech), Valid: in.PartOfSpeech != ""}
 	headword := textnorm.NFC(in.Headword)
@@ -77,6 +78,19 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 		return added, fmt.Errorf("sense %q = %q: %w", headword, in.GlossEn, err)
 	}
 	return added, nil
+}
+
+// DomainGeneral is the domain of concepts no list has classified yet.
+const DomainGeneral = "general"
+
+// AddCoreConcept adds an English concept to the core list (LEX-7) under a
+// domain such as "health". It reports whether the concept is new.
+func (s *Store) AddCoreConcept(ctx context.Context, glossEn, domain string) (bool, error) {
+	row, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: glossEn, Core: true, Domain: domain})
+	if err != nil {
+		return false, fmt.Errorf("upsert concept %q: %w", glossEn, err)
+	}
+	return row.Inserted, nil
 }
 
 // newItem creates the shared items row (ADR-0006), then the typed row through
