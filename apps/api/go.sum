@@ -14,6 +14,8 @@ cloud.google.com/go/monitoring v1.31.0 h1:LCuAoYiq8snyL/eDAG/VC73uWFXeax8+YEfmoN
 cloud.google.com/go/monitoring v1.31.0/go.mod h1:7uk2dIJIf7ra64dI1VuQ0ttoFqvtKjdzq46u6zNP1hU=
 cloud.google.com/go/storage v1.69.0 h1:jAAMC1411HEh78nKsU0Zns+eFj3TnhjAWIhg5Ud/XBM=
 cloud.google.com/go/storage v1.69.0/go.mod h1:PELYsxTYm2peE4mwLEC1+mS1dA/kUSRUxNv56rOy44g=
+cloud.google.com/go/translate v1.20.1 h1:lRllKvEZWH4+QSb9MWJu7sLshFE3tuayWnmX7RO/Ex8=
+cloud.google.com/go/translate v1.20.1/go.mod h1:RQtmJa5CCE8XgnVUiMlmihae61tn+fjl9AGAwRECdgc=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.62.0 h1:5y2LR2pripbccOte6BpZ+guv5O5W0OQIfKvUYZrGaAQ=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.62.0/go.mod h1:b3f7EifFRqkVt142USoGIP62uUeZm7ALCPrs1ZjWXYo=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.62.0 h1:aPMa5qZU9dp4fU34o+jQgVIPFIOi20oxYg8TLigmZLg=

@@ -18,10 +18,17 @@ import (
 // concurrency can match the provider's rate limit.
 const Queue = "ai"
 
-// GenerateArgs is one River job: one concept in one language.
+// Providers that generate candidates. Each has a source register row.
+const (
+	ProviderClaude = "claude"
+	ProviderGoogle = "google"
+)
+
+// GenerateArgs is one River job: one concept in one language from one provider.
 type GenerateArgs struct {
 	ConceptID uuid.UUID `json:"concept_id"`
 	Language  string    `json:"language"`
+	Provider  string    `json:"provider"`
 }
 
 // Kind names the job in River.
@@ -33,15 +40,17 @@ func (GenerateArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: Queue, MaxAttempts: 5, UniqueOpts: river.UniqueOpts{ByArgs: true}}
 }
 
-// Worker runs GenerateArgs jobs.
+// Worker runs GenerateArgs jobs with the service for each provider.
 type Worker struct {
 	river.WorkerDefaults[GenerateArgs]
-	svc *Service
-	log *slog.Logger
+	providers map[string]*Service
+	log       *slog.Logger
 }
 
-// NewWorker wraps a service as a River worker.
-func NewWorker(svc *Service, log *slog.Logger) *Worker { return &Worker{svc: svc, log: log} }
+// NewWorker wraps one service per provider as a River worker.
+func NewWorker(providers map[string]*Service, log *slog.Logger) *Worker {
+	return &Worker{providers: providers, log: log}
+}
 
 // Timeout allows for a long model turn.
 func (*Worker) Timeout(*river.Job[GenerateArgs]) time.Duration { return 10 * time.Minute }
@@ -49,21 +58,26 @@ func (*Worker) Timeout(*river.Job[GenerateArgs]) time.Duration { return 10 * tim
 // Work generates and stores candidates. A refusal is final, so the job is
 // cancelled rather than retried.
 func (w *Worker) Work(ctx context.Context, job *river.Job[GenerateArgs]) error {
-	stats, err := w.svc.Generate(ctx, job.Args.ConceptID, job.Args.Language)
+	svc, ok := w.providers[job.Args.Provider]
+	if !ok {
+		return river.JobCancel(fmt.Errorf("provider %q is not configured", job.Args.Provider))
+	}
+	stats, err := svc.Generate(ctx, job.Args.ConceptID, job.Args.Language)
 	if errors.Is(err, ErrRefused) {
 		return river.JobCancel(err)
 	}
 	if err != nil {
 		return err
 	}
-	w.log.InfoContext(ctx, "candidates stored", "concept_id", job.Args.ConceptID, "language", job.Args.Language,
+	w.log.InfoContext(ctx, "candidates stored", "provider", job.Args.Provider, "concept_id", job.Args.ConceptID, "language", job.Args.Language,
 		"proposed", stats.Proposed, "new_senses", stats.Senses, "agreed", stats.Proposed-stats.Senses)
 	return nil
 }
 
-// EnqueueCore adds one job per core concept for a language. Concepts that
-// already have a job are skipped (InsertOpts), so it can be re-run.
-func EnqueueCore(ctx context.Context, db database.Beginner, client *river.Client[pgx.Tx], language string) (int, error) {
+// EnqueueCore adds one job per core concept for a language and provider.
+// Concepts that already have a job are skipped (InsertOpts), so it can be
+// re-run.
+func EnqueueCore(ctx context.Context, db database.Beginner, client *river.Client[pgx.Tx], provider, language string) (int, error) {
 	inserted := 0
 	err := database.InTx(ctx, db, "ai:enqueue", func(tx pgx.Tx) error {
 		ids, err := newLexicon(tx).CoreConcepts(ctx)
@@ -72,7 +86,7 @@ func EnqueueCore(ctx context.Context, db database.Beginner, client *river.Client
 		}
 		params := make([]river.InsertManyParams, len(ids))
 		for i, id := range ids {
-			params[i] = river.InsertManyParams{Args: GenerateArgs{ConceptID: id, Language: language}}
+			params[i] = river.InsertManyParams{Args: GenerateArgs{ConceptID: id, Language: language, Provider: provider}}
 		}
 		res, err := client.InsertManyTx(ctx, tx, params)
 		if err != nil {

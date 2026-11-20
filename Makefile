@@ -89,8 +89,8 @@ dev-worker: ## Run background jobs (needs ANTHROPIC_API_KEY)
 	cd $(API_DIR) && go run ./cmd/worker
 
 .PHONY: candidates
-candidates: ## Queue AI candidate jobs for every core concept: make candidates LANG=bem
-	cd $(API_DIR) && go run ./cmd/worker -enqueue $(LANG)
+candidates: ## Queue AI candidate jobs for every core concept: make candidates LANG=bem [PROVIDER=google]
+	cd $(API_DIR) && go run ./cmd/worker -enqueue $(LANG) -provider $(or $(PROVIDER),claude)
 
 .PHONY: dev-web
 dev-web:

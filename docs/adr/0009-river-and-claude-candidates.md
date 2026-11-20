@@ -25,6 +25,8 @@ MPL-2.0 is not in the preferred list (AGENTS.md §3), but it is not non-commerci
 - **Claude Opus 5.5 through the Messages API**, not the Batches API: server-side refusal fallbacks are not available on batches, and jobs give us per-concept retries. The system prompt carries the language's style guide and is cached, so each call adds only the concept. Structured outputs constrain the answer to the `part_of_speech` enum.
 - Candidates are written through `lexicon.Add` with a `machine` origin citing the `Claude` source row and the model that answered. When a word already exists from a licensed source, its status is kept and Claude is added to its sources, which is the agreement signal for P1-AI-03.
 
+Google Translate (P1-AI-02) is a second provider behind the same `Generator` interface: one translation per concept, Bemba and Nyanja only, with its own source row. Jobs carry the provider, so the same concept is queued once per provider.
+
 ## Consequences
 
 - Running candidates needs `ANTHROPIC_API_KEY` and spends money: about 8,000 calls for both languages.
