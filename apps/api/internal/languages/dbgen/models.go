@@ -198,6 +198,49 @@ func (ns NullReviewDecision) Value() (driver.Value, error) {
 	return string(ns.ReviewDecision), nil
 }
 
+type ReviewPriority string
+
+const (
+	ReviewPriorityQuick    ReviewPriority = "quick"
+	ReviewPriorityStandard ReviewPriority = "standard"
+	ReviewPriorityFull     ReviewPriority = "full"
+)
+
+func (e *ReviewPriority) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReviewPriority(s)
+	case string:
+		*e = ReviewPriority(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReviewPriority: %T", src)
+	}
+	return nil
+}
+
+type NullReviewPriority struct {
+	ReviewPriority ReviewPriority
+	Valid          bool // Valid is true if ReviewPriority is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReviewPriority) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReviewPriority, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReviewPriority.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReviewPriority) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReviewPriority), nil
+}
+
 type ReviewerLevel string
 
 const (
@@ -465,7 +508,7 @@ type ReviewAgreement struct {
 	ConceptID    uuid.NullUUID
 	Agreement    int32
 	Answered     int32
-	Priority     string
+	Priority     ReviewPriority
 }
 
 type ReviewerApproval struct {

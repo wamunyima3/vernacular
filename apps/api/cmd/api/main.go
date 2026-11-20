@@ -17,6 +17,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
+	"github.com/wamunyima3/vernacular/apps/api/internal/review"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
@@ -59,6 +60,7 @@ func run() error {
 			Languages:     languages.NewService(languages.NewStore(pool)),
 			Sources:       sources.NewRegister(pool, bucket),
 			Contributions: contributions.NewService(pool),
+			Review:        review.NewService(pool),
 		},
 	)
 

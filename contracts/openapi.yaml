@@ -19,6 +19,7 @@ tags:
   - name: accounts
   - name: sources
   - name: contributions
+  - name: review
 paths:
   /healthz:
     get:
@@ -87,6 +88,63 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Contribution" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/review/next:
+    get:
+      operationId: getNextReview
+      summary: The next concept to review (reviewers)
+      description: |
+        One English meaning with every pending candidate for it in the language, in random
+        order and without provider names or other reviewers' decisions (CON-3, DQ-4, AI-4).
+        Quick confirms come first, then standard, then full review (AI-3). Never includes
+        items the reviewer wrote or has already reviewed. `204` when nothing is left.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: language
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+        - name: skip
+          in: query
+          description: Concepts skipped in this session, so they are not offered again
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The next card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewCard" }
+        "204":
+          description: Nothing left to review in this language
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/reviews:
+    post:
+      operationId: createReviews
+      summary: Record review decisions (reviewers)
+      description: |
+        Accept or reject candidates from one card. Candidates left out stay in the queue.
+        Each reviewer decides on an item once (`conflict` otherwise).
+      tags: [review]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewInput" }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewList" }
         default:
           $ref: "#/components/responses/Error"
   /v1/sources:
@@ -419,6 +477,77 @@ components:
           type: boolean
           description: False when the word and meaning were already known; the contribution counts as agreement
         trust: { $ref: "#/components/schemas/Trust" }
+    ReviewPriority:
+      type: string
+      description: "`quick`: every source agrees. `standard`: at least two agree. `full`: no agreement (AI-3)."
+      enum: [quick, standard, full]
+    ReviewCandidate:
+      type: object
+      required: [sense_id, headword]
+      properties:
+        sense_id: { type: string, format: uuid }
+        headword:
+          type: string
+          example: amenshi
+        part_of_speech:
+          $ref: "#/components/schemas/PartOfSpeech"
+          description: Absent when the source did not give one
+        noun_class:
+          type: string
+          example: "6"
+        plural:
+          type: string
+    ReviewCard:
+      type: object
+      required: [language, concept_id, gloss_en, priority, candidates]
+      properties:
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        concept_id: { type: string, format: uuid }
+        gloss_en:
+          type: string
+          example: water
+        priority: { $ref: "#/components/schemas/ReviewPriority" }
+        candidates:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ReviewCandidate" }
+    ReviewDecision:
+      type: string
+      enum: [accept, reject]
+    ReviewInput:
+      type: object
+      additionalProperties: false
+      required: [decisions]
+      properties:
+        decisions:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [sense_id, decision]
+            properties:
+              sense_id: { type: string, format: uuid }
+              decision: { $ref: "#/components/schemas/ReviewDecision" }
+        comment:
+          type: string
+          maxLength: 500
+          description: Why, for rejections
+    Review:
+      type: object
+      required: [id, sense_id, decision]
+      properties:
+        id: { type: string, format: uuid }
+        sense_id: { type: string, format: uuid }
+        decision: { $ref: "#/components/schemas/ReviewDecision" }
+    ReviewList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Review" }
     TrustStatus:
       type: string
       description: |

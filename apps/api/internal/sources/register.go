@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
@@ -187,15 +186,14 @@ func (r *Register) write(ctx context.Context, fn func(*dbgen.Queries) (dbgen.Sou
 }
 
 func (r *Register) result(row dbgen.Source, err error) (Source, error) {
-	var pgErr *pgconn.PgError
 	switch {
 	case err == nil:
 		return fromRow(row), nil
 	case errors.Is(err, pgx.ErrNoRows):
 		return Source{}, httpx.ErrNotFound
-	case errors.As(err, &pgErr) && pgErr.Code == "23505":
+	case database.Violates(err, database.UniqueViolation):
 		return Source{}, httpx.Conflict("A source with this name already exists")
-	case errors.As(err, &pgErr) && pgErr.Code == "23503":
+	case database.Violates(err, database.ForeignKeyViolation):
 		return Source{}, httpx.Conflict("Items cite this source, so it cannot be deleted")
 	default:
 		return Source{}, fmt.Errorf("source: %w", err)

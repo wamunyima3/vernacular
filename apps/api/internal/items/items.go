@@ -5,9 +5,11 @@ package items
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items/dbgen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
@@ -109,4 +111,26 @@ func (s *Store) Trust(ctx context.Context, id uuid.UUID) (Trust, error) {
 		})
 	}
 	return t, nil
+}
+
+// Locked is an item held for a review decision.
+type Locked struct {
+	Kind     dbgen.ItemKind
+	Language string
+	Status   dbgen.TrustStatus
+	AuthorID string
+	Open     bool // still takes reviews (open_for_review)
+}
+
+// Lock reads an item and locks it until the transaction ends, so decisions
+// on it are made one after another. False when there is no such item.
+func (s *Store) Lock(ctx context.Context, id uuid.UUID) (Locked, bool, error) {
+	row, err := s.q.LockItem(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Locked{}, false, nil
+	}
+	if err != nil {
+		return Locked{}, false, fmt.Errorf("lock item %s: %w", id, err)
+	}
+	return Locked{Kind: row.Kind, Language: row.LanguageCode, Status: row.Status, AuthorID: row.AuthorID.String, Open: row.Open}, true, nil
 }

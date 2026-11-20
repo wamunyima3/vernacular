@@ -121,3 +121,31 @@ func (q *Queries) ListTrustSources(ctx context.Context, itemID uuid.UUID) ([]Lis
 	}
 	return items, nil
 }
+
+const lockItem = `-- name: LockItem :one
+SELECT kind, language_code, status, author_id, open_for_review(status) AS open
+FROM items WHERE id = $1 FOR UPDATE
+`
+
+type LockItemRow struct {
+	Kind         ItemKind
+	LanguageCode string
+	Status       TrustStatus
+	AuthorID     pgtype.Text
+	Open         bool
+}
+
+// Locks the item until the transaction ends, so concurrent reviews of it
+// are decided one after another.
+func (q *Queries) LockItem(ctx context.Context, id uuid.UUID) (LockItemRow, error) {
+	row := q.db.QueryRow(ctx, lockItem, id)
+	var i LockItemRow
+	err := row.Scan(
+		&i.Kind,
+		&i.LanguageCode,
+		&i.Status,
+		&i.AuthorID,
+		&i.Open,
+	)
+	return i, err
+}

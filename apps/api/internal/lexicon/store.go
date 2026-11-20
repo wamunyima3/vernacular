@@ -229,3 +229,25 @@ func PartsOfSpeech() []string {
 	}
 	return out
 }
+
+// SenseCard is a sense as a reviewer sees it: the word, without its sources.
+type SenseCard struct {
+	ID                                        uuid.UUID
+	Headword, PartOfSpeech, NounClass, Plural string
+}
+
+// SenseCards reads the given senses, in the order of ids.
+func (s *Store) SenseCards(ctx context.Context, ids []uuid.UUID) ([]SenseCard, error) {
+	rows, err := s.q.ListSenseCards(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list sense cards: %w", err)
+	}
+	out := make([]SenseCard, len(rows))
+	for i, r := range rows {
+		out[i] = SenseCard{
+			ID: r.ID, Headword: r.Headword, PartOfSpeech: string(r.PartOfSpeech.PartOfSpeech),
+			NounClass: r.NounClass.String, Plural: r.Plural.String,
+		}
+	}
+	return out, nil
+}

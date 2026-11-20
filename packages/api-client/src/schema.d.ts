@@ -83,6 +83,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/review/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The next concept to review (reviewers)
+         * @description One English meaning with every pending candidate for it in the language, in random
+         *     order and without provider names or other reviewers' decisions (CON-3, DQ-4, AI-4).
+         *     Quick confirms come first, then standard, then full review (AI-3). Never includes
+         *     items the reviewer wrote or has already reviewed. `204` when nothing is left.
+         */
+        get: operations["getNextReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record review decisions (reviewers)
+         * @description Accept or reject candidates from one card. Candidates left out stay in the queue.
+         *     Each reviewer decides on an item once (`conflict` otherwise).
+         */
+        post: operations["createReviews"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources": {
         parameters: {
             query?: never;
@@ -284,6 +328,52 @@ export interface components {
             trust: components["schemas"]["Trust"];
         };
         /**
+         * @description `quick`: every source agrees. `standard`: at least two agree. `full`: no agreement (AI-3).
+         * @enum {string}
+         */
+        ReviewPriority: "quick" | "standard" | "full";
+        ReviewCandidate: {
+            /** Format: uuid */
+            sense_id: string;
+            /** @example amenshi */
+            headword: string;
+            /** @description Absent when the source did not give one */
+            part_of_speech?: components["schemas"]["PartOfSpeech"];
+            /** @example 6 */
+            noun_class?: string;
+            plural?: string;
+        };
+        ReviewCard: {
+            language: components["schemas"]["LanguageCode"];
+            /** Format: uuid */
+            concept_id: string;
+            /** @example water */
+            gloss_en: string;
+            priority: components["schemas"]["ReviewPriority"];
+            candidates: components["schemas"]["ReviewCandidate"][];
+        };
+        /** @enum {string} */
+        ReviewDecision: "accept" | "reject";
+        ReviewInput: {
+            decisions: {
+                /** Format: uuid */
+                sense_id: string;
+                decision: components["schemas"]["ReviewDecision"];
+            }[];
+            /** @description Why, for rejections */
+            comment?: string;
+        };
+        Review: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sense_id: string;
+            decision: components["schemas"]["ReviewDecision"];
+        };
+        ReviewList: {
+            data: components["schemas"]["Review"][];
+        };
+        /**
          * @description How far an item has been checked (ADR-0004). Only `verified` is returned by default;
          *     `disputed` is never returned.
          * @enum {string}
@@ -444,6 +534,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Contribution"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getNextReview: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+                /** @description Concepts skipped in this session, so they are not offered again */
+                skip?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next card */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewCard"];
+                };
+            };
+            /** @description Nothing left to review in this language */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewList"];
                 };
             };
             default: components["responses"]["Error"];

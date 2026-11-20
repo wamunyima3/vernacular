@@ -60,6 +60,11 @@ func BadRequest(msg string) error {
 	return &Problem{http.StatusBadRequest, gen.ErrorCodeBadRequest, msg}
 }
 
+// Forbidden is a 403 that says why.
+func Forbidden(msg string) error {
+	return &Problem{http.StatusForbidden, gen.ErrorCodeForbidden, msg}
+}
+
 // Conflict is a 409 with a message for the caller.
 func Conflict(msg string) error {
 	return &Problem{http.StatusConflict, gen.ErrorCodeConflict, msg}

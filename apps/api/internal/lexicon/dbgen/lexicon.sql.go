@@ -213,6 +213,47 @@ func (q *Queries) ListHeadwords(ctx context.Context, languageCode string) ([]Lis
 	return items, nil
 }
 
+const listSenseCards = `-- name: ListSenseCards :many
+SELECT s.id, e.headword, e.part_of_speech, e.noun_class, e.plural
+FROM senses s JOIN entries e ON e.id = s.entry_id
+WHERE s.id = ANY($1::uuid[])
+ORDER BY array_position($1::uuid[], s.id)
+`
+
+type ListSenseCardsRow struct {
+	ID           uuid.UUID
+	Headword     string
+	PartOfSpeech NullPartOfSpeech
+	NounClass    pgtype.Text
+	Plural       pgtype.Text
+}
+
+func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSenseCardsRow, error) {
+	rows, err := q.db.Query(ctx, listSenseCards, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSenseCardsRow
+	for rows.Next() {
+		var i ListSenseCardsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Headword,
+			&i.PartOfSpeech,
+			&i.NounClass,
+			&i.Plural,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockLanguage = `-- name: LockLanguage :exec
 SELECT pg_advisory_xact_lock(hashtext('lexicon:' || $1::text))
 `

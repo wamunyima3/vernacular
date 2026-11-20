@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -176,6 +177,45 @@ func (e PartOfSpeech) Valid() bool {
 	case PartOfSpeechPronoun:
 		return true
 	case PartOfSpeechVerb:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewDecision.
+const (
+	ReviewDecisionAccept ReviewDecision = "accept"
+	ReviewDecisionReject ReviewDecision = "reject"
+)
+
+// Valid indicates whether the value is a known member of the ReviewDecision enum.
+func (e ReviewDecision) Valid() bool {
+	switch e {
+	case ReviewDecisionAccept:
+		return true
+	case ReviewDecisionReject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewPriority.
+const (
+	ReviewPriorityFull     ReviewPriority = "full"
+	ReviewPriorityQuick    ReviewPriority = "quick"
+	ReviewPriorityStandard ReviewPriority = "standard"
+)
+
+// Valid indicates whether the value is a known member of the ReviewPriority enum.
+func (e ReviewPriority) Valid() bool {
+	switch e {
+	case ReviewPriorityFull:
+		return true
+	case ReviewPriorityQuick:
+		return true
+	case ReviewPriorityStandard:
 		return true
 	default:
 		return false
@@ -404,6 +444,63 @@ type Me struct {
 // PartOfSpeech defines model for PartOfSpeech.
 type PartOfSpeech string
 
+// Review defines model for Review.
+type Review struct {
+	Decision ReviewDecision     `json:"decision"`
+	Id       openapi_types.UUID `json:"id"`
+	SenseId  openapi_types.UUID `json:"sense_id"`
+}
+
+// ReviewCandidate defines model for ReviewCandidate.
+type ReviewCandidate struct {
+	// Headword Example: amenshi
+	Headword string `json:"headword"`
+
+	// NounClass Example: 6
+	NounClass    *string            `json:"noun_class,omitempty"`
+	PartOfSpeech *PartOfSpeech      `json:"part_of_speech,omitempty"`
+	Plural       *string            `json:"plural,omitempty"`
+	SenseId      openapi_types.UUID `json:"sense_id"`
+}
+
+// ReviewCard defines model for ReviewCard.
+type ReviewCard struct {
+	Candidates []ReviewCandidate  `json:"candidates"`
+	ConceptId  openapi_types.UUID `json:"concept_id"`
+
+	// GlossEn Example: water
+	GlossEn string `json:"gloss_en"`
+
+	// Language ISO 639-3 code
+	//
+	// Example: bem
+	Language LanguageCode `json:"language"`
+
+	// Priority `quick`: every source agrees. `standard`: at least two agree. `full`: no agreement (AI-3).
+	Priority ReviewPriority `json:"priority"`
+}
+
+// ReviewDecision defines model for ReviewDecision.
+type ReviewDecision string
+
+// ReviewInput defines model for ReviewInput.
+type ReviewInput struct {
+	// Comment Why, for rejections
+	Comment   *string `json:"comment,omitempty"`
+	Decisions []struct {
+		Decision ReviewDecision     `json:"decision"`
+		SenseId  openapi_types.UUID `json:"sense_id"`
+	} `json:"decisions"`
+}
+
+// ReviewList defines model for ReviewList.
+type ReviewList struct {
+	Data []Review `json:"data"`
+}
+
+// ReviewPriority `quick`: every source agrees. `standard`: at least two agree. `full`: no agreement (AI-3).
+type ReviewPriority string
+
 // ReviewSummary Counts only. Reviewer identities are not exposed per item.
 type ReviewSummary struct {
 	Accepts        int        `json:"accepts"`
@@ -511,8 +608,19 @@ type TrustStatus string
 // SourceId defines model for SourceId.
 type SourceId = openapi_types.UUID
 
+// GetNextReviewParams defines parameters for GetNextReview.
+type GetNextReviewParams struct {
+	Language LanguageCode `form:"language" json:"language"`
+
+	// Skip Concepts skipped in this session, so they are not offered again
+	Skip *[]openapi_types.UUID `form:"skip,omitempty" json:"skip,omitempty"`
+}
+
 // CreateContributionJSONRequestBody defines body for CreateContribution for application/json ContentType.
 type CreateContributionJSONRequestBody = ContributionInput
+
+// CreateReviewsJSONRequestBody defines body for CreateReviews for application/json ContentType.
+type CreateReviewsJSONRequestBody = ReviewInput
 
 // CreateSourceJSONRequestBody defines body for CreateSource for application/json ContentType.
 type CreateSourceJSONRequestBody = SourceInput
@@ -534,6 +642,12 @@ type ServerInterface interface {
 	// GetMe The signed-in user, with role and review approvals
 	// (GET /v1/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// GetNextReview The next concept to review (reviewers)
+	// (GET /v1/review/next)
+	GetNextReview(w http.ResponseWriter, r *http.Request, params GetNextReviewParams)
+	// CreateReviews Record review decisions (reviewers)
+	// (POST /v1/reviews)
+	CreateReviews(w http.ResponseWriter, r *http.Request)
 	// ListSources The source register
 	// (GET /v1/sources)
 	ListSources(w http.ResponseWriter, r *http.Request)
@@ -582,6 +696,18 @@ func (_ Unimplemented) ListLanguages(w http.ResponseWriter, r *http.Request) {
 // GetMe The signed-in user, with role and review approvals
 // (GET /v1/me)
 func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetNextReview The next concept to review (reviewers)
+// (GET /v1/review/next)
+func (_ Unimplemented) GetNextReview(w http.ResponseWriter, r *http.Request, params GetNextReviewParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateReviews Record review decisions (reviewers)
+// (POST /v1/reviews)
+func (_ Unimplemented) CreateReviews(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -683,6 +809,66 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNextReview operation middleware
+func (siw *ServerInterfaceWrapper) GetNextReview(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetNextReviewParams
+
+	// ------------- Required query parameter "language" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "language", r.URL.Query(), &params.Language, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "language"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "skip" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "skip", r.URL.Query(), &params.Skip, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skip"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skip", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNextReview(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateReviews operation middleware
+func (siw *ServerInterfaceWrapper) CreateReviews(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateReviews(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -976,6 +1162,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/contributions", wrapper.CreateContribution)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/review/next", wrapper.GetNextReview)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/reviews", wrapper.CreateReviews)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/sources", wrapper.ListSources)
 	})
 	r.Group(func(r chi.Router) {
@@ -1155,6 +1347,92 @@ type GetMedefaultJSONResponse struct {
 }
 
 func (response GetMedefaultJSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNextReviewRequestObject struct {
+	Params GetNextReviewParams
+}
+
+type GetNextReviewResponseObject interface {
+	VisitGetNextReviewResponse(w http.ResponseWriter) error
+}
+
+type GetNextReview200JSONResponse ReviewCard
+
+func (response GetNextReview200JSONResponse) VisitGetNextReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNextReview204Response struct {
+}
+
+func (response GetNextReview204Response) VisitGetNextReviewResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type GetNextReviewdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetNextReviewdefaultJSONResponse) VisitGetNextReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReviewsRequestObject struct {
+	Body *CreateReviewsJSONRequestBody
+}
+
+type CreateReviewsResponseObject interface {
+	VisitCreateReviewsResponse(w http.ResponseWriter) error
+}
+
+type CreateReviews201JSONResponse ReviewList
+
+func (response CreateReviews201JSONResponse) VisitCreateReviewsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReviewsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateReviewsdefaultJSONResponse) VisitCreateReviewsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -1454,6 +1732,12 @@ type StrictServerInterface interface {
 	// GetMe The signed-in user, with role and review approvals
 	// (GET /v1/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// GetNextReview The next concept to review (reviewers)
+	// (GET /v1/review/next)
+	GetNextReview(ctx context.Context, request GetNextReviewRequestObject) (GetNextReviewResponseObject, error)
+	// CreateReviews Record review decisions (reviewers)
+	// (POST /v1/reviews)
+	CreateReviews(ctx context.Context, request CreateReviewsRequestObject) (CreateReviewsResponseObject, error)
 	// ListSources The source register
 	// (GET /v1/sources)
 	ListSources(ctx context.Context, request ListSourcesRequestObject) (ListSourcesResponseObject, error)
@@ -1612,6 +1896,63 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetNextReview operation middleware
+func (sh *strictHandler) GetNextReview(w http.ResponseWriter, r *http.Request, params GetNextReviewParams) {
+	var request GetNextReviewRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetNextReview(ctx, request.(GetNextReviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetNextReview")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetNextReviewResponseObject); ok {
+		if err := validResponse.VisitGetNextReviewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateReviews operation middleware
+func (sh *strictHandler) CreateReviews(w http.ResponseWriter, r *http.Request) {
+	var request CreateReviewsRequestObject
+
+	var body CreateReviewsJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateReviews(ctx, request.(CreateReviewsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateReviews")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateReviewsResponseObject); ok {
+		if err := validResponse.VisitCreateReviewsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1818,62 +2159,74 @@ func (sh *strictHandler) UploadPermission(w http.ResponseWriter, r *http.Request
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"WDWvGs9KNhuP2o3kxouy2X23/f8BAA==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

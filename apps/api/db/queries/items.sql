@@ -21,3 +21,9 @@ SELECT s.name, s.licence, s.url, isrc.reference, isrc.model
 FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
 WHERE isrc.item_id = $1
 ORDER BY s.name, isrc.reference;
+
+-- name: LockItem :one
+-- Locks the item until the transaction ends, so concurrent reviews of it
+-- are decided one after another.
+SELECT kind, language_code, status, author_id, open_for_review(status) AS open
+FROM items WHERE id = $1 FOR UPDATE;

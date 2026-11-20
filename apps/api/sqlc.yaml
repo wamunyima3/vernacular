@@ -33,6 +33,11 @@ sql:
       go: { package: dbgen, out: internal/sources/dbgen, sql_package: pgx/v5 }
   - engine: postgresql
     schema: db/migrations
+    queries: db/queries/review.sql
+    gen:
+      go: { package: dbgen, out: internal/review/dbgen, sql_package: pgx/v5 }
+  - engine: postgresql
+    schema: db/migrations
     queries: db/queries/items.sql
     gen:
       go: { package: dbgen, out: internal/items/dbgen, sql_package: pgx/v5 }
