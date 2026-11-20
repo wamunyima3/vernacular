@@ -25,7 +25,7 @@ Goal: a documented, runnable skeleton with quality gates, so feature work can st
 
 - [x] **S-01** Requirements snapshot and task tracker (S) → all
 - [x] **S-02** User stories mapped to requirement IDs (M) → all Must items
-- [ ] **S-03** Architecture document and ADRs 0001–0005 (M) → §9, §10
+- [x] **S-03** Architecture document and ADRs 0001–0005 (M) → §9, §10
 - [ ] **S-04** AGENTS.md, CLAUDE.md and CONTRIBUTING.md (S)
 - [ ] **S-05** Monorepo tooling: pnpm workspace, Turborepo, Makefile, docker compose, MIT licence (S) → NFR-10
 - [ ] **S-06** Go API skeleton (M) → NFR-4, NFR-7
