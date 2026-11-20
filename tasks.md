@@ -24,7 +24,7 @@ The only list of work for this repo. Tick a box in the same commit that finishes
 Goal: a documented, runnable skeleton with quality gates, so feature work can start.
 
 - [x] **S-01** Requirements snapshot and task tracker (S) → all
-- [ ] **S-02** User stories mapped to requirement IDs (M) → all Must items
+- [x] **S-02** User stories mapped to requirement IDs (M) → all Must items
 - [ ] **S-03** Architecture document and ADRs 0001–0005 (M) → §9, §10
 - [ ] **S-04** AGENTS.md, CLAUDE.md and CONTRIBUTING.md (S)
 - [ ] **S-05** Monorepo tooling: pnpm workspace, Turborepo, Makefile, docker compose, MIT licence (S) → NFR-10
