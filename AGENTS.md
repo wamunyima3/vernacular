@@ -25,6 +25,7 @@ Read first: [tasks.md](tasks.md) → [docs/architecture.md](docs/architecture.md
    5. **verify**: run it end to end (`make up`, `make dev`, then use it in the browser or with curl)
 
    Do not build several backend features and leave their frontends for later.
+
 4. Run `make check`. It must pass.
 5. For UI work, apply `/baseline-ui`. For any code task, run `/simplify` on the diff before committing.
 6. Tick the box (and its sub-steps) in tasks.md, then make **one commit for the task** (see §6).
@@ -40,16 +41,18 @@ Read first: [tasks.md](tasks.md) → [docs/architecture.md](docs/architecture.md
 ## 4. Structure and conventions
 
 ### Go (`apps/api`)
+
 - Layout: `cmd/<binary>` (wiring only), `internal/platform/*` (cross-cutting), `internal/<module>/` (domain).
 - Inside a module: `handler.go` (implements the generated strict interface; maps types) → `service.go` (rules; no HTTP, no SQL) → `store.go` (sqlc and transactions).
 - Modules call each other only through **service interfaces**, never through each other's stores or tables.
-- Accept interfaces, return structs. Define each interface in the package that *uses* it.
+- Accept interfaces, return structs. Define each interface in the package that _uses_ it.
 - Errors: wrap with `fmt.Errorf("context: %w", err)`. Map domain errors to HTTP in one place (`platform/httpx`).
 - Pass `context.Context` first on every call that does I/O. Do not keep global state.
 - Tests: table-driven, `*_test.go` beside the code. Services get unit tests with fakes; stores get integration tests against Postgres.
 - Text: run every input through `textnorm` (NFC). Never compare raw user strings.
 
 ### Web (`apps/web`)
+
 - `app/(portal)` holds public pages and `app/(tools)` holds signed-in pages. Route files stay thin and compose components from `features/<domain>`.
 - `components/ui` holds only shadcn primitives. Product components go in `features/<domain>/components`.
 - Data comes from `@vernacular/api-client` through `lib/api.ts`. No hand-written `fetch` calls to the API, and no hand-written API types.
@@ -58,11 +61,13 @@ Read first: [tasks.md](tasks.md) → [docs/architecture.md](docs/architecture.md
 - Accessibility: labelled controls, keyboard reachable, visible focus. The review screen must work on a phone.
 
 ### Database
+
 - goose migrations in `apps/api/db/migrations`, named `NNNNN_description.sql`, each with `-- +goose Up` and `-- +goose Down`. Never edit a migration that has been merged; add a new one.
 - Queries live in `apps/api/db/queries/<module>.sql`, with sqlc naming (`-- name: ListLanguages :many`).
 - Every table has `created_at` and `updated_at`. Changes to reviewable items write to `audit_log` (NFR-8).
 
 ### Naming
+
 - Language codes are ISO 639-3 (`bem`, `nya`, `toi`, `loz`, `kqn`, `lun`, `lue`, `eng`).
 - IDs exposed in the API are stable strings and never change (PRV-2).
 - JSON fields are `snake_case`; Go names are idiomatic Go; TS names are camelCase except for API types.
@@ -79,18 +84,18 @@ Read first: [tasks.md](tasks.md) → [docs/architecture.md](docs/architecture.md
 ## 6. Commits
 
 - **One task, one commit**, using Conventional Commits: `feat(api): …`, `feat(web): …`, `fix: …`, `docs: …`, `chore: …`, `refactor: …`, `test: …`.
-- The subject is imperative and at most 72 characters. The body says *why* when that is not obvious, and references the task ID (`Task: P1-API-02`).
+- The subject is imperative and at most 72 characters. The body says _why_ when that is not obvious, and references the task ID (`Task: P1-API-02`).
 - **No AI co-author or attribution trailers** in commit messages.
 - Do not commit `.env` files, keys or data dumps.
 
 ## 7. Commands
 
-| Command | What it does |
-|---|---|
-| `make up` / `make down` | Start or stop Postgres (docker compose) |
-| `make migrate` | Apply migrations |
-| `make gen` | Regenerate Go server code, sqlc code and the TS client from their sources |
-| `make dev` | Run the API and the web app |
-| `make test` | Go and web tests |
-| `make lint` | golangci-lint, ESLint and Prettier check |
-| `make check` | Everything CI runs: lint, typecheck, test, duplication check, generated-code drift |
+| Command                 | What it does                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `make up` / `make down` | Start or stop Postgres (docker compose)                                            |
+| `make migrate`          | Apply migrations                                                                   |
+| `make gen`              | Regenerate Go server code, sqlc code and the TS client from their sources          |
+| `make dev`              | Run the API and the web app                                                        |
+| `make test`             | Go and web tests                                                                   |
+| `make lint`             | golangci-lint, ESLint and Prettier check                                           |
+| `make check`            | Everything CI runs: lint, typecheck, test, duplication check, generated-code drift |

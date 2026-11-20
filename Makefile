@@ -10,6 +10,8 @@ API_DIR      := apps/api
 # Go dev tools are pinned in apps/api/tools/go.mod, outside the app's own go.mod.
 GO_TOOL      := go tool -modfile=tools/go.mod
 COMPOSE      := docker compose -f deploy/docker-compose.yml
+# Everything `make gen` writes. Never edited by hand.
+GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts
 
 .PHONY: help
 help: ## Show this help
@@ -45,8 +47,8 @@ gen: ## Regenerate code from the OpenAPI contract and SQL queries
 
 .PHONY: gen-check
 gen-check: gen ## Fail if generated code is out of date
-	@git diff --exit-code -- $(API_DIR)/internal packages/api-client/src \
-		|| (echo "Generated code is stale: run 'make gen' and commit." && exit 1)
+	@stale="$$(git status --porcelain -- $(GENERATED))"; \
+	if [ -n "$$stale" ]; then echo "$$stale"; echo "Generated code is stale: run 'make gen' and commit."; exit 1; fi
 
 .PHONY: dev
 dev: ## Run the API and the web app together

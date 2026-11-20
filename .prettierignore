@@ -4,3 +4,4 @@ apps/api/
 packages/api-client/src/schema.d.ts
 .next/
 .turbo/
+docs/DOCS.MD

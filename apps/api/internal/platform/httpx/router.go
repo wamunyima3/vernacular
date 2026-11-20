@@ -23,7 +23,6 @@ func NewRouter(opts RouterOptions) chi.Router {
 	r := chi.NewRouter()
 	r.Use(
 		middleware.RequestID,
-		middleware.RealIP,
 		requestLogger(opts.Log),
 		middleware.Recoverer,
 		cors.Handler(cors.Options{

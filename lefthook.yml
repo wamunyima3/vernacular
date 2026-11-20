@@ -1,0 +1,21 @@
+# Git hooks. Installed by `make setup` (pnpm exec lefthook install).
+pre-commit:
+  parallel: true
+  jobs:
+    - name: prettier
+      glob: "*.{ts,tsx,js,mjs,json,css,md,yml,yaml}"
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: golangci-lint
+      root: apps/api/
+      glob: "*.go"
+      run: golangci-lint run --fix --new-from-rev=HEAD ./...
+      stage_fixed: true
+    - name: eslint
+      glob: "*.{ts,tsx,mjs}"
+      run: pnpm lint
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: scripts/check-commit-msg.sh {1}

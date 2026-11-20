@@ -1,0 +1,20 @@
+{
+  "threshold": 3,
+  "minLines": 8,
+  "minTokens": 60,
+  "format": ["go", "typescript", "tsx", "javascript", "sql"],
+  "reporters": ["console"],
+  "gitignore": true,
+  "absolute": false,
+  "ignore": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/internal/gen/**",
+    "**/dbgen/**",
+    "**/schema.d.ts",
+    "**/components/ui/**",
+    "**/*_test.go",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}

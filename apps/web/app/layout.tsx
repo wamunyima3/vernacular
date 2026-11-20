@@ -8,7 +8,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: { default: "Vernacular", template: "%s · Vernacular" },
-  description: "Verified words, phrases and translations for Zambian languages, through an open API.",
+  description:
+    "Verified words, phrases and translations for Zambian languages, through an open API.",
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

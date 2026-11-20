@@ -26,15 +26,15 @@ flowchart LR
 
 ## 3. Containers
 
-| Container | Path | Responsibility |
-|---|---|---|
-| API | `apps/api/cmd/api` | Public `/v1` read endpoints, plus the internal endpoints the web tools use. Handles keys, rate limits and caching. |
-| Worker | `apps/api/cmd/worker` | River jobs: AI candidate generation, agreement scoring, release builds, quarterly re-check sampling. |
-| Ingest | `apps/api/cmd/ingest` (Phase 1) | One parser per licensed source. Runs on demand. |
-| Web | `apps/web` | `(portal)` public developer portal and docs; `(tools)` signed-in contribute, review, disputes, sources and admin. |
-| Database | PostgreSQL 17 | Entries, concepts, reviews, audit log. Search uses full text and `pg_trgm`. |
-| Object storage | S3-compatible | Permission documents, audio, release exports. |
-| Translation service | Phase 3 | Fine-tuned model, deployed separately so it scales and fails on its own. |
+| Container           | Path                            | Responsibility                                                                                                     |
+| ------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| API                 | `apps/api/cmd/api`              | Public `/v1` read endpoints, plus the internal endpoints the web tools use. Handles keys, rate limits and caching. |
+| Worker              | `apps/api/cmd/worker`           | River jobs: AI candidate generation, agreement scoring, release builds, quarterly re-check sampling.               |
+| Ingest              | `apps/api/cmd/ingest` (Phase 1) | One parser per licensed source. Runs on demand.                                                                    |
+| Web                 | `apps/web`                      | `(portal)` public developer portal and docs; `(tools)` signed-in contribute, review, disputes, sources and admin.  |
+| Database            | PostgreSQL 17                   | Entries, concepts, reviews, audit log. Search uses full text and `pg_trgm`.                                        |
+| Object storage      | S3-compatible                   | Permission documents, audio, release exports.                                                                      |
+| Translation service | Phase 3                         | Fine-tuned model, deployed separately so it scales and fails on its own.                                           |
 
 ## 4. Repository layout
 
@@ -74,33 +74,33 @@ handler.go  →  service.go  →  store.go  →  dbgen (sqlc)
 - **Services** hold the business rules: verification promotion, blind review, agreement scoring. They depend on small interfaces, which makes them unit-testable without a database.
 - **Stores** wrap sqlc queries and transactions.
 - **Across modules**, code calls another module's service interface. It never reaches into another module's store or tables.
-- **Shared code** moves to `internal/platform` on its *second* use, not before.
+- **Shared code** moves to `internal/platform` on its _second_ use, not before.
 
-| Module | Owns | Phase |
-|---|---|---|
-| `languages` | languages, varieties, counts | S |
-| `lexicon` | concepts, entries, variants, senses, examples, search | 1 |
-| `phrases` | phrase packs, exact-match translate | 1 |
-| `detect` | language identification | 1 |
-| `review` | queue, decisions, promotion, disputes, reviewer scores | 1 |
-| `sources` | source register, ingestion, normaliser | 1 |
-| `candidates` | AI candidate jobs and agreement scoring | 1 |
-| `accounts` | users, roles, API keys, rate-limit plans | 1 |
-| `reports` | user reports | 1 |
-| `releases` | release builds and exports | 2 |
-| `textnorm` (platform) | NFC, case and accent folding, per-language stemmers | 0–1 |
+| Module                | Owns                                                   | Phase |
+| --------------------- | ------------------------------------------------------ | ----- |
+| `languages`           | languages, varieties, counts                           | S     |
+| `lexicon`             | concepts, entries, variants, senses, examples, search  | 1     |
+| `phrases`             | phrase packs, exact-match translate                    | 1     |
+| `detect`              | language identification                                | 1     |
+| `review`              | queue, decisions, promotion, disputes, reviewer scores | 1     |
+| `sources`             | source register, ingestion, normaliser                 | 1     |
+| `candidates`          | AI candidate jobs and agreement scoring                | 1     |
+| `accounts`            | users, roles, API keys, rate-limit plans               | 1     |
+| `reports`             | user reports                                           | 1     |
+| `releases`            | release builds and exports                             | 2     |
+| `textnorm` (platform) | NFC, case and accent folding, per-language stemmers    | 0–1   |
 
 ## 6. Trust model
 
 Every item the API returns embeds one shared `Trust` schema ([ADR-0004](adr/0004-verification-levels.md)):
 
-| `status` | Meaning | Served by default |
-|---|---|---|
-| `verified` | Two independent approved reviewers accepted it | yes |
-| `reviewed` | One accept, waiting for a second | only on request |
-| `sourced` | From a licensed source, not yet reviewed | only on request |
-| `machine` | Model output | only on request, always labelled |
-| `disputed` | Disagreement or an open report | never |
+| `status`   | Meaning                                        | Served by default                |
+| ---------- | ---------------------------------------------- | -------------------------------- |
+| `verified` | Two independent approved reviewers accepted it | yes                              |
+| `reviewed` | One accept, waiting for a second               | only on request                  |
+| `sourced`  | From a licensed source, not yet reviewed       | only on request                  |
+| `machine`  | Model output                                   | only on request, always labelled |
+| `disputed` | Disagreement or an open report                 | never                            |
 
 Promotion is a single function in `review/service.go` and is the only code path that can set `verified`. It is covered by table tests for every transition.
 
@@ -152,32 +152,32 @@ Change the contract first, run `make gen`, then implement. CI fails if the gener
 
 ## 9. Cross-cutting rules
 
-| Concern | Rule |
-|---|---|
-| Text | UTF-8, NFC on input and storage. Search folds case and accents unless asked otherwise (NFR-7). |
-| Errors | Every error body is `{code, message, docs_url}`, built in one place: `internal/platform/httpx`. |
-| Config | Environment variables only, parsed once at startup into a typed struct. Documented in `.env.example`. |
-| Logging | `log/slog` JSON with a request ID on every line. |
-| Security | API keys hashed at rest, TLS at the edge, rate limits per key and per IP (NFR-5). |
-| Versioning | `/v1` in the path. Breaking changes get `/v2` and six months of overlap (NFR-4). |
-| Caching | `ETag` tied to the release number, gzip/br compression (NFR-3). |
+| Concern     | Rule                                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Text        | UTF-8, NFC on input and storage. Search folds case and accents unless asked otherwise (NFR-7).             |
+| Errors      | Every error body is `{code, message, docs_url}`, built in one place: `internal/platform/httpx`.            |
+| Config      | Environment variables only, parsed once at startup into a typed struct. Documented in `.env.example`.      |
+| Logging     | `log/slog` JSON with a request ID on every line.                                                           |
+| Security    | API keys hashed at rest, TLS at the edge, rate limits per key and per IP (NFR-5).                          |
+| Versioning  | `/v1` in the path. Breaking changes get `/v2` and six months of overlap (NFR-4).                           |
+| Caching     | `ETag` tied to the release number, gzip/br compression (NFR-3).                                            |
 | Portability | Containers, PostgreSQL and S3-compatible storage only, so the system runs anywhere (§12 hosting decision). |
 
 ## 10. Technology
 
-| Need | Choice | Status |
-|---|---|---|
-| HTTP routing | chi | adopted |
-| DB driver | pgx v5 | adopted |
-| Typed queries | sqlc | adopted |
-| Migrations | goose | adopted |
-| Contract → Go | oapi-codegen (strict chi server) | adopted |
-| Background jobs | River | Phase 1 |
-| Unicode | golang.org/x/text | Phase 0 |
-| Web | Next.js 16, Tailwind v4, shadcn/ui | adopted |
-| Contract → TS | openapi-typescript + openapi-fetch | adopted |
-| Monorepo | pnpm workspaces + Turborepo | adopted |
-| Auth | Better Auth or Auth.js | evaluate (P0-ENG-05) |
-| Docs site / API reference | Fumadocs or Nextra; Scalar | evaluate (P0-ENG-09) |
-| Language detection | existing LID models first | evaluate (P1-API-08) |
-| Stemmers | none exist; written by us | Phase 1 |
+| Need                      | Choice                             | Status               |
+| ------------------------- | ---------------------------------- | -------------------- |
+| HTTP routing              | chi                                | adopted              |
+| DB driver                 | pgx v5                             | adopted              |
+| Typed queries             | sqlc                               | adopted              |
+| Migrations                | goose                              | adopted              |
+| Contract → Go             | oapi-codegen (strict chi server)   | adopted              |
+| Background jobs           | River                              | Phase 1              |
+| Unicode                   | golang.org/x/text                  | Phase 0              |
+| Web                       | Next.js 16, Tailwind v4, shadcn/ui | adopted              |
+| Contract → TS             | openapi-typescript + openapi-fetch | adopted              |
+| Monorepo                  | pnpm workspaces + Turborepo        | adopted              |
+| Auth                      | Better Auth or Auth.js             | evaluate (P0-ENG-05) |
+| Docs site / API reference | Fumadocs or Nextra; Scalar         | evaluate (P0-ENG-09) |
+| Language detection        | existing LID models first          | evaluate (P1-API-08) |
+| Stemmers                  | none exist; written by us          | Phase 1              |

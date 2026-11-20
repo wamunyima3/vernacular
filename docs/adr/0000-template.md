@@ -4,10 +4,13 @@
 - Date: YYYY-MM-DD
 
 ## Context
+
 What forces the decision.
 
 ## Decision
+
 What we do.
 
 ## Consequences
+
 What gets easier, what gets harder, and what we must watch.

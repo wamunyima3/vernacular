@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: vernacular
+          POSTGRES_PASSWORD: vernacular
+          POSTGRES_DB: vernacular
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vernacular" --health-interval 2s --health-retries 30
+    env:
+      DATABASE_URL: postgres://vernacular:vernacular@localhost:5432/vernacular?sslmode=disable
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: |
+            apps/api/go.sum
+            apps/api/tools/go.sum
+      - name: Migrations apply cleanly (up, down, up)
+        run: |
+          go tool -modfile=tools/go.mod goose -dir db/migrations postgres "$DATABASE_URL" up
+          go tool -modfile=tools/go.mod goose -dir db/migrations postgres "$DATABASE_URL" reset
+          go tool -modfile=tools/go.mod goose -dir db/migrations postgres "$DATABASE_URL" up
+      - run: go vet ./...
+      - run: go test -race ./...
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15.0
+          working-directory: apps/api
+
+  web:
+    name: Web and packages (TS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  contract:
+    name: Generated code and duplication
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: |
+            apps/api/go.sum
+            apps/api/tools/go.sum
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generated code matches the contract and queries
+        run: make gen-check
+      - name: Duplication below threshold
+        run: pnpm check:dup

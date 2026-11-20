@@ -15,8 +15,8 @@ export async function LanguageList() {
         <CardHeader>
           <CardTitle>Languages could not be loaded</CardTitle>
           <CardDescription className="text-pretty">
-            {result.message} Start the API with <code className="font-mono">make dev-api</code>{" "}
-            and reload the page.
+            {result.message} Start the API with <code className="font-mono">make dev-api</code> and
+            reload the page.
           </CardDescription>
         </CardHeader>
       </Card>

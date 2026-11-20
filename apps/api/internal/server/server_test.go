@@ -36,7 +36,7 @@ func newServer(deps server.Deps) http.Handler {
 func get(t *testing.T, h http.Handler, path string, out any) int {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("%s: Content-Type = %q, want application/json", path, ct)
 	}
