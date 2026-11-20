@@ -25,7 +25,7 @@ sql:
     schema: db/migrations
     queries: db/queries/lexicon.sql
     gen:
-      go: { package: dbgen, out: internal/lexicon/dbgen, sql_package: pgx/v5 }
+      go: { package: dbgen, out: internal/lexicon/dbgen, sql_package: pgx/v5, emit_all_enum_values: true }
   - engine: postgresql
     schema: db/migrations
     queries: db/queries/sources.sql

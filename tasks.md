@@ -101,7 +101,8 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 
 ### AI-assisted candidates
 
-- [ ] **P1-AI-01** River job: generate Claude candidates per concept and phrase, stored as `machine` with provider, model version and date (M) → AI-1, AI-2, US-27
+- [x] **P1-AI-01** River job: generate Claude candidates per concept and phrase, stored as `machine` with provider, model version and date (M) → AI-1, AI-2, US-27
+  - Concepts done (`make candidates LANG=bem`, `make dev-worker`); phrases follow once the phrase list exists (P1-API phrases). A live run needs `ANTHROPIC_API_KEY` (ADR-0009).
 - [ ] **P1-AI-02** River job: generate Google Translate candidates (bem, ny only) (S) → AI-1, AI-2
 - [ ] **P1-AI-03** Agreement scoring and review priority (M) → AI-3, US-21
 

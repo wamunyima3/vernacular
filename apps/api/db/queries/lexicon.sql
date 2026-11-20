@@ -21,7 +21,8 @@ SELECT id FROM entries
 WHERE language_code = $1 AND headword = $2 AND part_of_speech IS NOT DISTINCT FROM $3;
 
 -- name: CreateEntry :exec
-INSERT INTO entries (id, language_code, headword, part_of_speech, stem) VALUES ($1, $2, $3, $4, $5);
+INSERT INTO entries (id, language_code, headword, part_of_speech, stem, noun_class, plural)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: FindSense :one
 SELECT id FROM senses WHERE entry_id = $1 AND concept_id = $2;
@@ -39,3 +40,14 @@ SELECT id, headword, stem FROM entries WHERE language_code = $1;
 
 -- name: SetStem :exec
 UPDATE entries SET stem = $2 WHERE id = $1;
+
+-- name: GetConcept :one
+SELECT id, gloss_en, definition, domain FROM concepts WHERE id = $1;
+
+-- name: ListCoreConcepts :many
+SELECT id FROM concepts WHERE core ORDER BY gloss_en;
+
+-- name: LockLanguage :exec
+-- Serialises lexicon writes per language across concurrent transactions;
+-- released when the transaction ends.
+SELECT pg_advisory_xact_lock(hashtext('lexicon:' || @language_code::text));

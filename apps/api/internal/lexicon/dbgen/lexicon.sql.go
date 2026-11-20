@@ -32,7 +32,8 @@ func (q *Queries) AddVariant(ctx context.Context, arg AddVariantParams) (int64, 
 }
 
 const createEntry = `-- name: CreateEntry :exec
-INSERT INTO entries (id, language_code, headword, part_of_speech, stem) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO entries (id, language_code, headword, part_of_speech, stem, noun_class, plural)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateEntryParams struct {
@@ -41,6 +42,8 @@ type CreateEntryParams struct {
 	Headword     string
 	PartOfSpeech NullPartOfSpeech
 	Stem         pgtype.Text
+	NounClass    pgtype.Text
+	Plural       pgtype.Text
 }
 
 func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) error {
@@ -50,6 +53,8 @@ func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) error 
 		arg.Headword,
 		arg.PartOfSpeech,
 		arg.Stem,
+		arg.NounClass,
+		arg.Plural,
 	)
 	return err
 }
@@ -110,6 +115,53 @@ func (q *Queries) FindSense(ctx context.Context, arg FindSenseParams) (uuid.UUID
 	return id, err
 }
 
+const getConcept = `-- name: GetConcept :one
+SELECT id, gloss_en, definition, domain FROM concepts WHERE id = $1
+`
+
+type GetConceptRow struct {
+	ID         uuid.UUID
+	GlossEn    string
+	Definition string
+	Domain     string
+}
+
+func (q *Queries) GetConcept(ctx context.Context, id uuid.UUID) (GetConceptRow, error) {
+	row := q.db.QueryRow(ctx, getConcept, id)
+	var i GetConceptRow
+	err := row.Scan(
+		&i.ID,
+		&i.GlossEn,
+		&i.Definition,
+		&i.Domain,
+	)
+	return i, err
+}
+
+const listCoreConcepts = `-- name: ListCoreConcepts :many
+SELECT id FROM concepts WHERE core ORDER BY gloss_en
+`
+
+func (q *Queries) ListCoreConcepts(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listCoreConcepts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHeadwords = `-- name: ListHeadwords :many
 SELECT id, headword, stem FROM entries WHERE language_code = $1
 `
@@ -138,6 +190,17 @@ func (q *Queries) ListHeadwords(ctx context.Context, languageCode string) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockLanguage = `-- name: LockLanguage :exec
+SELECT pg_advisory_xact_lock(hashtext('lexicon:' || $1::text))
+`
+
+// Serialises lexicon writes per language across concurrent transactions;
+// released when the transaction ends.
+func (q *Queries) LockLanguage(ctx context.Context, languageCode string) error {
+	_, err := q.db.Exec(ctx, lockLanguage, languageCode)
+	return err
 }
 
 const setStem = `-- name: SetStem :exec

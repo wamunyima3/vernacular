@@ -168,19 +168,19 @@ Change the contract first, run `make gen`, then implement. CI fails if the gener
 
 ## 10. Technology
 
-| Need                      | Choice                                            | Status               |
-| ------------------------- | ------------------------------------------------- | -------------------- |
-| HTTP routing              | chi                                               | adopted              |
-| DB driver                 | pgx v5                                            | adopted              |
-| Typed queries             | sqlc                                              | adopted              |
-| Migrations                | goose                                             | adopted              |
-| Contract → Go             | oapi-codegen (strict chi server)                  | adopted              |
-| Background jobs           | River                                             | Phase 1              |
-| Unicode                   | golang.org/x/text                                 | Phase 0              |
-| Web                       | Next.js 16, Tailwind v4, shadcn/ui                | adopted              |
-| Contract → TS             | openapi-typescript + openapi-fetch                | adopted              |
-| Monorepo                  | pnpm workspaces + Turborepo                       | adopted              |
-| Auth                      | Better Auth ([ADR-0007](adr/0007-better-auth.md)) | adopted              |
-| Docs site / API reference | Fumadocs or Nextra; Scalar                        | evaluate (P0-ENG-09) |
-| Language detection        | existing LID models first                         | evaluate (P1-API-08) |
-| Stemmers                  | none exist; written by us                         | Phase 1              |
+| Need                      | Choice                                                      | Status               |
+| ------------------------- | ----------------------------------------------------------- | -------------------- |
+| HTTP routing              | chi                                                         | adopted              |
+| DB driver                 | pgx v5                                                      | adopted              |
+| Typed queries             | sqlc                                                        | adopted              |
+| Migrations                | goose                                                       | adopted              |
+| Contract → Go             | oapi-codegen (strict chi server)                            | adopted              |
+| Background jobs           | River ([ADR-0009](adr/0009-river-and-claude-candidates.md)) | adopted              |
+| Unicode                   | golang.org/x/text                                           | Phase 0              |
+| Web                       | Next.js 16, Tailwind v4, shadcn/ui                          | adopted              |
+| Contract → TS             | openapi-typescript + openapi-fetch                          | adopted              |
+| Monorepo                  | pnpm workspaces + Turborepo                                 | adopted              |
+| Auth                      | Better Auth ([ADR-0007](adr/0007-better-auth.md))           | adopted              |
+| Docs site / API reference | Fumadocs or Nextra; Scalar                                  | evaluate (P0-ENG-09) |
+| Language detection        | existing LID models first                                   | evaluate (P1-API-08) |
+| Stemmers                  | none exist; written by us                                   | Phase 1              |

@@ -13,6 +13,8 @@ API_DIR      := apps/api
 GO_TOOL      := go tool -modfile=tools/go.mod
 COMPOSE      := docker compose -f deploy/docker-compose.yml
 GOOSE        := $(GO_TOOL) goose -dir db/migrations postgres "$(DATABASE_URL)"
+# River (background jobs) owns its tables and migrations.
+RIVER        := $(GO_TOOL) river migrate-up --line main --database-url "$(DATABASE_URL)"
 # Everything `make gen` writes. Never edited by hand.
 GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts
 
@@ -35,8 +37,8 @@ down: ## Stop local services
 	$(COMPOSE) down
 
 .PHONY: migrate
-migrate: ## Apply database migrations
-	cd $(API_DIR) && $(GOOSE) up
+migrate: ## Apply database migrations (ours, then River's)
+	cd $(API_DIR) && $(GOOSE) up && $(RIVER)
 
 .PHONY: migrate-down
 migrate-down: ## Roll back the last migration
@@ -81,6 +83,14 @@ dev: ## Run the API and the web app together
 .PHONY: dev-api
 dev-api:
 	cd $(API_DIR) && go run ./cmd/api
+
+.PHONY: dev-worker
+dev-worker: ## Run background jobs (needs ANTHROPIC_API_KEY)
+	cd $(API_DIR) && go run ./cmd/worker
+
+.PHONY: candidates
+candidates: ## Queue AI candidate jobs for every core concept: make candidates LANG=bem
+	cd $(API_DIR) && go run ./cmd/worker -enqueue $(LANG)
 
 .PHONY: dev-web
 dev-web:

@@ -57,6 +57,15 @@ func (ns NullItemKind) Value() (driver.Value, error) {
 	return string(ns.ItemKind), nil
 }
 
+func AllItemKindValues() []ItemKind {
+	return []ItemKind{
+		ItemKindEntry,
+		ItemKindSense,
+		ItemKindExample,
+		ItemKindPhrase,
+	}
+}
+
 type PartOfSpeech string
 
 const (
@@ -108,6 +117,22 @@ func (ns NullPartOfSpeech) Value() (driver.Value, error) {
 	return string(ns.PartOfSpeech), nil
 }
 
+func AllPartOfSpeechValues() []PartOfSpeech {
+	return []PartOfSpeech{
+		PartOfSpeechNoun,
+		PartOfSpeechVerb,
+		PartOfSpeechAdjective,
+		PartOfSpeechAdverb,
+		PartOfSpeechPronoun,
+		PartOfSpeechNumeral,
+		PartOfSpeechConjunction,
+		PartOfSpeechPreposition,
+		PartOfSpeechInterjection,
+		PartOfSpeechPhrase,
+		PartOfSpeechIdeophone,
+	}
+}
+
 type Register string
 
 const (
@@ -155,6 +180,18 @@ func (ns NullRegister) Value() (driver.Value, error) {
 	return string(ns.Register), nil
 }
 
+func AllRegisterValues() []Register {
+	return []Register{
+		RegisterNeutral,
+		RegisterFormal,
+		RegisterInformal,
+		RegisterTown,
+		RegisterRespectful,
+		RegisterVulgar,
+		RegisterArchaic,
+	}
+}
+
 type ReviewDecision string
 
 const (
@@ -198,6 +235,14 @@ func (ns NullReviewDecision) Value() (driver.Value, error) {
 	return string(ns.ReviewDecision), nil
 }
 
+func AllReviewDecisionValues() []ReviewDecision {
+	return []ReviewDecision{
+		ReviewDecisionAccept,
+		ReviewDecisionCorrect,
+		ReviewDecisionReject,
+	}
+}
+
 type ReviewerLevel string
 
 const (
@@ -238,6 +283,13 @@ func (ns NullReviewerLevel) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.ReviewerLevel), nil
+}
+
+func AllReviewerLevelValues() []ReviewerLevel {
+	return []ReviewerLevel{
+		ReviewerLevelReviewer,
+		ReviewerLevelSenior,
+	}
 }
 
 type SourceKind string
@@ -283,6 +335,14 @@ func (ns NullSourceKind) Value() (driver.Value, error) {
 	return string(ns.SourceKind), nil
 }
 
+func AllSourceKindValues() []SourceKind {
+	return []SourceKind{
+		SourceKindLicensed,
+		SourceKindContributor,
+		SourceKindMachine,
+	}
+}
+
 type TrustStatus string
 
 const (
@@ -326,6 +386,16 @@ func (ns NullTrustStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.TrustStatus), nil
+}
+
+func AllTrustStatusValues() []TrustStatus {
+	return []TrustStatus{
+		TrustStatusVerified,
+		TrustStatusReviewed,
+		TrustStatusSourced,
+		TrustStatusMachine,
+		TrustStatusDisputed,
+	}
 }
 
 type Account struct {

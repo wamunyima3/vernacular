@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 )
 
 // Kinds of reviewable rows.
@@ -35,6 +35,12 @@ func Sourced(sourceID uuid.UUID, reference string) Origin {
 	return Origin{Status: dbgen.TrustStatusSourced, SourceID: sourceID, Reference: reference}
 }
 
+// Machine is the origin of candidates a model proposed (AI-1, AI-2). The
+// source row names the provider; model is the exact model version.
+func Machine(sourceID uuid.UUID, model, reference string) Origin {
+	return Origin{Status: dbgen.TrustStatusMachine, SourceID: sourceID, Reference: reference, Model: model}
+}
+
 // Store writes items. Give it the transaction the typed row is written in.
 type Store struct {
 	q *dbgen.Queries
@@ -47,7 +53,7 @@ func NewStore(db dbgen.DBTX) *Store { return &Store{q: dbgen.New(db)} }
 // same ID, and links the source. It is the only way reviewable rows are made.
 func (s *Store) Create(ctx context.Context, kind dbgen.ItemKind, language string, o Origin, create func(uuid.UUID) error) (uuid.UUID, error) {
 	id, err := s.q.CreateItem(ctx, dbgen.CreateItemParams{
-		Kind: kind, LanguageCode: language, Status: o.Status, AuthorID: text(o.AuthorID),
+		Kind: kind, LanguageCode: language, Status: o.Status, AuthorID: database.Text(o.AuthorID),
 	})
 	if err != nil {
 		return id, fmt.Errorf("create item: %w", err)
@@ -55,11 +61,15 @@ func (s *Store) Create(ctx context.Context, kind dbgen.ItemKind, language string
 	if err := create(id); err != nil {
 		return id, err
 	}
-	err = s.q.LinkSource(ctx, dbgen.LinkSourceParams{ItemID: id, SourceID: o.SourceID, Reference: o.Reference, Model: text(o.Model)})
-	if err != nil {
-		return id, fmt.Errorf("link source: %w", err)
-	}
-	return id, nil
+	return id, s.Link(ctx, id, o)
 }
 
-func text(s string) pgtype.Text { return pgtype.Text{String: s, Valid: s != ""} }
+// Link adds an origin to an existing item's sources without changing its
+// status. Linking the same origin twice changes nothing.
+func (s *Store) Link(ctx context.Context, id uuid.UUID, o Origin) error {
+	err := s.q.LinkSource(ctx, dbgen.LinkSourceParams{ItemID: id, SourceID: o.SourceID, Reference: o.Reference, Model: database.Text(o.Model)})
+	if err != nil {
+		return fmt.Errorf("link source: %w", err)
+	}
+	return nil
+}

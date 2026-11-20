@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
@@ -94,7 +93,7 @@ func (r *Register) Create(ctx context.Context, in Input) (Source, error) {
 	return r.write(ctx, func(q *dbgen.Queries) (dbgen.Source, error) {
 		return q.CreateSource(ctx, dbgen.CreateSourceParams{
 			Kind: dbgen.SourceKind(in.Kind), Name: in.Name, RightsHolder: in.RightsHolder, Licence: in.Licence,
-			Url: text(in.URL), AllowedUses: in.AllowedUses, Notes: in.Notes,
+			Url: database.Text(in.URL), AllowedUses: in.AllowedUses, Notes: in.Notes,
 		})
 	})
 }
@@ -104,7 +103,7 @@ func (r *Register) Update(ctx context.Context, id uuid.UUID, in Input) (Source, 
 	return r.write(ctx, func(q *dbgen.Queries) (dbgen.Source, error) {
 		return q.UpdateSource(ctx, dbgen.UpdateSourceParams{
 			ID: id, Kind: dbgen.SourceKind(in.Kind), Name: in.Name, RightsHolder: in.RightsHolder, Licence: in.Licence,
-			Url: text(in.URL), AllowedUses: in.AllowedUses, Notes: in.Notes,
+			Url: database.Text(in.URL), AllowedUses: in.AllowedUses, Notes: in.Notes,
 		})
 	})
 }
@@ -147,7 +146,7 @@ func (r *Register) UploadPermission(ctx context.Context, id uuid.UUID, body io.R
 	}
 	var row dbgen.Source
 	err = database.InTx(ctx, r.db, actor.ID, func(tx pgx.Tx) error {
-		row, err = dbgen.New(tx).SetPermissionKey(ctx, dbgen.SetPermissionKeyParams{ID: id, PermissionKey: text(key)})
+		row, err = dbgen.New(tx).SetPermissionKey(ctx, dbgen.SetPermissionKeyParams{ID: id, PermissionKey: database.Text(key)})
 		return err
 	})
 	return r.result(row, err)
@@ -212,5 +211,3 @@ func fromRow(row dbgen.Source) Source {
 		ID: row.ID, HasPermissionDocument: row.PermissionKey.Valid, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 }
-
-func text(s string) pgtype.Text { return pgtype.Text{String: s, Valid: s != ""} }
