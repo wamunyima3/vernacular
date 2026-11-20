@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
@@ -45,6 +46,7 @@ func run() error {
 		server.Options{Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL},
 		server.Deps{
 			DB:        pool,
+			Accounts:  accounts.NewStore(pool),
 			Languages: languages.NewService(languages.NewStore(pool)),
 		},
 	)

@@ -1,0 +1,81 @@
+// Package accounts resolves who is calling: sessions from the web app
+// (ADR-0007) now, API keys later (P1-API-11). It also holds the role guards
+// every other module uses.
+package accounts
+
+import (
+	"context"
+	"slices"
+
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
+)
+
+// Global roles. They must match Role in the contract and roles.ts in the web app.
+const (
+	RoleDeveloper   = "developer"
+	RoleContributor = "contributor"
+	RoleAdmin       = "admin"
+)
+
+// Per-language review levels.
+const (
+	LevelReviewer = "reviewer"
+	LevelSenior   = "senior"
+)
+
+// Approval lets a user review one language.
+type Approval struct {
+	Language string
+	Level    string
+}
+
+// Principal is the authenticated caller.
+type Principal struct {
+	ID        string
+	Name      string
+	Email     string
+	Role      string
+	Approvals []Approval
+}
+
+// HasRole reports whether the caller has any of the roles. Admins have every role.
+func (p Principal) HasRole(roles ...string) bool {
+	return p.Role == RoleAdmin || slices.Contains(roles, p.Role)
+}
+
+// CanReview reports whether the caller may review items in a language.
+func (p Principal) CanReview(language string) bool {
+	return slices.ContainsFunc(p.Approvals, func(a Approval) bool { return a.Language == language })
+}
+
+// IsSenior reports whether the caller is a senior reviewer for a language.
+func (p Principal) IsSenior(language string) bool {
+	return slices.Contains(p.Approvals, Approval{Language: language, Level: LevelSenior})
+}
+
+type ctxKey struct{}
+
+// WithPrincipal returns a context carrying the caller.
+func WithPrincipal(ctx context.Context, p Principal) context.Context {
+	return context.WithValue(ctx, ctxKey{}, p)
+}
+
+// FromContext returns the caller, if the request was authenticated.
+func FromContext(ctx context.Context) (Principal, bool) {
+	p, ok := ctx.Value(ctxKey{}).(Principal)
+	return p, ok
+}
+
+// Require returns the caller if they pass allow, or an error the server turns
+// into 401 (not signed in) or 403 (signed in, not allowed). A nil allow only
+// requires sign-in.
+func Require(ctx context.Context, allow func(Principal) bool) (Principal, error) {
+	p, ok := FromContext(ctx)
+	if !ok {
+		return Principal{}, httpx.ErrUnauthorized
+	}
+	if allow != nil && !allow(p) {
+		return Principal{}, httpx.ErrForbidden
+	}
+	return p, nil
+}

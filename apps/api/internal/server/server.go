@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/health"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
@@ -14,6 +15,7 @@ import (
 
 // Every module names its handler type Handler, so aliases give each embedded field a unique name.
 type (
+	accountsOps  = accounts.Handler
 	healthOps    = health.Handler
 	languagesOps = languages.Handler
 )
@@ -21,6 +23,7 @@ type (
 // api satisfies gen.StrictServerInterface by embedding one handler per module.
 // Adding an operation to the contract fails compilation here until a module implements it.
 type api struct {
+	*accountsOps
 	*healthOps
 	*languagesOps
 }
@@ -37,6 +40,7 @@ type Options struct {
 // Deps are the module dependencies the server wires together.
 type Deps struct {
 	DB        health.Pinger
+	Accounts  accounts.Authenticator
 	Languages languages.Lister
 }
 
@@ -44,8 +48,10 @@ type Deps struct {
 func New(opts Options, deps Deps) http.Handler {
 	errs := httpx.Errors{DocsBaseURL: opts.DocsBaseURL, Log: opts.Log}
 	r := httpx.NewRouter(httpx.RouterOptions{Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs})
+	r.Use(accounts.Middleware(deps.Accounts, errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
+		accountsOps:  accounts.NewHandler(),
 		healthOps:    health.NewHandler(deps.DB, errs),
 		languagesOps: languages.NewHandler(deps.Languages),
 	}, nil, gen.StrictHTTPServerOptions{

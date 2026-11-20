@@ -196,6 +196,48 @@ func (ns NullReviewDecision) Value() (driver.Value, error) {
 	return string(ns.ReviewDecision), nil
 }
 
+type ReviewerLevel string
+
+const (
+	ReviewerLevelReviewer ReviewerLevel = "reviewer"
+	ReviewerLevelSenior   ReviewerLevel = "senior"
+)
+
+func (e *ReviewerLevel) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReviewerLevel(s)
+	case string:
+		*e = ReviewerLevel(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReviewerLevel: %T", src)
+	}
+	return nil
+}
+
+type NullReviewerLevel struct {
+	ReviewerLevel ReviewerLevel
+	Valid         bool // Valid is true if ReviewerLevel is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReviewerLevel) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReviewerLevel, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReviewerLevel.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReviewerLevel) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReviewerLevel), nil
+}
+
 type SourceKind string
 
 const (
@@ -282,6 +324,22 @@ func (ns NullTrustStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.TrustStatus), nil
+}
+
+type Account struct {
+	ID                    string
+	AccountID             string
+	ProviderID            string
+	UserID                string
+	AccessToken           pgtype.Text
+	RefreshToken          pgtype.Text
+	IDToken               pgtype.Text
+	AccessTokenExpiresAt  pgtype.Timestamptz
+	RefreshTokenExpiresAt pgtype.Timestamptz
+	Scope                 pgtype.Text
+	Password              pgtype.Text
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
 }
 
 type AuditLog struct {
@@ -398,6 +456,16 @@ type Review struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
+type ReviewerApproval struct {
+	UserID       string
+	LanguageCode string
+	Level        ReviewerLevel
+	ApprovedBy   pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	ID           pgtype.Text
+}
+
 type Sense struct {
 	ID         pgtype.UUID
 	EntryID    pgtype.UUID
@@ -408,6 +476,18 @@ type Sense struct {
 	Notes      string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
+}
+
+type Session struct {
+	ID             string
+	ExpiresAt      pgtype.Timestamptz
+	Token          string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	IpAddress      pgtype.Text
+	UserAgent      pgtype.Text
+	UserID         string
+	ImpersonatedBy pgtype.Text
 }
 
 type Source struct {
@@ -424,6 +504,20 @@ type Source struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type User struct {
+	ID            string
+	Name          string
+	Email         string
+	EmailVerified bool
+	Image         pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	Role          pgtype.Text
+	Banned        pgtype.Bool
+	BanReason     pgtype.Text
+	BanExpires    pgtype.Timestamptz
+}
+
 type Variant struct {
 	ID        pgtype.UUID
 	EntryID   pgtype.UUID
@@ -438,4 +532,13 @@ type Variety struct {
 	LanguageCode string
 	Code         string
 	Name         string
+}
+
+type Verification struct {
+	ID         string
+	Identifier string
+	Value      string
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }

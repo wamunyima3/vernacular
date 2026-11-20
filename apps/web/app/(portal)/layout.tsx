@@ -1,16 +1,19 @@
 import Link from "next/link"
 
+import { SiteHeader } from "@/components/site-header"
+
 /** Public developer portal shell. */
 export default function PortalLayout({ children }: LayoutProps<"/">) {
   return (
     <>
-      <header className="border-b">
-        <div className="mx-auto flex h-14 max-w-5xl items-center px-4">
-          <Link href="/" className="font-semibold">
-            Vernacular
-          </Link>
-        </div>
-      </header>
+      <SiteHeader>
+        <Link href="/docs/errors" className="text-muted-foreground hover:text-foreground">
+          Docs
+        </Link>
+        <Link href="/sign-in" className="font-medium">
+          Sign in
+        </Link>
+      </SiteHeader>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12">{children}</main>
       <footer className="border-t">
         <p className="mx-auto max-w-5xl px-4 py-6 text-sm text-pretty text-muted-foreground">

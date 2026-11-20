@@ -41,6 +41,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in user, with role and review approvals
+         * @description Used by the web tools. Requires a session token from sign-in.
+         */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -76,6 +96,25 @@ export interface components {
         };
         LanguageList: {
             data: components["schemas"]["Language"][];
+        };
+        /**
+         * @description Global account role. Review rights are per language, in `approvals`.
+         * @enum {string}
+         */
+        Role: "developer" | "contributor" | "admin";
+        /** @enum {string} */
+        ReviewerLevel: "reviewer" | "senior";
+        Approval: {
+            language: components["schemas"]["LanguageCode"];
+            level: components["schemas"]["ReviewerLevel"];
+        };
+        Me: {
+            id: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            role: components["schemas"]["Role"];
+            approvals: components["schemas"]["Approval"][];
         };
         /**
          * @description How far an item has been checked (ADR-0004). Only `verified` is returned by default;
@@ -191,6 +230,28 @@ export interface operations {
                     "application/json": components["schemas"]["LanguageList"];
                 };
             };
+            default: components["responses"]["Error"];
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

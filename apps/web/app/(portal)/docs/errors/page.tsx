@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { errorCodes } from "@/features/docs/error-codes"
 
-export const metadata: Metadata = { title: "Errors · Vernacular" }
+export const metadata: Metadata = { title: "Errors" }
 
 /** Target of every error body's docs_url: /docs/errors#<code>. */
 export default function ErrorsPage() {

@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
@@ -26,6 +27,19 @@ type fakeLanguages struct {
 
 func (f fakeLanguages) List(context.Context) ([]languages.Language, error) { return f.langs, f.err }
 
+type fakeAuth map[string]accounts.Principal
+
+func (f fakeAuth) Authenticate(_ context.Context, token string) (accounts.Principal, error) {
+	if token == "boom" {
+		return accounts.Principal{}, errors.New("db down")
+	}
+	p, ok := f[token]
+	if !ok {
+		return accounts.Principal{}, accounts.ErrNoSession
+	}
+	return p, nil
+}
+
 func newServer(deps server.Deps) http.Handler {
 	return server.New(server.Options{
 		Log:         slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -35,8 +49,14 @@ func newServer(deps server.Deps) http.Handler {
 
 func get(t *testing.T, h http.Handler, path string, out any) int {
 	t.Helper()
+	return do(t, h, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil), out)
+}
+
+func do(t *testing.T, h http.Handler, req *http.Request, out any) int {
+	t.Helper()
+	path := req.URL.Path
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
+	h.ServeHTTP(rec, req)
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("%s: Content-Type = %q, want application/json", path, ct)
 	}
@@ -132,5 +152,43 @@ func TestUnknownRouteUsesErrorBody(t *testing.T) {
 	}
 	if body.Code != gen.NotFound {
 		t.Fatalf("code = %q, want %q", body.Code, gen.NotFound)
+	}
+}
+
+func TestGetMe(t *testing.T) {
+	auth := fakeAuth{"good": {
+		ID: "u1", Name: "Mwila", Email: "mwila@example.org", Role: accounts.RoleContributor,
+		Approvals: []accounts.Approval{{Language: "bem", Level: accounts.LevelReviewer}},
+	}}
+	tests := []struct {
+		name       string
+		header     string
+		wantStatus int
+		wantCode   gen.ErrorCode
+	}{
+		{"no token", "", http.StatusUnauthorized, gen.Unauthorized},
+		{"unknown token", "Bearer nope", http.StatusUnauthorized, gen.Unauthorized},
+		{"not a bearer token", "Basic abc", http.StatusUnauthorized, gen.Unauthorized},
+		{"lookup failure", "Bearer boom", http.StatusInternalServerError, gen.Internal},
+		{"valid session", "Bearer good", http.StatusOK, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/me", nil)
+			if tt.header != "" {
+				req.Header.Set("Authorization", tt.header)
+			}
+			var body struct {
+				gen.Me
+				Code gen.ErrorCode `json:"code"`
+			}
+			status := do(t, newServer(server.Deps{Accounts: auth}), req, &body)
+			if status != tt.wantStatus || body.Code != tt.wantCode {
+				t.Fatalf("got %d %q, want %d %q", status, body.Code, tt.wantStatus, tt.wantCode)
+			}
+			if status == http.StatusOK && (body.Id != "u1" || body.Role != gen.Contributor || len(body.Approvals) != 1) {
+				t.Errorf("me = %+v", body.Me)
+			}
+		})
 	}
 }

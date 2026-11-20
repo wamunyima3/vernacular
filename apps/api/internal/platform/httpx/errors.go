@@ -4,6 +4,7 @@ package httpx
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -37,10 +38,27 @@ func (e Errors) RequestError(w http.ResponseWriter, _ *http.Request, err error) 
 	e.Write(w, http.StatusBadRequest, gen.BadRequest, err.Error())
 }
 
-// ResponseError handles errors returned by handlers. Details are logged, not leaked.
+// Errors a handler can return instead of building the response itself.
+var (
+	ErrUnauthorized = errors.New("sign-in required")
+	ErrForbidden    = errors.New("not allowed")
+	ErrNotFound     = errors.New("not found")
+)
+
+// ResponseError handles errors returned by handlers: the sentinels above map
+// to their status, and anything else is logged and returned as a bare 500.
 func (e Errors) ResponseError(w http.ResponseWriter, r *http.Request, err error) {
-	e.Log.ErrorContext(r.Context(), "handler failed", "err", err, "path", r.URL.Path)
-	e.Write(w, http.StatusInternalServerError, gen.Internal, "Internal server error")
+	switch {
+	case errors.Is(err, ErrUnauthorized):
+		e.Write(w, http.StatusUnauthorized, gen.Unauthorized, "Sign in to use this endpoint")
+	case errors.Is(err, ErrForbidden):
+		e.Write(w, http.StatusForbidden, gen.Forbidden, "Your account is not allowed to do this")
+	case errors.Is(err, ErrNotFound):
+		e.Write(w, http.StatusNotFound, gen.NotFound, "Not found")
+	default:
+		e.Log.ErrorContext(r.Context(), "handler failed", "err", err, "path", r.URL.Path)
+		e.Write(w, http.StatusInternalServerError, gen.Internal, "Internal server error")
+	}
 }
 
 // NotFound answers unknown routes.

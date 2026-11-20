@@ -74,10 +74,10 @@ Done when: at least one licensed source per language is signed, and the schema a
 - [x] **P0-ENG-03** Uniform error body (`code`, `message`, `docs_url`) and error middleware (S) → §10 errors
 - [x] **P0-ENG-04** Text normalisation package: NFC, case and accent folding (`golang.org/x/text`) with table tests (S) → NFR-7
 - [x] **P0-ENG-05** Evaluate Better Auth vs Auth.js against the roles developer, contributor, reviewer, senior reviewer and admin; write ADR (S)
-- [ ] **P0-ENG-06** Auth slice: sign up, sign in and roles (M) → US-01, US-18
-  - [ ] api: users and roles tables, session validation middleware
-  - [ ] web: sign-up and sign-in screens
-  - [ ] test: role guard tests
+- [x] **P0-ENG-06** Auth slice: sign up, sign in and roles (M) → US-01, US-18
+  - [x] api: users and roles tables, session validation middleware
+  - [x] web: sign-up and sign-in screens
+  - [x] test: role guard tests
 - [ ] **P0-ENG-07** UI designs for portal and review tools; run `/baseline-ui` on them (M)
 - [ ] **P0-ENG-08** Throwaway lookup prototype against a few hundred hand-checked entries (M) → first ten tasks, #10
 - [ ] **P0-ENG-09** Evaluate Fumadocs vs Nextra, and Scalar for the API reference; write ADR (S) → DEV-2

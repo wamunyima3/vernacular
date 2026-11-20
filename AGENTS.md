@@ -54,6 +54,7 @@ Read first: [tasks.md](tasks.md) → [docs/architecture.md](docs/architecture.md
 ### Web (`apps/web`)
 
 - `app/(portal)` holds public pages and `app/(tools)` holds signed-in pages. Route files stay thin and compose components from `features/<domain>`.
+- Signed-in pages follow the three rules in `app/(tools)/README.md`. Authorisation lives in the Go API (`accounts.Require`), never only in the web app.
 - `components/ui` holds only shadcn primitives. Product components go in `features/<domain>/components`.
 - Data comes from `@vernacular/api-client` through `lib/api.ts`. No hand-written `fetch` calls to the API, and no hand-written API types.
 - Server Components by default; add `"use client"` only where interactivity needs it.

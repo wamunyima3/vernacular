@@ -25,6 +25,7 @@ linters:
       min-occurrences: 3
     misspell:
       locale: UK
+      ignore-rules: [unauthorized] # HTTP status name, also in generated code
   exclusions:
     generated: strict # skips internal/gen and */dbgen ("Code generated ... DO NOT EDIT")
     rules:

@@ -9,3 +9,11 @@ sql:
         package: dbgen
         out: internal/languages/dbgen
         sql_package: pgx/v5
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/accounts.sql
+    gen:
+      go:
+        package: dbgen
+        out: internal/accounts/dbgen
+        sql_package: pgx/v5

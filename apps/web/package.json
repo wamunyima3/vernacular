@@ -8,15 +8,18 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "auth:schema": "auth generate --config lib/auth.ts --output ../../.tmp/auth.sql --yes"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@vernacular/api-client": "workspace:*",
+    "better-auth": "1.7.27",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "lucide-react": "^1.77.0",
     "next": "16.4.6",
+    "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
@@ -26,10 +29,12 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^22",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vernacular/eslint-config": "workspace:*",
     "@vernacular/tsconfig": "workspace:*",
+    "auth": "1.7.27",
     "eslint": "^9",
     "tailwindcss": "4.3.3",
     "typescript": "^5",

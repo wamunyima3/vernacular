@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for ErrorCode.
@@ -83,6 +84,45 @@ func (e LanguageStatus) Valid() bool {
 	}
 }
 
+// Defines values for ReviewerLevel.
+const (
+	Reviewer ReviewerLevel = "reviewer"
+	Senior   ReviewerLevel = "senior"
+)
+
+// Valid indicates whether the value is a known member of the ReviewerLevel enum.
+func (e ReviewerLevel) Valid() bool {
+	switch e {
+	case Reviewer:
+		return true
+	case Senior:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Role.
+const (
+	Admin       Role = "admin"
+	Contributor Role = "contributor"
+	Developer   Role = "developer"
+)
+
+// Valid indicates whether the value is a known member of the Role enum.
+func (e Role) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case Contributor:
+		return true
+	case Developer:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TrustStatus.
 const (
 	Disputed TrustStatus = "disputed"
@@ -108,6 +148,15 @@ func (e TrustStatus) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// Approval defines model for Approval.
+type Approval struct {
+	// Language ISO 639-3 code
+	//
+	// Example: bem
+	Language LanguageCode  `json:"language"`
+	Level    ReviewerLevel `json:"level"`
 }
 
 // Error defines model for Error.
@@ -175,12 +224,29 @@ type LanguageList struct {
 	Data []Language `json:"data"`
 }
 
+// Me defines model for Me.
+type Me struct {
+	Approvals []Approval          `json:"approvals"`
+	Email     openapi_types.Email `json:"email"`
+	Id        string              `json:"id"`
+	Name      string              `json:"name"`
+
+	// Role Global account role. Review rights are per language, in `approvals`.
+	Role Role `json:"role"`
+}
+
 // ReviewSummary Counts only. Reviewer identities are not exposed per item.
 type ReviewSummary struct {
 	Accepts        int        `json:"accepts"`
 	Corrections    int        `json:"corrections"`
 	LastReviewedAt *time.Time `json:"last_reviewed_at,omitempty"`
 }
+
+// ReviewerLevel defines model for ReviewerLevel.
+type ReviewerLevel string
+
+// Role Global account role. Review rights are per language, in `approvals`.
+type Role string
 
 // SourceRef defines model for SourceRef.
 type SourceRef struct {
@@ -229,6 +295,9 @@ type ServerInterface interface {
 	// ListLanguages Supported and planned languages
 	// (GET /v1/languages)
 	ListLanguages(w http.ResponseWriter, r *http.Request)
+	// GetMe The signed-in user, with role and review approvals
+	// (GET /v1/me)
+	GetMe(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -244,6 +313,12 @@ func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 // ListLanguages Supported and planned languages
 // (GET /v1/languages)
 func (_ Unimplemented) ListLanguages(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMe The signed-in user, with role and review approvals
+// (GET /v1/me)
+func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -275,6 +350,20 @@ func (siw *ServerInterfaceWrapper) ListLanguages(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListLanguages(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMe operation middleware
+func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMe(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -403,6 +492,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/languages", wrapper.ListLanguages)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/me", wrapper.GetMe)
+	})
 
 	return r
 }
@@ -482,6 +574,58 @@ func (response ListLanguagesdefaultJSONResponse) VisitListLanguagesResponse(w ht
 	return err
 }
 
+type GetMeRequestObject struct {
+}
+
+type GetMeResponseObject interface {
+	VisitGetMeResponse(w http.ResponseWriter) error
+}
+
+type GetMe200JSONResponse Me
+
+func (response GetMe200JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMe401JSONResponse struct{ ErrorJSONResponse }
+
+func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetMedefaultJSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetHealth Liveness and database readiness
@@ -490,6 +634,9 @@ type StrictServerInterface interface {
 	// ListLanguages Supported and planned languages
 	// (GET /v1/languages)
 	ListLanguages(ctx context.Context, request ListLanguagesRequestObject) (ListLanguagesResponseObject, error)
+	// GetMe The signed-in user, with role and review approvals
+	// (GET /v1/me)
+	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -572,6 +719,30 @@ func (sh *strictHandler) ListLanguages(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListLanguagesResponseObject); ok {
 		if err := validResponse.VisitListLanguagesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMe operation middleware
+func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	var request GetMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMe(ctx, request.(GetMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMeResponseObject); ok {
+		if err := validResponse.VisitGetMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -36,7 +36,7 @@ docs/                    Requirements, stories, architecture, ADRs
 **Prerequisites:** Go 1.25 or newer (Go downloads the 1.26 toolchain the module asks for automatically), Node 22+, pnpm 10, Docker, and [golangci-lint](https://golangci-lint.run) v2 (`brew install golangci-lint`).
 
 ```bash
-cp .env.example .env
+cp .env.example .env   # then set BETTER_AUTH_SECRET: openssl rand -base64 32
 make setup      # pnpm install, Go modules, git hooks
 make up         # start Postgres
 make migrate    # create tables and seed languages
