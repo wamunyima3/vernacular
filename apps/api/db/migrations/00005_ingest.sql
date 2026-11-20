@@ -19,6 +19,10 @@ INSERT INTO sources (kind, name, rights_holder, licence, url, allowed_uses, note
 );
 
 -- +goose Down
+-- Imported rows go with their source.
+DELETE FROM items WHERE id IN (
+    SELECT item_id FROM item_sources WHERE source_id = (SELECT id FROM sources WHERE name = 'GATITOS')
+);
 DELETE FROM sources WHERE name = 'GATITOS';
 ALTER TABLE senses DROP CONSTRAINT senses_entry_concept_key;
 ALTER TABLE entries DROP CONSTRAINT entries_identity_key;

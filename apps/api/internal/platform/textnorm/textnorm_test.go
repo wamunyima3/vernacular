@@ -48,3 +48,23 @@ func TestFoldMatchesSQL(t *testing.T) {
 		}
 	}
 }
+
+func TestHeadwordAndGloss(t *testing.T) {
+	tests := []struct {
+		fn       func(string) string
+		in, want string
+	}{
+		{textnorm.Headword, "  Muli   shani ", "muli shani"},
+		{textnorm.Headword, "ici\u0301ntu", "icíntu"},
+		{textnorm.Gloss, "Hello", "hello"},
+		{textnorm.Gloss, " Good  morning ", "good morning"},
+		{textnorm.Gloss, "I am fine", "I am fine"},
+		{textnorm.Gloss, "HIV test", "HIV test"},
+		{textnorm.Gloss, "", ""},
+	}
+	for _, tt := range tests {
+		if got := tt.fn(tt.in); got != tt.want {
+			t.Errorf("%q → %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

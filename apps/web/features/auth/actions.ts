@@ -15,40 +15,40 @@ function field(form: FormData, name: string) {
   return typeof value === "string" ? value.trim() : ""
 }
 
-/** Runs a Better Auth call and turns its errors into a message shown next to the form. */
-async function attempt(state: AuthFormState, call: () => Promise<unknown>): Promise<AuthFormState> {
+/**
+ * Runs a Better Auth call. On success it redirects to the form's `next` path; on failure
+ * it returns the message to show next to the form, with the typed values kept.
+ */
+async function attempt(
+  form: FormData,
+  kept: AuthFormState,
+  call: (requestHeaders: Headers) => Promise<unknown>,
+): Promise<AuthFormState> {
   try {
-    await call()
-    return {}
+    await call(await headers())
   } catch (err) {
-    if (err instanceof APIError) return { ...state, error: err.body?.message ?? err.message }
+    if (err instanceof APIError) return { ...kept, error: err.body?.message ?? err.message }
     throw err
   }
+  redirect(safeNext(form.get("next")))
 }
 
 export async function signIn(_: AuthFormState, form: FormData): Promise<AuthFormState> {
   const email = field(form, "email")
-  const result = await attempt({ email }, async () =>
-    auth.api.signInEmail({
-      body: { email, password: form.get("password") as string },
-      headers: await headers(),
-    }),
+  return attempt(form, { email }, (h) =>
+    auth.api.signInEmail({ body: { email, password: String(form.get("password")) }, headers: h }),
   )
-  if (result.error) return result
-  redirect(safeNext(form.get("next")))
 }
 
 export async function signUp(_: AuthFormState, form: FormData): Promise<AuthFormState> {
   const email = field(form, "email")
   const name = field(form, "name")
-  const result = await attempt({ email, name }, async () =>
+  return attempt(form, { email, name }, (h) =>
     auth.api.signUpEmail({
-      body: { email, name, password: form.get("password") as string },
-      headers: await headers(),
+      body: { email, name, password: String(form.get("password")) },
+      headers: h,
     }),
   )
-  if (result.error) return result
-  redirect(safeNext(form.get("next")))
 }
 
 export async function signOut() {

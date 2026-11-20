@@ -157,8 +157,8 @@ func TestUnknownRouteUsesErrorBody(t *testing.T) {
 
 func TestGetMe(t *testing.T) {
 	auth := fakeAuth{"good": {
-		ID: "u1", Name: "Mwila", Email: "mwila@example.org", Role: accounts.RoleContributor,
-		Approvals: []accounts.Approval{{Language: "bem", Level: accounts.LevelReviewer}},
+		ID: "u1", Name: "Mwila", Email: "mwila@example.org", Role: gen.Contributor,
+		Approvals: []accounts.Approval{{Language: "bem", Level: gen.Reviewer}},
 	}}
 	tests := []struct {
 		name       string

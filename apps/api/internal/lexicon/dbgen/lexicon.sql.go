@@ -130,11 +130,19 @@ func (q *Queries) LinkSource(ctx context.Context, arg LinkSourceParams) error {
 }
 
 const upsertConcept = `-- name: UpsertConcept :one
-INSERT INTO concepts (gloss_en, core, domain) VALUES ($1, $2, $3)
-ON CONFLICT (gloss_en, definition) DO UPDATE SET
-    core   = concepts.core OR excluded.core,
-    domain = CASE WHEN concepts.domain = 'general' THEN excluded.domain ELSE concepts.domain END
-RETURNING id, (xmax = 0) AS inserted
+WITH written AS (
+    INSERT INTO concepts (gloss_en, core, domain) VALUES ($1, $2, $3)
+    ON CONFLICT (gloss_en, definition) DO UPDATE SET
+        core   = concepts.core OR excluded.core,
+        domain = CASE WHEN concepts.domain = 'general' THEN excluded.domain ELSE concepts.domain END
+    WHERE (excluded.core AND NOT concepts.core)
+       OR (concepts.domain = 'general' AND excluded.domain <> 'general')
+    RETURNING id, (xmax = 0) AS inserted
+)
+SELECT id, inserted FROM written
+UNION ALL
+SELECT id, false FROM concepts
+WHERE gloss_en = $1 AND definition = '' AND NOT EXISTS (SELECT 1 FROM written)
 `
 
 type UpsertConceptParams struct {
@@ -150,6 +158,7 @@ type UpsertConceptRow struct {
 
 // Concepts are shared across languages. A later import can promote one to the
 // core list, or give a 'general' concept its domain, but never demotes it.
+// Rows that would not change are not written, so re-runs add no audit rows.
 func (q *Queries) UpsertConcept(ctx context.Context, arg UpsertConceptParams) (UpsertConceptRow, error) {
 	row := q.db.QueryRow(ctx, upsertConcept, arg.GlossEn, arg.Core, arg.Domain)
 	var i UpsertConceptRow

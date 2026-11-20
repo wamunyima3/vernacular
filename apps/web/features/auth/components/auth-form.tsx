@@ -7,38 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-import type { AuthFormState } from "../actions"
+import { signIn, signUp } from "../actions"
+import { type AuthMode, authModes } from "../modes"
 
-type Mode = "sign-in" | "sign-up"
-
-const copy = {
-  "sign-in": {
-    submit: "Sign in",
-    switchText: "New here?",
-    switchLink: "Create an account",
-    href: "/sign-up",
-  },
-  "sign-up": {
-    submit: "Create account",
-    switchText: "Already have an account?",
-    switchLink: "Sign in",
-    href: "/sign-in",
-  },
-} as const
+const actions = { "sign-in": signIn, "sign-up": signUp } satisfies Record<AuthMode, unknown>
 
 /** Shared sign-in and sign-up form. Errors show under the form, where the action happened. */
-export function AuthForm({
-  mode,
-  action,
-  next,
-}: {
-  mode: Mode
-  action: (state: AuthFormState, form: FormData) => Promise<AuthFormState>
-  next?: string
-}) {
-  const [state, formAction, pending] = useActionState(action, {})
-  const text = copy[mode]
-  const switchHref = next ? `${text.href}?next=${encodeURIComponent(next)}` : text.href
+export function AuthForm({ mode, next }: { mode: AuthMode; next?: string }) {
+  const [state, formAction, pending] = useActionState(actions[mode], {})
+  const text = authModes[mode]
+  const switchHref = next ? `${text.switchHref}?next=${encodeURIComponent(next)}` : text.switchHref
 
   return (
     <form action={formAction} className="flex flex-col gap-6">

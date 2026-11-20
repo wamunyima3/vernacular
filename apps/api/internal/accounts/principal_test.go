@@ -5,20 +5,21 @@ import (
 	"testing"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
 var (
-	developer = accounts.Principal{ID: "d", Role: accounts.RoleDeveloper}
-	admin     = accounts.Principal{ID: "a", Role: accounts.RoleAdmin}
-	reviewer  = accounts.Principal{ID: "r", Role: accounts.RoleContributor, Approvals: []accounts.Approval{
-		{Language: "bem", Level: accounts.LevelReviewer},
-		{Language: "nya", Level: accounts.LevelSenior},
+	developer = accounts.Principal{ID: "d", Role: gen.Developer}
+	admin     = accounts.Principal{ID: "a", Role: gen.Admin}
+	reviewer  = accounts.Principal{ID: "r", Role: gen.Contributor, Approvals: []accounts.Approval{
+		{Language: "bem", Level: gen.Reviewer},
+		{Language: "nya", Level: gen.Senior},
 	}}
 )
 
 func TestRequire(t *testing.T) {
-	contributors := func(p accounts.Principal) bool { return p.HasRole(accounts.RoleContributor) }
+	contributors := func(p accounts.Principal) bool { return p.HasRole(gen.Contributor) }
 	reviewsBemba := func(p accounts.Principal) bool { return p.CanReview("bem") }
 	seniorBemba := func(p accounts.Principal) bool { return p.IsSenior("bem") }
 

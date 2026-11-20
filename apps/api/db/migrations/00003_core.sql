@@ -48,6 +48,7 @@ CREATE TABLE audit_log (
 );
 CREATE INDEX audit_log_row_idx ON audit_log (table_name, row_id, at);
 
+-- The trigger arguments name the key columns; row_id joins their values with ':'.
 -- +goose StatementBegin
 CREATE FUNCTION audit() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
@@ -57,7 +58,7 @@ BEGIN
     INSERT INTO audit_log (table_name, row_id, action, actor_id, before, after)
     VALUES (
         TG_TABLE_NAME,
-        coalesce(new_row, old_row) ->> 'id',
+        array_to_string(ARRAY(SELECT coalesce(new_row, old_row) ->> k FROM unnest(TG_ARGV) AS k), ':'),
         lower(TG_OP),
         nullif(current_setting('app.actor_id', true), ''),
         old_row,
@@ -68,16 +69,18 @@ END $$;
 -- +goose StatementEnd
 
 -- Applies the updated_at and audit triggers to a table. Every table created
--- below calls it, so no table can be forgotten.
+-- below calls it, so no table can be forgotten. `key` lists the primary key
+-- columns, so composite keys need no special column.
 -- +goose StatementBegin
-CREATE FUNCTION track(tbl regclass) RETURNS void LANGUAGE plpgsql AS $$
+CREATE FUNCTION track(tbl regclass, key text[] DEFAULT '{id}') RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     EXECUTE format('CREATE TRIGGER set_updated_at BEFORE UPDATE ON %s FOR EACH ROW EXECUTE FUNCTION set_updated_at()', tbl);
-    EXECUTE format('CREATE TRIGGER audit AFTER INSERT OR UPDATE OR DELETE ON %s FOR EACH ROW EXECUTE FUNCTION audit()', tbl);
+    EXECUTE format('CREATE TRIGGER audit AFTER INSERT OR UPDATE OR DELETE ON %s FOR EACH ROW EXECUTE FUNCTION audit(%s)',
+        tbl, (SELECT string_agg(quote_literal(k), ', ') FROM unnest(key) AS k));
 END $$;
 -- +goose StatementEnd
 
-SELECT track('languages');
+SELECT track('languages', '{code}');
 
 -- Trust (ADR-0004) -------------------------------------------------------------
 
@@ -302,7 +305,7 @@ DROP TYPE item_kind;
 DROP TYPE trust_status;
 DROP TRIGGER audit ON languages;
 DROP TRIGGER set_updated_at ON languages;
-DROP FUNCTION track(regclass);
+DROP FUNCTION track(regclass, text[]);
 DROP FUNCTION audit();
 DROP TABLE audit_log;
 DROP FUNCTION set_updated_at();

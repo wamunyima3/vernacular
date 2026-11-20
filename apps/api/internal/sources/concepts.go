@@ -39,14 +39,10 @@ func ImportConcepts(ctx context.Context, db database.Beginner, r io.Reader) (int
 			if err != nil {
 				return err
 			}
-			domain, gloss := headword(rec[0]), gloss(rec[1])
-			if domain == "" || gloss == "" {
-				line, _ := rows.FieldPos(0)
-				return fmt.Errorf("line %d: domain and gloss_en are required", line)
-			}
-			isNew, err := lex.AddCoreConcept(ctx, gloss, domain)
+			isNew, err := lex.AddCoreConcept(ctx, rec[1], rec[0])
 			if err != nil {
-				return err
+				line, _ := rows.FieldPos(0)
+				return fmt.Errorf("line %d: %w", line, err)
 			}
 			if isNew {
 				added++

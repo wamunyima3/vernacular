@@ -7,26 +7,17 @@ import (
 	"context"
 	"slices"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
-// Global roles. They must match Role in the contract and roles.ts in the web app.
-const (
-	RoleDeveloper   = "developer"
-	RoleContributor = "contributor"
-	RoleAdmin       = "admin"
-)
-
-// Per-language review levels.
-const (
-	LevelReviewer = "reviewer"
-	LevelSenior   = "senior"
-)
+// Roles and review levels are the contract's enums (gen.Role, gen.ReviewerLevel),
+// so Go, the web app and the database CHECK share one list.
 
 // Approval lets a user review one language.
 type Approval struct {
-	Language string
-	Level    string
+	Language string            `json:"language"`
+	Level    gen.ReviewerLevel `json:"level"`
 }
 
 // Principal is the authenticated caller.
@@ -34,13 +25,13 @@ type Principal struct {
 	ID        string
 	Name      string
 	Email     string
-	Role      string
+	Role      gen.Role
 	Approvals []Approval
 }
 
 // HasRole reports whether the caller has any of the roles. Admins have every role.
-func (p Principal) HasRole(roles ...string) bool {
-	return p.Role == RoleAdmin || slices.Contains(roles, p.Role)
+func (p Principal) HasRole(roles ...gen.Role) bool {
+	return p.Role == gen.Admin || slices.Contains(roles, p.Role)
 }
 
 // CanReview reports whether the caller may review items in a language.
@@ -50,7 +41,7 @@ func (p Principal) CanReview(language string) bool {
 
 // IsSenior reports whether the caller is a senior reviewer for a language.
 func (p Principal) IsSenior(language string) bool {
-	return slices.Contains(p.Approvals, Approval{Language: language, Level: LevelSenior})
+	return slices.Contains(p.Approvals, Approval{Language: language, Level: gen.Senior})
 }
 
 type ctxKey struct{}

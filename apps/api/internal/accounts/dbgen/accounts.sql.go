@@ -10,22 +10,31 @@ import (
 )
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.name, u.email, coalesce(u.role, 'developer')::text AS role
+SELECT u.id, u.name, u.email, u.role,
+       coalesce(
+           json_agg(json_build_object('language', a.language_code, 'level', a.level) ORDER BY a.language_code)
+               FILTER (WHERE a.user_id IS NOT NULL),
+           '[]'
+       )::jsonb AS approvals
 FROM sessions s
 JOIN users u ON u.id = s.user_id
+LEFT JOIN reviewer_approvals a ON a.user_id = u.id
 WHERE s.token = $1
   AND s.expires_at > now()
   AND NOT (coalesce(u.banned, false) AND (u.ban_expires IS NULL OR u.ban_expires > now()))
+GROUP BY u.id
 `
 
 type GetSessionUserRow struct {
-	ID    string
-	Name  string
-	Email string
-	Role  string
+	ID        string
+	Name      string
+	Email     string
+	Role      string
+	Approvals []byte
 }
 
-// The user behind a live session token. Banned users have no valid session.
+// The user behind a live session token, with their review approvals, in one
+// round trip. Banned users have no valid session.
 func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionUserRow, error) {
 	row := q.db.QueryRow(ctx, getSessionUser, token)
 	var i GetSessionUserRow
@@ -34,38 +43,7 @@ func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionU
 		&i.Name,
 		&i.Email,
 		&i.Role,
+		&i.Approvals,
 	)
 	return i, err
-}
-
-const listApprovals = `-- name: ListApprovals :many
-SELECT language_code, level
-FROM reviewer_approvals
-WHERE user_id = $1
-ORDER BY language_code
-`
-
-type ListApprovalsRow struct {
-	LanguageCode string
-	Level        ReviewerLevel
-}
-
-func (q *Queries) ListApprovals(ctx context.Context, userID string) ([]ListApprovalsRow, error) {
-	rows, err := q.db.Query(ctx, listApprovals, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListApprovalsRow
-	for rows.Next() {
-		var i ListApprovalsRow
-		if err := rows.Scan(&i.LanguageCode, &i.Level); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

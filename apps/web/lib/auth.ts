@@ -23,6 +23,9 @@ export const auth = betterAuth({
   emailAndPassword: { enabled: true, minPasswordLength: 10 },
   user: { modelName: "users", fields: snake("emailVerified", ...timestamps) },
   session: {
+    // Signed cookie copy of the session for 5 minutes, so pages skip a DB read.
+    // The Go API still checks the database on every call.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
     modelName: "sessions",
     fields: snake("expiresAt", "ipAddress", "userAgent", "userId", ...timestamps),
   },

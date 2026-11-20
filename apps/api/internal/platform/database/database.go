@@ -32,19 +32,10 @@ type Beginner interface {
 // only if fn succeeds. Every write path goes through it, so every audit row
 // names who made the change.
 func InTx(ctx context.Context, db Beginner, actor string, fn func(pgx.Tx) error) error {
-	tx, err := db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, "SELECT set_config('app.actor_id', $1, true)", actor); err != nil {
-		return fmt.Errorf("set audit actor: %w", err)
-	}
-	if err := fn(tx); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
+	return pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SELECT set_config('app.actor_id', $1, true)", actor); err != nil {
+			return fmt.Errorf("set audit actor: %w", err)
+		}
+		return fn(tx)
+	})
 }

@@ -7,6 +7,7 @@ package textnorm
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
@@ -20,6 +21,27 @@ var apostrophes = strings.NewReplacer("’", "'", "ʼ", "'", "‘", "'", "ŋ", "
 // NFC returns s in Unicode normal form C. Every stored string goes
 // through it, so equal text is equal bytes.
 func NFC(s string) string { return norm.NFC.String(s) }
+
+// Squash trims s and collapses runs of whitespace to one space.
+func Squash(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// Headword applies the style guide to a word or phrase on its way into the
+// lexicon: NFC, single spaces, lower case. Proper nouns are lowered too;
+// reviewers restore them.
+func Headword(s string) string { return strings.ToLower(NFC(Squash(s))) }
+
+// Gloss tidies an English gloss so one meaning maps to one concept: single
+// spaces, and a sentence-initial capital lowered ("Hello" → "hello"), except
+// for "I" and acronyms ("HIV").
+func Gloss(s string) string {
+	s = NFC(Squash(s))
+	word, _, _ := strings.Cut(s, " ")
+	first, size := utf8.DecodeRuneInString(s)
+	if size == 0 || strings.ToUpper(word) == word {
+		return s
+	}
+	return string(unicode.ToLower(first)) + s[size:]
+}
 
 // Fold returns the search key for s: NFC, lower case, straight apostrophes,
 // ŋ as ng', and accents removed.

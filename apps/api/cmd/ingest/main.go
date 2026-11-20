@@ -1,6 +1,7 @@
 // Command ingest imports data into the lexicon.
 //
 //	ingest -feed gatitos-en-bem [-file local.jsonl]   a registered source, as `sourced` data
+//	ingest -all                                        every feed in sources.Feeds
 //	ingest -concepts data/concepts/x.csv               one of our own core concept lists
 package main
 
@@ -31,6 +32,7 @@ func run(ctx context.Context) error {
 	name := flag.String("feed", "", "feed to import: "+feedNames())
 	file := flag.String("file", "", "read this local copy instead of downloading (checksum still verified)")
 	concepts := flag.String("concepts", "", "CSV of core concepts (domain,gloss_en) to import instead of a feed")
+	all := flag.Bool("all", false, "import every feed")
 	flag.Parse()
 
 	pool, err := database.Connect(ctx, os.Getenv("DATABASE_URL"))
@@ -39,15 +41,26 @@ func run(ctx context.Context) error {
 	}
 	defer pool.Close()
 
-	if *concepts != "" {
+	switch {
+	case *concepts != "":
 		return importConcepts(ctx, pool, *concepts)
+	case *all:
+		for _, feed := range sources.Feeds {
+			if err := importFeed(ctx, pool, feed, ""); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-
 	feed, ok := sources.FeedByName(*name)
 	if !ok {
 		return fmt.Errorf("unknown feed %q; choose one of: %s", *name, feedNames())
 	}
-	data, err := load(ctx, feed.URL, *file)
+	return importFeed(ctx, pool, feed, *file)
+}
+
+func importFeed(ctx context.Context, db database.Beginner, feed sources.Feed, file string) error {
+	data, err := load(ctx, feed.URL, file)
 	if err != nil {
 		return err
 	}
@@ -55,7 +68,7 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("checksum mismatch for %s: the file is not the pinned revision", feed.Name)
 	}
 
-	stats, err := sources.Ingest(ctx, pool, feed, bytes.NewReader(data))
+	stats, err := sources.Ingest(ctx, db, feed, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}

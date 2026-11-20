@@ -15,22 +15,19 @@ func TestGatitosParse(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:   "english source, several targets, sentence case lowered",
+			name:   "one record per target, text left as the source wrote it",
 			parser: gatitos{file: "en_bem.jsonl"},
 			input:  `{"src": "Hello", "trgs": ["Muli shani", " Halo "], "sl": "en", "tl": "bem"}`,
 			want: []Record{
-				{Text: "muli shani", English: "hello", Reference: "en_bem.jsonl:1"},
-				{Text: "halo", English: "hello", Reference: "en_bem.jsonl:1"},
+				{Text: "Muli shani", English: "Hello", Reference: "en_bem.jsonl:1"},
+				{Text: " Halo ", English: "Hello", Reference: "en_bem.jsonl:1"},
 			},
 		},
 		{
-			name:   "keeps I and acronyms, skips empty targets",
+			name:   "skips blank targets",
 			parser: gatitos{file: "en_bem.jsonl"},
-			input:  "{\"src\": \"I\", \"trgs\": [\"ine\", \"\"]}\n{\"src\": \"HIV test\", \"trgs\": [\"Ukupima HIV\"]}",
-			want: []Record{
-				{Text: "ine", English: "I", Reference: "en_bem.jsonl:1"},
-				{Text: "ukupima hiv", English: "HIV test", Reference: "en_bem.jsonl:2"},
-			},
+			input:  "{\"src\": \"I\", \"trgs\": [\"ine\", \"  \"]}",
+			want:   []Record{{Text: "ine", English: "I", Reference: "en_bem.jsonl:1"}},
 		},
 		{
 			name:      "broken line reports file and line",

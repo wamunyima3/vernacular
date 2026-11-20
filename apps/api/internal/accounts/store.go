@@ -2,16 +2,20 @@ package accounts
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
-// ErrNoSession means the token is unknown, expired or belongs to a banned user.
-var ErrNoSession = errors.New("no valid session")
+// ErrNoSession means the token is unknown, expired or belongs to a banned
+// user. It wraps httpx.ErrUnauthorized, so it answers 401.
+var ErrNoSession = fmt.Errorf("no valid session: %w", httpx.ErrUnauthorized)
 
 // Store reads Better Auth's session and user tables.
 type Store struct {
@@ -32,13 +36,9 @@ func (s *Store) Authenticate(ctx context.Context, token string) (Principal, erro
 	if err != nil {
 		return Principal{}, fmt.Errorf("get session user: %w", err)
 	}
-	rows, err := s.q.ListApprovals(ctx, u.ID)
-	if err != nil {
-		return Principal{}, fmt.Errorf("list approvals: %w", err)
-	}
-	p := Principal{ID: u.ID, Name: u.Name, Email: u.Email, Role: u.Role, Approvals: make([]Approval, len(rows))}
-	for i, r := range rows {
-		p.Approvals[i] = Approval{Language: r.LanguageCode, Level: string(r.Level)}
+	p := Principal{ID: u.ID, Name: u.Name, Email: u.Email, Role: gen.Role(u.Role)}
+	if err := json.Unmarshal(u.Approvals, &p.Approvals); err != nil {
+		return Principal{}, fmt.Errorf("decode approvals: %w", err)
 	}
 	return p, nil
 }

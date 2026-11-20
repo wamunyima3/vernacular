@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
 )
 
@@ -15,7 +16,7 @@ func TestStoreAuthenticate(t *testing.T) {
 	for _, sql := range []string{
 		`INSERT INTO users (id, name, email, email_verified, role) VALUES
 			('u1', 'Mwila', 'mwila@example.org', true, 'contributor'),
-			('u2', 'Banned', 'banned@example.org', true, NULL)`,
+			('u2', 'Banned', 'banned@example.org', true, DEFAULT)`,
 		`UPDATE users SET banned = true WHERE id = 'u2'`,
 		`INSERT INTO sessions (id, token, user_id, expires_at, updated_at) VALUES
 			('s1', 'live', 'u1', now() + interval '1 day', now()),
@@ -33,7 +34,7 @@ func TestStoreAuthenticate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.ID != "u1" || p.Role != accounts.RoleContributor || !p.IsSenior("bem") {
+	if p.ID != "u1" || p.Role != gen.Contributor || !p.IsSenior("bem") {
 		t.Errorf("principal = %+v", p)
 	}
 

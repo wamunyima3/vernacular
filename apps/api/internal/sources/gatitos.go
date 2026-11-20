@@ -7,11 +7,10 @@ import (
 	"io"
 	"iter"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 )
 
 // GATITOS en_xx files are JSONL: {"src": "<English>", "trgs": ["<word>", ...]}.
+// The parser only extracts; the lexicon normalises on write.
 type gatitos struct {
 	file string
 }
@@ -30,11 +29,10 @@ func (g gatitos) Parse(r io.Reader) iter.Seq2[Record, error] {
 			}
 			ref := fmt.Sprintf("%s:%d", g.file, line)
 			for _, trg := range row.Trgs {
-				text, english := headword(trg), gloss(row.Src)
-				if text == "" || english == "" {
+				if strings.TrimSpace(trg) == "" {
 					continue
 				}
-				if !yield(Record{Text: text, English: english, Reference: ref}, nil) {
+				if !yield(Record{Text: trg, English: row.Src, Reference: ref}, nil) {
 					return
 				}
 			}
@@ -43,22 +41,4 @@ func (g gatitos) Parse(r io.Reader) iter.Seq2[Record, error] {
 			yield(Record{}, fmt.Errorf("%s: %w", g.file, err))
 		}
 	}
-}
-
-// headword applies the style guide: trimmed, single spaces, lower case.
-// Proper nouns are lowered too; reviewers restore them.
-func headword(s string) string {
-	return strings.ToLower(strings.Join(strings.Fields(s), " "))
-}
-
-// gloss lowers a sentence-initial capital ("Hello" → "hello") but keeps "I"
-// and acronyms ("HIV"), so the same English meaning maps to one concept.
-func gloss(s string) string {
-	s = strings.Join(strings.Fields(s), " ")
-	first, size := utf8.DecodeRuneInString(s)
-	word, _, _ := strings.Cut(s, " ")
-	if size == 0 || word == "I" || strings.ToUpper(word) == word {
-		return s
-	}
-	return string(unicode.ToLower(first)) + s[size:]
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -41,19 +42,23 @@ func NewStore(db dbgen.DBTX) *Store {
 	return &Store{q: dbgen.New(db)}
 }
 
-// AddSourced records a sense with status `sourced`, creating its concept and
+// AddSourced normalises the headword and gloss (textnorm), then records a sense with status `sourced`, creating its concept and
 // entry when they do not exist yet. Repeating a call changes nothing, so
 // imports can be re-run.
 func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) {
 	var added Added
+	in.Headword, in.GlossEn = textnorm.Headword(in.Headword), textnorm.Gloss(in.GlossEn)
+	if in.Headword == "" || in.GlossEn == "" {
+		return added, errors.New("headword and English gloss are required")
+	}
 	concept, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: in.GlossEn, Core: in.Core, Domain: DomainGeneral})
 	if err != nil {
 		return added, fmt.Errorf("upsert concept %q: %w", in.GlossEn, err)
 	}
-	conceptID := concept.ID
+	conceptID := uuid.NullUUID{UUID: concept.ID, Valid: true}
 
 	pos := dbgen.NullPartOfSpeech{PartOfSpeech: dbgen.PartOfSpeech(in.PartOfSpeech), Valid: in.PartOfSpeech != ""}
-	headword := textnorm.NFC(in.Headword)
+	headword := in.Headword
 	entryID, err := s.q.FindEntry(ctx, dbgen.FindEntryParams{LanguageCode: in.Language, Headword: headword, PartOfSpeech: pos})
 	if errors.Is(err, pgx.ErrNoRows) {
 		added.Entry = true
@@ -65,12 +70,12 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 		return added, fmt.Errorf("entry %q: %w", headword, err)
 	}
 
-	_, err = s.q.FindSense(ctx, dbgen.FindSenseParams{EntryID: entryID, ConceptID: uuid.NullUUID{UUID: conceptID, Valid: true}})
+	_, err = s.q.FindSense(ctx, dbgen.FindSenseParams{EntryID: entryID, ConceptID: conceptID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		added.Sense = true
 		_, err = s.newItem(ctx, dbgen.ItemKindSense, in, func(id uuid.UUID) error {
 			return s.q.CreateSense(ctx, dbgen.CreateSenseParams{
-				ID: id, EntryID: entryID, ConceptID: uuid.NullUUID{UUID: conceptID, Valid: true}, Gloss: in.GlossEn,
+				ID: id, EntryID: entryID, ConceptID: conceptID, Gloss: in.GlossEn,
 			})
 		})
 	}
@@ -86,6 +91,10 @@ const DomainGeneral = "general"
 // AddCoreConcept adds an English concept to the core list (LEX-7) under a
 // domain such as "health". It reports whether the concept is new.
 func (s *Store) AddCoreConcept(ctx context.Context, glossEn, domain string) (bool, error) {
+	glossEn, domain = textnorm.Gloss(glossEn), strings.ToLower(textnorm.Squash(domain))
+	if glossEn == "" || domain == "" {
+		return false, errors.New("gloss and domain are required")
+	}
 	row, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: glossEn, Core: true, Domain: domain})
 	if err != nil {
 		return false, fmt.Errorf("upsert concept %q: %w", glossEn, err)

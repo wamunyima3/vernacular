@@ -2,11 +2,9 @@ package accounts
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
@@ -26,14 +24,11 @@ func Middleware(auth Authenticator, errs httpx.Errors) func(http.Handler) http.H
 				return
 			}
 			p, err := auth.Authenticate(r.Context(), token)
-			switch {
-			case errors.Is(err, ErrNoSession):
-				errs.Write(w, http.StatusUnauthorized, gen.Unauthorized, "Session is invalid or expired")
-			case err != nil:
-				errs.ResponseError(w, r, err)
-			default:
-				next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+			if err != nil {
+				errs.ResponseError(w, r, err) // ErrNoSession becomes 401
+				return
 			}
+			next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
 		})
 	}
 }

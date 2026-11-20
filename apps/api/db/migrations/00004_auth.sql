@@ -13,7 +13,7 @@ CREATE TABLE users (
     image          text,
     created_at     timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at     timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    role           text,
+    role           text        NOT NULL DEFAULT 'developer' CHECK (role IN ('developer', 'contributor', 'admin')), -- contract Role
     banned         boolean,
     ban_reason     text,
     ban_expires    timestamptz
@@ -76,9 +76,7 @@ CREATE TABLE reviewer_approvals (
     updated_at    timestamptz    NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, language_code)
 );
--- The audit trigger keys rows by "id"; this table has a composite key.
-ALTER TABLE reviewer_approvals ADD COLUMN id text GENERATED ALWAYS AS (user_id || ':' || language_code) STORED;
-SELECT track('reviewer_approvals');
+SELECT track('reviewer_approvals', '{user_id,language_code}');
 
 -- The foreign keys 00003 left for this migration.
 ALTER TABLE items   ADD FOREIGN KEY (author_id)   REFERENCES users (id);

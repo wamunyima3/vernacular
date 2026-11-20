@@ -1,11 +1,10 @@
-/**
- * Global account roles (ADR-0007). Reviewer and senior reviewer are per-language
- * approvals, not roles, so they are not listed here.
- */
+import type { Schemas } from "@vernacular/api-client"
+
+/** Global account roles, typed against the contract so a new role fails the type check here. */
+export type Role = Schemas["Role"]
+
 export const roles = {
   developer: "developer",
   contributor: "contributor",
   admin: "admin",
-} as const
-
-export type Role = (typeof roles)[keyof typeof roles]
+} as const satisfies Record<Role, Role>

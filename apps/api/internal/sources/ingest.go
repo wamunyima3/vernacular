@@ -34,7 +34,7 @@ type Parser interface {
 
 // Feed is one importable file of a registered source.
 type Feed struct {
-	Name     string // command-line name, e.g. "gatitos-bem"
+	Name     string // command-line name, e.g. "gatitos-en-bem"
 	Source   string // register name, e.g. "GATITOS"
 	Language string
 	URL      string // pinned to a revision, so the bytes never change

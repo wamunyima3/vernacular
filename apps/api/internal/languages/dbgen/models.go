@@ -464,7 +464,6 @@ type ReviewerApproval struct {
 	ApprovedBy   pgtype.Text
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
-	ID           pgtype.Text
 }
 
 type Sense struct {
@@ -513,7 +512,7 @@ type User struct {
 	Image         pgtype.Text
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
-	Role          pgtype.Text
+	Role          string
 	Banned        pgtype.Bool
 	BanReason     pgtype.Text
 	BanExpires    pgtype.Timestamptz
