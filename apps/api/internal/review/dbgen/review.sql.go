@@ -13,8 +13,8 @@ import (
 )
 
 const createReview = `-- name: CreateReview :one
-INSERT INTO reviews (item_id, reviewer_id, decision, comment)
-VALUES ($1, $2, $3, $4)
+INSERT INTO reviews (item_id, reviewer_id, decision, comment, correction)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
@@ -23,6 +23,7 @@ type CreateReviewParams struct {
 	ReviewerID string
 	Decision   ReviewDecision
 	Comment    string
+	Correction []byte
 }
 
 func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (uuid.UUID, error) {
@@ -31,6 +32,7 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (uui
 		arg.ReviewerID,
 		arg.Decision,
 		arg.Comment,
+		arg.Correction,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)

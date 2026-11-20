@@ -22,8 +22,8 @@ FROM open o JOIN next n ON n.concept_id = o.concept_id
 ORDER BY random();
 
 -- name: CreateReview :one
-INSERT INTO reviews (item_id, reviewer_id, decision, comment)
-VALUES ($1, $2, $3, $4)
+INSERT INTO reviews (item_id, reviewer_id, decision, comment, correction)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
 -- name: ListOwnReviews :many

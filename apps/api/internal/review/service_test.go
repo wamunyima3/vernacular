@@ -78,7 +78,7 @@ func TestQueue(t *testing.T) {
 	if card.GlossEn != "zz water" || card.Priority != dbgen.ReviewPriorityQuick || len(card.Candidates) != 1 || card.Candidates[0].ID != water {
 		t.Fatalf("first card = %+v, want the quick confirm for zz water", card)
 	}
-	if _, err := svc.Decide(ctx, []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, ""); err != nil {
+	if _, err := svc.Decide(ctx, []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, "", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,7 +126,7 @@ func TestDecideRefused(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := svc.Decide(tt.ctx, []review.Decision{{SenseID: tt.id, Decision: dbgen.ReviewDecisionAccept}}, "")
+			_, err := svc.Decide(tt.ctx, []review.Decision{{SenseID: tt.id, Decision: dbgen.ReviewDecisionAccept}}, "", nil)
 			if httpx.Status(err) != tt.status {
 				t.Errorf("err = %v, want status %d", err, tt.status)
 			}
@@ -138,10 +138,10 @@ func TestDecideTwice(t *testing.T) {
 	tx := dbtest.Tx(t)
 	water, _ := fixture(t, tx)
 	svc := review.NewService(tx)
-	if _, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, ""); err != nil {
+	if _, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	_, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionReject}}, "wrong")
+	_, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionReject}}, "wrong", nil)
 	if httpx.Status(err) != 409 {
 		t.Errorf("second decision = %v, want conflict", err)
 	}
@@ -153,7 +153,7 @@ func TestUndo(t *testing.T) {
 	svc := review.NewService(tx)
 	decide := func() uuid.UUID {
 		t.Helper()
-		r, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, "")
+		r, err := svc.Decide(reviewer(t), []review.Decision{{SenseID: water, Decision: dbgen.ReviewDecisionAccept}}, "", nil)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { decide } from "../actions"
 import { rejectReasons } from "../decision-input"
 import { nextSession, type ReviewSession, reviewUrl } from "../review-url"
+import { WriteMyOwn } from "./write-my-own"
 
 const priorityLabels: Record<Schemas["ReviewPriority"], string> = {
   quick: "Quick confirm",
@@ -60,7 +61,7 @@ export function ReviewCard({
         <h1 className="text-3xl font-semibold text-balance">{card.gloss_en}</h1>
       </div>
 
-      <form id="review" action={action}>
+      <form id="review" action={action} className="flex flex-col gap-4">
         <input type="hidden" name="language" value={session.language} />
         <input type="hidden" name="skip" value={session.skip.join(",")} />
         <input type="hidden" name="done" value={session.done} />
@@ -95,6 +96,7 @@ export function ReviewCard({
             ))}
           </RadioGroup>
         </FieldSet>
+        <WriteMyOwn pending={pending} />
       </form>
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background pb-[env(safe-area-inset-bottom)]">

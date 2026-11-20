@@ -44,13 +44,21 @@ func (h *Handler) CreateReviews(ctx context.Context, req gen.CreateReviewsReques
 	for i, d := range req.Body.Decisions {
 		decisions[i] = Decision{SenseID: d.SenseId, Decision: dbgen.ReviewDecision(d.Decision)}
 	}
-	recorded, err := h.svc.Decide(ctx, decisions, httpx.Deref(req.Body.Comment))
+	var correction *Correction
+	if c := req.Body.Correction; c != nil {
+		correction = &Correction{
+			Headword: c.Headword, PartOfSpeech: string(httpx.Deref(c.PartOfSpeech)), NounClass: httpx.Deref(c.NounClass),
+		}
+	}
+	recorded, err := h.svc.Decide(ctx, decisions, httpx.Deref(req.Body.Comment), correction)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]gen.Review, len(recorded))
 	for i, r := range recorded {
-		out[i] = gen.Review{Id: r.ID, SenseId: r.SenseID, Decision: gen.ReviewDecision(r.Decision.Decision)}
+		out[i] = gen.Review{
+			Id: r.ID, SenseId: r.SenseID, Decision: gen.ReviewDecision(r.Decision.Decision), CorrectionSenseId: r.CorrectionSenseID,
+		}
 	}
 	return gen.CreateReviews201JSONResponse{Data: out}, nil
 }

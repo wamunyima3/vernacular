@@ -69,6 +69,7 @@ func TestTrustStatusMatchesContract(t *testing.T) {
 	contract := []string{
 		string(gen.TrustStatusVerified), string(gen.TrustStatusReviewed), string(gen.TrustStatusSourced),
 		string(gen.TrustStatusMachine), string(gen.TrustStatusDisputed),
+		"rejected", // internal, never returned (ADR-0004 amendment)
 	}
 	if !slices.Equal(db, contract) {
 		t.Errorf("database trust_status = %v, contract = %v", db, contract)

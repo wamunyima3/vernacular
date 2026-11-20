@@ -357,8 +357,11 @@ export interface components {
             priority: components["schemas"]["ReviewPriority"];
             candidates: components["schemas"]["ReviewCandidate"][];
         };
-        /** @enum {string} */
-        ReviewDecision: "accept" | "reject";
+        /**
+         * @description `correct`: none of the candidates is right, and the reviewer writes the right word in `correction`.
+         * @enum {string}
+         */
+        ReviewDecision: "accept" | "reject" | "correct";
         ReviewInput: {
             decisions: {
                 /** Format: uuid */
@@ -367,6 +370,16 @@ export interface components {
             }[];
             /** @description Why, for rejections */
             comment?: string;
+            /**
+             * @description The reviewer's own word for the card's meaning, required with `correct` decisions.
+             *     It becomes a new candidate that other reviewers check; the candidates it replaces
+             *     keep their history (US-22).
+             */
+            correction?: {
+                headword: string;
+                part_of_speech?: components["schemas"]["PartOfSpeech"];
+                noun_class?: string;
+            };
         };
         Review: {
             /** Format: uuid */
@@ -374,6 +387,11 @@ export interface components {
             /** Format: uuid */
             sense_id: string;
             decision: components["schemas"]["ReviewDecision"];
+            /**
+             * Format: uuid
+             * @description The new candidate a correction created
+             */
+            correction_sense_id?: string;
         };
         ReviewList: {
             data: components["schemas"]["Review"][];

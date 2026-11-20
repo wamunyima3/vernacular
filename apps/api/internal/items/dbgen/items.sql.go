@@ -127,7 +127,7 @@ SELECT i.kind, i.language_code, i.status, i.author_id, open_for_review(i.status)
        (SELECT (CASE WHEN bool_or(s.kind <> 'machine') THEN 'sourced' ELSE 'machine' END)::trust_status
         FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
         WHERE isrc.item_id = i.id) AS origin
-FROM items i WHERE i.id = $1 FOR UPDATE OF i
+FROM items i WHERE i.id = $1 FOR NO KEY UPDATE OF i
 `
 
 type LockItemRow struct {
@@ -140,7 +140,9 @@ type LockItemRow struct {
 }
 
 // Locks the item until the transaction ends, so concurrent reviews of it
-// are decided one after another.
+// are decided one after another. NO KEY UPDATE, because only status changes:
+// writers linking sources to the item (which hold the lexicon's language
+// lock) are not blocked, so they cannot deadlock with a review.
 // origin is the status the item had before any review: `machine` when only
 // machine sources cite it, otherwise `sourced` (ADR-0004).
 func (q *Queries) LockItem(ctx context.Context, id uuid.UUID) (LockItemRow, error) {

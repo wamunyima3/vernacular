@@ -64,7 +64,7 @@ func TestPromotion(t *testing.T) {
 	}
 	decide := func(who string, d dbgen.ReviewDecision) []uuid.UUID {
 		t.Helper()
-		r, err := svc.Decide(reviewer(t, who), []review.Decision{{SenseID: water, Decision: d}}, "")
+		r, err := svc.Decide(reviewer(t, who), []review.Decision{{SenseID: water, Decision: d}}, "", nil)
 		if err != nil {
 			t.Fatalf("%s %s: %v", who, d, err)
 		}

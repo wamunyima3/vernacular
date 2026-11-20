@@ -536,7 +536,8 @@ components:
           items: { $ref: "#/components/schemas/ReviewCandidate" }
     ReviewDecision:
       type: string
-      enum: [accept, reject]
+      description: "`correct`: none of the candidates is right, and the reviewer writes the right word in `correction`."
+      enum: [accept, reject, correct]
     ReviewInput:
       type: object
       additionalProperties: false
@@ -557,6 +558,20 @@ components:
           type: string
           maxLength: 500
           description: Why, for rejections
+        correction:
+          type: object
+          additionalProperties: false
+          description: |
+            The reviewer's own word for the card's meaning, required with `correct` decisions.
+            It becomes a new candidate that other reviewers check; the candidates it replaces
+            keep their history (US-22).
+          required: [headword]
+          properties:
+            headword: { type: string, minLength: 1, maxLength: 100 }
+            part_of_speech: { $ref: "#/components/schemas/PartOfSpeech" }
+            noun_class:
+              type: string
+              pattern: "^[0-9]{1,2}(/[0-9]{1,2})?$"
     Review:
       type: object
       required: [id, sense_id, decision]
@@ -564,6 +579,10 @@ components:
         id: { type: string, format: uuid }
         sense_id: { type: string, format: uuid }
         decision: { $ref: "#/components/schemas/ReviewDecision" }
+        correction_sense_id:
+          type: string
+          format: uuid
+          description: The new candidate a correction created
     ReviewList:
       type: object
       required: [data]

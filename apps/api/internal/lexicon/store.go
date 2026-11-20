@@ -18,6 +18,9 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/textnorm"
 )
 
+// ErrInvalid wraps errors in what a caller proposed, as opposed to failures.
+var ErrInvalid = errors.New("invalid")
+
 // Proposal is one word-meaning pair to add, from a source or a model.
 type Proposal struct {
 	Language     string
@@ -61,7 +64,7 @@ func (s *Store) Add(ctx context.Context, p Proposal) (Added, error) {
 	var added Added
 	p.Headword, p.GlossEn = textnorm.Headword(p.Headword), textnorm.Gloss(p.GlossEn)
 	if p.Headword == "" || p.GlossEn == "" {
-		return added, errors.New("headword and English gloss are required")
+		return added, fmt.Errorf("%w: headword and English gloss are required", ErrInvalid)
 	}
 	conceptID := p.ConceptID
 	if !conceptID.Valid {
@@ -130,7 +133,7 @@ func (s *Store) Add(ctx context.Context, p Proposal) (Added, error) {
 func (s *Store) AddExample(ctx context.Context, language string, senseID uuid.UUID, text, translationEn string, origin items.Origin) (uuid.UUID, error) {
 	text, translationEn = textnorm.Squash(textnorm.NFC(text)), textnorm.Squash(textnorm.NFC(translationEn))
 	if text == "" || translationEn == "" {
-		return uuid.Nil, errors.New("example text and translation are required")
+		return uuid.Nil, fmt.Errorf("%w: example text and translation are required", ErrInvalid)
 	}
 	id, err := s.items.Create(ctx, items.KindExample, language, origin, func(id uuid.UUID) error {
 		return s.q.CreateExample(ctx, dbgen.CreateExampleParams{ID: id, SenseID: senseID, Text: text, TranslationEn: translationEn})
@@ -185,7 +188,7 @@ const DomainGeneral = "general"
 func (s *Store) AddCoreConcept(ctx context.Context, glossEn, domain string) (bool, error) {
 	glossEn, domain = textnorm.Gloss(glossEn), strings.ToLower(textnorm.Squash(domain))
 	if glossEn == "" || domain == "" {
-		return false, errors.New("gloss and domain are required")
+		return false, fmt.Errorf("%w: gloss and domain are required", ErrInvalid)
 	}
 	row, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: glossEn, Core: true, Domain: domain})
 	if err != nil {
@@ -233,6 +236,7 @@ func PartsOfSpeech() []string {
 // SenseCard is a sense as a reviewer sees it: the word, without its sources.
 type SenseCard struct {
 	ID                                        uuid.UUID
+	ConceptID                                 uuid.NullUUID
 	Headword, PartOfSpeech, NounClass, Plural string
 }
 
@@ -245,7 +249,7 @@ func (s *Store) SenseCards(ctx context.Context, ids []uuid.UUID) ([]SenseCard, e
 	out := make([]SenseCard, len(rows))
 	for i, r := range rows {
 		out[i] = SenseCard{
-			ID: r.ID, Headword: r.Headword, PartOfSpeech: string(r.PartOfSpeech.PartOfSpeech),
+			ID: r.ID, ConceptID: r.ConceptID, Headword: r.Headword, PartOfSpeech: string(r.PartOfSpeech.PartOfSpeech),
 			NounClass: r.NounClass.String, Plural: r.Plural.String,
 		}
 	}

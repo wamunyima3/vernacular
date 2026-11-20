@@ -32,8 +32,11 @@ func (s *Store) nextCard(ctx context.Context, language, reviewerID string, skip 
 	return rows, nil
 }
 
-func (s *Store) create(ctx context.Context, itemID uuid.UUID, reviewerID string, decision dbgen.ReviewDecision, comment string) (uuid.UUID, error) {
-	id, err := s.q.CreateReview(ctx, dbgen.CreateReviewParams{ItemID: itemID, ReviewerID: reviewerID, Decision: decision, Comment: comment})
+// create records a decision; correction is the JSON detail of a `correct` one.
+func (s *Store) create(ctx context.Context, itemID uuid.UUID, reviewerID string, decision dbgen.ReviewDecision, comment string, correction []byte) (uuid.UUID, error) {
+	id, err := s.q.CreateReview(ctx, dbgen.CreateReviewParams{
+		ItemID: itemID, ReviewerID: reviewerID, Decision: decision, Comment: comment, Correction: correction,
+	})
 	if database.Violates(err, database.UniqueViolation) {
 		return uuid.Nil, errAlreadyReviewed
 	}

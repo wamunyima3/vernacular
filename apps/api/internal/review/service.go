@@ -41,6 +41,7 @@ type Decision struct {
 type Recorded struct {
 	ID uuid.UUID
 	Decision
+	CorrectionSenseID *uuid.UUID // the new candidate, for corrections
 }
 
 // Lexicon is what the queue needs from the lexicon module.
@@ -102,31 +103,46 @@ func (s *Service) Next(ctx context.Context, language string, skip []uuid.UUID) (
 
 // Decide records the reviewer's decisions on candidates from one card, all
 // or none.
-func (s *Service) Decide(ctx context.Context, decisions []Decision, comment string) ([]Recorded, error) {
+func (s *Service) Decide(ctx context.Context, decisions []Decision, comment string, correction *Correction) ([]Recorded, error) {
 	me, err := accounts.Require(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	if corrects := slices.ContainsFunc(decisions, isCorrection); corrects != (correction != nil) {
+		return nil, httpx.BadRequest("A correction needs `correct` decisions, and `correct` decisions need a correction")
+	}
+	// Lock items in one order everywhere, so concurrent decisions and undos cannot deadlock.
+	sorted := slices.SortedFunc(slices.Values(decisions), bySense)
 	out := make([]Recorded, 0, len(decisions))
 	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
 		store, its := NewStore(tx), newItems(tx)
-		// Lock items in one order everywhere, so concurrent decisions and undos cannot deadlock.
-		for _, d := range slices.SortedFunc(slices.Values(decisions), bySense) {
-			item, err := checkTarget(ctx, its, me, d.SenseID)
-			if err != nil {
+		locked := make([]items.Locked, len(sorted))
+		for i, d := range sorted {
+			if locked[i], err = checkTarget(ctx, its, me, d.SenseID); err != nil {
 				return err
 			}
-			id, err := store.create(ctx, d.SenseID, me.ID, d.Decision, comment)
-			if errors.Is(err, errAlreadyReviewed) {
+		}
+		var fix *replacement
+		if correction != nil {
+			if fix, err = replace(ctx, tx, me.ID, locked[0].Language, sorted, *correction); err != nil {
+				return err
+			}
+		}
+		for i, d := range sorted {
+			r := Recorded{Decision: d}
+			var detail []byte
+			if isCorrection(d) {
+				r.CorrectionSenseID, detail = &fix.senseID, fix.detail
+			}
+			if r.ID, err = store.create(ctx, d.SenseID, me.ID, d.Decision, comment, detail); errors.Is(err, errAlreadyReviewed) {
 				return httpx.Conflict("You have already reviewed " + d.SenseID.String())
-			}
-			if err != nil {
+			} else if err != nil {
 				return err
 			}
-			if err := promote(ctx, store, its, d.SenseID, item.Origin); err != nil {
+			if err := promote(ctx, store, its, d.SenseID, locked[i].Origin); err != nil {
 				return err
 			}
-			out = append(out, Recorded{ID: id, Decision: d})
+			out = append(out, r)
 		}
 		return nil
 	})

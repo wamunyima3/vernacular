@@ -1,6 +1,7 @@
 import type { Schemas } from "@vernacular/api-client"
 
 import { formText, isOneOf } from "@/lib/form-data"
+import { wordClassInput } from "@/lib/word-class"
 
 export const rejectReasons = [
   "Wrong meaning",
@@ -12,7 +13,7 @@ export const rejectReasons = [
 
 /**
  * Reads a decision form into the contract's input. Accept takes the chosen
- * candidate; reject applies to every candidate on the card.
+ * candidate; reject and correct apply to every candidate on the card.
  */
 export function decisionInput(
   form: FormData,
@@ -28,6 +29,17 @@ export function decisionInput(
       body: {
         decisions: candidates.map((sense_id) => ({ sense_id, decision: "reject" as const })),
         comment: note ? `${reason}: ${note}` : reason,
+      },
+    }
+  }
+  if (form.get("decision") === "correct") {
+    const headword = text("correction_headword")
+    if (!headword) return { ok: false, error: "Write the right word." }
+    return {
+      ok: true,
+      body: {
+        decisions: candidates.map((sense_id) => ({ sense_id, decision: "correct" as const })),
+        correction: { headword, ...wordClassInput(form, "correction_") },
       },
     }
   }

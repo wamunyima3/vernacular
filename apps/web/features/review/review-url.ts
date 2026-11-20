@@ -11,7 +11,11 @@ export type LastDecision = { reviews: string[]; decision: Schemas["ReviewDecisio
 /** Search params as Next.js passes them. */
 export type Params = Record<string, string | string[] | undefined>
 
-const decisions = ["accept", "reject"] as const satisfies readonly Schemas["ReviewDecision"][]
+const decisions = [
+  "accept",
+  "reject",
+  "correct",
+] as const satisfies readonly Schemas["ReviewDecision"][]
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const one = (params: Params, k: string) => (Array.isArray(params[k]) ? params[k][0] : params[k])

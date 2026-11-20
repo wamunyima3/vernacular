@@ -75,4 +75,33 @@ describe("decisionInput", () => {
       ).ok,
     ).toBe(false)
   })
+
+  it("corrects every candidate with the reviewer's own word", () => {
+    const f = form([
+      ["candidate", a],
+      ["candidate", b],
+      ["decision", "correct"],
+      ["correction_headword", " ilibwe "],
+      ["correction_part_of_speech", "verb"],
+      ["correction_noun_class", "5/6"],
+    ])
+    expect(decisionInput(f)).toEqual({
+      ok: true,
+      body: {
+        decisions: [
+          { sense_id: a, decision: "correct" },
+          { sense_id: b, decision: "correct" },
+        ],
+        correction: { headword: "ilibwe", part_of_speech: "verb" },
+      },
+    })
+    expect(
+      decisionInput(
+        form([
+          ["candidate", a],
+          ["decision", "correct"],
+        ]),
+      ).ok,
+    ).toBe(false)
+  })
 })
