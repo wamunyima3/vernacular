@@ -119,12 +119,15 @@ export interface components {
              */
             release?: string;
         };
+        /**
+         * @description Stable machine-readable code. Codes are never renamed; new codes may be added,
+         *     so treat unknown values as a generic error.
+         * @example not_found
+         * @enum {string}
+         */
+        ErrorCode: "bad_request" | "unauthorized" | "forbidden" | "not_found" | "method_not_allowed" | "rate_limited" | "internal" | "unavailable";
         Error: {
-            /**
-             * @description Stable machine-readable code
-             * @example not_found
-             */
-            code: string;
+            code: components["schemas"]["ErrorCode"];
             /** @example Entry not found */
             message: string;
             /** Format: uri */

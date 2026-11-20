@@ -12,7 +12,6 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
-	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
 )
 
@@ -55,7 +54,7 @@ func TestListLanguages(t *testing.T) {
 		deps       server.Deps
 		wantStatus int
 		wantCodes  []string
-		wantError  string
+		wantError  gen.ErrorCode
 	}{
 		{
 			name:       "returns languages in store order",
@@ -73,7 +72,7 @@ func TestListLanguages(t *testing.T) {
 			name:       "store failure becomes a uniform internal error",
 			deps:       server.Deps{Languages: fakeLanguages{err: errors.New("db down")}},
 			wantStatus: http.StatusInternalServerError,
-			wantError:  httpx.CodeInternal,
+			wantError:  gen.Internal,
 		},
 	}
 	for _, tt := range tests {
@@ -87,7 +86,7 @@ func TestListLanguages(t *testing.T) {
 				t.Fatalf("status = %d, want %d", status, tt.wantStatus)
 			}
 			if tt.wantError != "" {
-				if body.Code != tt.wantError || body.DocsUrl != "https://docs.example/errors#"+tt.wantError {
+				if body.Code != tt.wantError || body.DocsUrl != "https://docs.example/errors#"+string(tt.wantError) {
 					t.Fatalf("error body = %+v, want code %q with docs link", body.Error, tt.wantError)
 				}
 				return
@@ -131,7 +130,7 @@ func TestUnknownRouteUsesErrorBody(t *testing.T) {
 	if status := get(t, newServer(server.Deps{}), "/v1/nope", &body); status != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", status)
 	}
-	if body.Code != httpx.CodeNotFound {
-		t.Fatalf("code = %q, want %q", body.Code, httpx.CodeNotFound)
+	if body.Code != gen.NotFound {
+		t.Fatalf("code = %q, want %q", body.Code, gen.NotFound)
 	}
 }

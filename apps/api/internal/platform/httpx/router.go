@@ -24,7 +24,7 @@ func NewRouter(opts RouterOptions) chi.Router {
 	r.Use(
 		middleware.RequestID,
 		requestLogger(opts.Log),
-		middleware.Recoverer,
+		opts.Errors.Recover,
 		cors.Handler(cors.Options{
 			AllowedOrigins: opts.AllowedOrigins,
 			AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},

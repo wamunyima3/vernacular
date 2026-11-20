@@ -14,6 +14,42 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Defines values for ErrorCode.
+const (
+	BadRequest       ErrorCode = "bad_request"
+	Forbidden        ErrorCode = "forbidden"
+	Internal         ErrorCode = "internal"
+	MethodNotAllowed ErrorCode = "method_not_allowed"
+	NotFound         ErrorCode = "not_found"
+	RateLimited      ErrorCode = "rate_limited"
+	Unauthorized     ErrorCode = "unauthorized"
+	Unavailable      ErrorCode = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the ErrorCode enum.
+func (e ErrorCode) Valid() bool {
+	switch e {
+	case BadRequest:
+		return true
+	case Forbidden:
+		return true
+	case Internal:
+		return true
+	case MethodNotAllowed:
+		return true
+	case NotFound:
+		return true
+	case RateLimited:
+		return true
+	case Unauthorized:
+		return true
+	case Unavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	Ok HealthStatus = "ok"
@@ -76,15 +112,23 @@ func (e TrustStatus) Valid() bool {
 
 // Error defines model for Error.
 type Error struct {
-	// Code Stable machine-readable code
+	// Code Stable machine-readable code. Codes are never renamed; new codes may be added,
+	// so treat unknown values as a generic error.
+	//
 	//
 	// Example: not_found
-	Code    string `json:"code"`
-	DocsUrl string `json:"docs_url"`
+	Code    ErrorCode `json:"code"`
+	DocsUrl string    `json:"docs_url"`
 
 	// Message Example: Entry not found
 	Message string `json:"message"`
 }
+
+// ErrorCode Stable machine-readable code. Codes are never renamed; new codes may be added,
+// so treat unknown values as a generic error.
+//
+// Example: not_found
+type ErrorCode string
 
 // Health defines model for Health.
 type Health struct {

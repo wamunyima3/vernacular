@@ -149,14 +149,28 @@ components:
           description: Dataset release the item belongs to, absent until first released
           pattern: "^[0-9]{4}\\.[0-9]+$"
           example: "2027.1"
+    ErrorCode:
+      type: string
+      description: |
+        Stable machine-readable code. Codes are never renamed; new codes may be added,
+        so treat unknown values as a generic error.
+      enum:
+        [
+          bad_request,
+          unauthorized,
+          forbidden,
+          not_found,
+          method_not_allowed,
+          rate_limited,
+          internal,
+          unavailable,
+        ]
+      example: not_found
     Error:
       type: object
       required: [code, message, docs_url]
       properties:
-        code:
-          type: string
-          description: Stable machine-readable code
-          example: not_found
+        code: { $ref: "#/components/schemas/ErrorCode" }
         message:
           type: string
           example: Entry not found
