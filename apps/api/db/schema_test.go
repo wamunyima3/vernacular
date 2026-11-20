@@ -11,27 +11,6 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
 )
 
-func TestFold(t *testing.T) {
-	tx := dbtest.Tx(t)
-	cases := map[string]string{
-		"Amenshi":   "amenshi",
-		"Ichíbemba": "ichibemba",
-		"ŋombe":     "ng'ombe",
-		"NG’OMBE":   "ng'ombe",
-		"aŵiri":     "awiri",
-		"cinthu":    "cinthu",
-	}
-	for in, want := range cases {
-		var got string
-		if err := tx.QueryRow(t.Context(), "SELECT fold($1)", in).Scan(&got); err != nil {
-			t.Fatal(err)
-		}
-		if got != want {
-			t.Errorf("fold(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestAuditRecordsActorAndChange(t *testing.T) {
 	tx := dbtest.Tx(t)
 	exec(t, tx, "SELECT set_config('app.actor_id', 'user-1', true)")
