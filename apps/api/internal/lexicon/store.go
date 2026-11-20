@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon/dbgen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/textnorm"
 )
@@ -33,13 +34,14 @@ type Added struct {
 
 // Store reads and writes lexicon tables.
 type Store struct {
-	q *dbgen.Queries
+	q     *dbgen.Queries
+	items *items.Store
 }
 
 // NewStore wraps a pool or transaction. Writes that span several rows should
 // be given a transaction.
 func NewStore(db dbgen.DBTX) *Store {
-	return &Store{q: dbgen.New(db)}
+	return &Store{q: dbgen.New(db), items: items.NewStore(db)}
 }
 
 // AddSourced normalises the headword and gloss (textnorm), then records a sense with status `sourced`, creating its concept and
@@ -56,13 +58,14 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 		return added, fmt.Errorf("upsert concept %q: %w", in.GlossEn, err)
 	}
 	conceptID := uuid.NullUUID{UUID: concept.ID, Valid: true}
+	origin := items.Sourced(in.SourceID, in.Reference)
 
 	pos := dbgen.NullPartOfSpeech{PartOfSpeech: dbgen.PartOfSpeech(in.PartOfSpeech), Valid: in.PartOfSpeech != ""}
 	headword := in.Headword
 	entryID, err := s.q.FindEntry(ctx, dbgen.FindEntryParams{LanguageCode: in.Language, Headword: headword, PartOfSpeech: pos})
 	if errors.Is(err, pgx.ErrNoRows) {
 		added.Entry = true
-		entryID, err = s.newItem(ctx, dbgen.ItemKindEntry, in, func(id uuid.UUID) error {
+		entryID, err = s.items.Create(ctx, items.KindEntry, in.Language, origin, func(id uuid.UUID) error {
 			return s.q.CreateEntry(ctx, dbgen.CreateEntryParams{ID: id, LanguageCode: in.Language, Headword: headword, PartOfSpeech: pos})
 		})
 	}
@@ -73,7 +76,7 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 	_, err = s.q.FindSense(ctx, dbgen.FindSenseParams{EntryID: entryID, ConceptID: conceptID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		added.Sense = true
-		_, err = s.newItem(ctx, dbgen.ItemKindSense, in, func(id uuid.UUID) error {
+		_, err = s.items.Create(ctx, items.KindSense, in.Language, origin, func(id uuid.UUID) error {
 			return s.q.CreateSense(ctx, dbgen.CreateSenseParams{
 				ID: id, EntryID: entryID, ConceptID: conceptID, Gloss: in.GlossEn,
 			})
@@ -100,21 +103,4 @@ func (s *Store) AddCoreConcept(ctx context.Context, glossEn, domain string) (boo
 		return false, fmt.Errorf("upsert concept %q: %w", glossEn, err)
 	}
 	return row.Inserted, nil
-}
-
-// newItem creates the shared items row (ADR-0006), then the typed row through
-// create, then links the source. It is the only way lexicon rows are created.
-func (s *Store) newItem(ctx context.Context, kind dbgen.ItemKind, in SourcedSense, create func(uuid.UUID) error) (uuid.UUID, error) {
-	id, err := s.q.CreateItem(ctx, dbgen.CreateItemParams{Kind: kind, LanguageCode: in.Language, Status: dbgen.TrustStatusSourced})
-	if err != nil {
-		return id, fmt.Errorf("create item: %w", err)
-	}
-	if err := create(id); err != nil {
-		return id, err
-	}
-	err = s.q.LinkSource(ctx, dbgen.LinkSourceParams{ItemID: id, SourceID: in.SourceID, Reference: in.Reference})
-	if err != nil {
-		return id, fmt.Errorf("link source: %w", err)
-	}
-	return id, nil
 }

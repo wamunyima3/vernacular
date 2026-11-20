@@ -107,7 +107,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 
 ### Review
 
-- [ ] **P1-REV-00** Give `items` and `item_sources` one owner (the review module) with a service that lexicon calls, and have `sources` depend on a lexicon writer interface instead of `lexicon.NewStore` (S) → architecture §5
+- [x] **P1-REV-00** Give `items` and `item_sources` one owner (`internal/items`) with a store that lexicon calls, and have `sources` depend on a lexicon writer interface instead of `lexicon.NewStore` (S) → architecture §5
 - [ ] **P1-REV-01** Contribute slice: propose entry, sense, example or correction (M) → CON-1, US-18
 - [ ] **P1-REV-02** Review queue slice, blind and mobile-first (L, split before starting) → CON-2, CON-3, DQ-4, AI-4, US-20
 - [ ] **P1-REV-03** Promotion rules: two independent accepts make an item `verified`; a correction keeps its history (M) → DQ-2, PRV-2, US-22

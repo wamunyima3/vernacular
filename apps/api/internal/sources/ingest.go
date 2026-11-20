@@ -43,6 +43,15 @@ type Feed struct {
 	Parser   Parser
 }
 
+// LexiconWriter is what ingestion needs from the lexicon module.
+type LexiconWriter interface {
+	AddSourced(ctx context.Context, in lexicon.SourcedSense) (lexicon.Added, error)
+	AddCoreConcept(ctx context.Context, glossEn, domain string) (bool, error)
+}
+
+// newLexicon gives a writer bound to the import transaction.
+var newLexicon = func(tx pgx.Tx) LexiconWriter { return lexicon.NewStore(tx) }
+
 // Stats counts what an ingest created.
 type Stats struct {
 	Records, Entries, Senses int
@@ -60,7 +69,7 @@ func Ingest(ctx context.Context, db database.Beginner, feed Feed, r io.Reader) (
 		if err != nil {
 			return fmt.Errorf("get source: %w", err)
 		}
-		lex := lexicon.NewStore(tx)
+		lex := newLexicon(tx)
 		for rec, err := range feed.Parser.Parse(r) {
 			if err != nil {
 				return err

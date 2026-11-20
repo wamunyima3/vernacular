@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createEntry = `-- name: CreateEntry :exec
@@ -31,30 +30,6 @@ func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) error 
 		arg.PartOfSpeech,
 	)
 	return err
-}
-
-const createItem = `-- name: CreateItem :one
-INSERT INTO items (kind, language_code, status, author_id) VALUES ($1, $2, $3, $4)
-RETURNING id
-`
-
-type CreateItemParams struct {
-	Kind         ItemKind
-	LanguageCode string
-	Status       TrustStatus
-	AuthorID     pgtype.Text
-}
-
-func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createItem,
-		arg.Kind,
-		arg.LanguageCode,
-		arg.Status,
-		arg.AuthorID,
-	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
 }
 
 const createSense = `-- name: CreateSense :exec
@@ -111,22 +86,6 @@ func (q *Queries) FindSense(ctx context.Context, arg FindSenseParams) (uuid.UUID
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
-}
-
-const linkSource = `-- name: LinkSource :exec
-INSERT INTO item_sources (item_id, source_id, reference) VALUES ($1, $2, $3)
-ON CONFLICT DO NOTHING
-`
-
-type LinkSourceParams struct {
-	ItemID    uuid.UUID
-	SourceID  uuid.UUID
-	Reference string
-}
-
-func (q *Queries) LinkSource(ctx context.Context, arg LinkSourceParams) error {
-	_, err := q.db.Exec(ctx, linkSource, arg.ItemID, arg.SourceID, arg.Reference)
-	return err
 }
 
 const upsertConcept = `-- name: UpsertConcept :one

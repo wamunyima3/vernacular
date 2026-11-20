@@ -79,6 +79,7 @@ handler.go  →  service.go  →  store.go  →  dbgen (sqlc)
 | Module                | Owns                                                   | Phase |
 | --------------------- | ------------------------------------------------------ | ----- |
 | `languages`           | languages, varieties, counts                           | S     |
+| `items`               | `items`, `item_sources`: creating reviewable rows      | 0     |
 | `lexicon`             | concepts, entries, variants, senses, examples, search  | 1     |
 | `phrases`             | phrase packs, exact-match translate                    | 1     |
 | `detect`              | language identification                                | 1     |

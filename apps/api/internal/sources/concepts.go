@@ -10,7 +10,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 )
 
@@ -30,7 +29,7 @@ func ImportConcepts(ctx context.Context, db database.Beginner, r io.Reader) (int
 
 	added := 0
 	err = database.InTx(ctx, db, "ingest:concepts", func(tx pgx.Tx) error {
-		lex := lexicon.NewStore(tx)
+		lex := newLexicon(tx)
 		for {
 			rec, err := rows.Read()
 			if errors.Is(err, io.EOF) {
