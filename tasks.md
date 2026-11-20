@@ -61,7 +61,7 @@ Done when: at least one licensed source per language is signed, and the schema a
 
 ### Content
 
-- [ ] **P0-CNT-01** Download Google SMOL and GATITOS and list exactly which Zambian languages they cover (S)
+- [x] **P0-CNT-01** Download Google SMOL and GATITOS and list exactly which Zambian languages they cover (S) → [findings](docs/sources/smol-gatitos.md)
 - [ ] **P0-CNT-02** Draft the Bemba and Nyanja style guides in `docs/style-guides/` (M) → DQ-5
 - [ ] **P0-CNT-03** Draft the core concept list (~4,000), starting from GATITOS and adding Zambian everyday terms (L, split before starting) → LEX-7
 
