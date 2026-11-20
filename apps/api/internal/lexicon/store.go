@@ -29,7 +29,7 @@ type SourcedSense struct {
 
 // Added reports which rows an AddSourced call created.
 type Added struct {
-	Entry, Sense bool
+	Entry, Sense, Variant bool
 }
 
 // Store reads and writes lexicon tables.
@@ -61,7 +61,9 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 	origin := items.Sourced(in.SourceID, in.Reference)
 
 	pos := dbgen.NullPartOfSpeech{PartOfSpeech: dbgen.PartOfSpeech(in.PartOfSpeech), Valid: in.PartOfSpeech != ""}
-	headword := in.Headword
+	// Spellings that differ only by orthography merge into one entry under the
+	// style guide's standard form; the source's spelling becomes a variant.
+	headword, variant := Standardise(in.Language, in.Headword)
 	entryID, err := s.q.FindEntry(ctx, dbgen.FindEntryParams{LanguageCode: in.Language, Headword: headword, PartOfSpeech: pos})
 	if errors.Is(err, pgx.ErrNoRows) {
 		added.Entry = true
@@ -71,6 +73,14 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 	}
 	if err != nil {
 		return added, fmt.Errorf("entry %q: %w", headword, err)
+	}
+
+	if variant != "" {
+		n, err := s.q.AddVariant(ctx, dbgen.AddVariantParams{EntryID: entryID, Spelling: variant, Note: "as written in " + in.Reference})
+		if err != nil {
+			return added, fmt.Errorf("variant %q: %w", variant, err)
+		}
+		added.Variant = n > 0
 	}
 
 	_, err = s.q.FindSense(ctx, dbgen.FindSenseParams{EntryID: entryID, ConceptID: conceptID})

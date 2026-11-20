@@ -12,7 +12,8 @@ import (
 // Made-up words, so the test does not depend on what `make seed` imported.
 const sample = `{"src": "test water", "trgs": ["zzamenshi"]}
 {"src": "Test hello", "trgs": ["Zzmuli shani", "zzhalo"]}
-{"src": "test hi", "trgs": ["Zzmuli shani"]}`
+{"src": "test hi", "trgs": ["Zzmuli shani"]}
+{"src": "test thing", "trgs": ["zzichintu", "zzicintu"]}`
 
 func feed(t *testing.T) sources.Feed {
 	t.Helper()
@@ -31,15 +32,17 @@ func TestIngestIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// "zzmuli shani" is one entry with two senses (hello, hi).
-	if want := (sources.Stats{Records: 4, Entries: 3, Senses: 4}); first != want {
+	// "zzmuli shani" is one entry with two senses (hello, hi). "zzichintu" is
+	// stored as the standard "zzicintu" with a variant, and the source's own
+	// "zzicintu" then merges into that entry.
+	if want := (sources.Stats{Records: 6, Entries: 4, Senses: 5, Variants: 1}); first != want {
 		t.Errorf("first run = %+v, want %+v", first, want)
 	}
 	again, err := sources.Ingest(t.Context(), tx, f, strings.NewReader(sample))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (sources.Stats{Records: 4}); again != want {
+	if want := (sources.Stats{Records: 6}); again != want {
 		t.Errorf("second run = %+v, want %+v (nothing new)", again, want)
 	}
 

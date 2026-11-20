@@ -72,7 +72,8 @@ func importFeed(ctx context.Context, db database.Beginner, feed sources.Feed, fi
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s: %d records, %d new entries, %d new senses\n", feed.Name, stats.Records, stats.Entries, stats.Senses)
+	fmt.Printf("%s: %d records, %d new entries, %d new senses, %d new variants\n",
+		feed.Name, stats.Records, stats.Entries, stats.Senses, stats.Variants)
 	return nil
 }
 

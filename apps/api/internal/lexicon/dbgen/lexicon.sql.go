@@ -11,6 +11,25 @@ import (
 	"github.com/google/uuid"
 )
 
+const addVariant = `-- name: AddVariant :execrows
+INSERT INTO variants (entry_id, spelling, note) VALUES ($1, $2, $3)
+ON CONFLICT (entry_id, spelling) DO NOTHING
+`
+
+type AddVariantParams struct {
+	EntryID  uuid.UUID
+	Spelling string
+	Note     string
+}
+
+func (q *Queries) AddVariant(ctx context.Context, arg AddVariantParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addVariant, arg.EntryID, arg.Spelling, arg.Note)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createEntry = `-- name: CreateEntry :exec
 INSERT INTO entries (id, language_code, headword, part_of_speech) VALUES ($1, $2, $3, $4)
 `

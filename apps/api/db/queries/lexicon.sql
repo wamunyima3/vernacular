@@ -29,3 +29,7 @@ SELECT id FROM senses WHERE entry_id = $1 AND concept_id = $2;
 -- name: CreateSense :exec
 INSERT INTO senses (id, entry_id, concept_id, gloss, position)
 VALUES ($1, $2, $3, $4, (SELECT coalesce(max(position), 0) + 1 FROM senses WHERE entry_id = $2));
+
+-- name: AddVariant :execrows
+INSERT INTO variants (entry_id, spelling, note) VALUES ($1, $2, $3)
+ON CONFLICT (entry_id, spelling) DO NOTHING;

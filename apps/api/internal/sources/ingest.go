@@ -54,7 +54,7 @@ var newLexicon = func(tx pgx.Tx) LexiconWriter { return lexicon.NewStore(tx) }
 
 // Stats counts what an ingest created.
 type Stats struct {
-	Records, Entries, Senses int
+	Records, Entries, Senses, Variants int
 }
 
 // Ingest stores every record of a feed as `sourced` lexicon data, in one
@@ -87,6 +87,9 @@ func Ingest(ctx context.Context, db database.Beginner, feed Feed, r io.Reader) (
 			}
 			if added.Sense {
 				stats.Senses++
+			}
+			if added.Variant {
+				stats.Variants++
 			}
 		}
 		return nil
