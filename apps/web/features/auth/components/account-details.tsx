@@ -1,6 +1,8 @@
+import { ErrorCard } from "@/components/error-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiAs } from "@/lib/api"
+import { apiErrorMessage } from "@/lib/api-error"
 
 import { requireSession } from "../session"
 
@@ -10,16 +12,7 @@ export async function AccountDetails() {
   const { data: me, error } = await apiAs(session.token).GET("/v1/me")
 
   if (!me) {
-    return (
-      <Card role="alert">
-        <CardHeader>
-          <CardTitle>Your account could not be loaded</CardTitle>
-          <CardDescription className="text-pretty">
-            {error?.message ?? "The API is unreachable."} Reload the page to try again.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    )
+    return <ErrorCard title="Your account could not be loaded" message={apiErrorMessage(error)} />
   }
 
   return (

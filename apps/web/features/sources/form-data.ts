@@ -1,5 +1,7 @@
 import type { Schemas } from "@vernacular/api-client"
 
+import { formText, isOneOf } from "@/lib/form-data"
+
 export const sourceKinds = [
   "licensed",
   "contributor",
@@ -12,12 +14,9 @@ export const allowedUses = [
   "train",
 ] as const satisfies readonly Schemas["AllowedUse"][]
 
-const isOneOf = <T extends string>(list: readonly T[], value: unknown): value is T =>
-  typeof value === "string" && (list as readonly string[]).includes(value)
-
 /** Reads the source form into the contract's input type. The API validates it again. */
 export function sourceInput(form: FormData): Schemas["SourceInput"] {
-  const text = (name: string) => String(form.get(name) ?? "").trim()
+  const text = formText(form)
   const kind = form.get("kind")
   const url = text("url")
   return {

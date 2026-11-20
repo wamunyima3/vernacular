@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ErrorCard } from "@/components/error-card"
 import { apiErrorMessage } from "@/lib/api-error"
 import { api } from "@/lib/api"
 
@@ -15,14 +15,7 @@ export async function SourcesOverview() {
 
   const { data, error } = await api.GET("/v1/sources")
   if (!data) {
-    return (
-      <Card role="alert">
-        <CardHeader>
-          <CardTitle>The register could not be loaded</CardTitle>
-          <CardDescription>{apiErrorMessage(error)} Reload the page to try again.</CardDescription>
-        </CardHeader>
-      </Card>
-    )
+    return <ErrorCard title="The register could not be loaded" message={apiErrorMessage(error)} />
   }
   return (
     <div className="flex flex-col gap-4">

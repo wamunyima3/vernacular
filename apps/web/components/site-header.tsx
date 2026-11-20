@@ -8,7 +8,10 @@ export function SiteHeader({ children }: { children?: React.ReactNode }) {
         <Link href="/" className="font-semibold">
           Vernacular
         </Link>
-        <nav className="flex items-center gap-4 text-sm">{children}</nav>
+        {/* On narrow phones the links scroll inside the bar instead of widening the page. */}
+        <nav className="-mr-4 flex min-w-0 items-center gap-3 overflow-x-auto pr-4 text-sm whitespace-nowrap sm:gap-4">
+          {children}
+        </nav>
       </div>
     </header>
   )

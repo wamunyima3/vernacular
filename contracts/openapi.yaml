@@ -18,6 +18,7 @@ tags:
   - name: languages
   - name: accounts
   - name: sources
+  - name: contributions
 paths:
   /healthz:
     get:
@@ -62,6 +63,30 @@ paths:
               schema: { $ref: "#/components/schemas/Me" }
         "401":
           $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/contributions:
+    post:
+      operationId: createContribution
+      summary: Propose a word (contributors)
+      description: |
+        Adds an entry and sense, and optionally an example, as `sourced` and queues them for
+        blind review (CON-1, US-18). If the word and meaning already exist, the contribution
+        is recorded as agreement with them instead.
+      tags: [contributions]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContributionInput" }
+      responses:
+        "201":
+          description: Recorded and queued for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contribution" }
         default:
           $ref: "#/components/responses/Error"
   /v1/sources:
@@ -330,6 +355,70 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/Source" }
+    PartOfSpeech:
+      type: string
+      enum:
+        [
+          noun,
+          verb,
+          adjective,
+          adverb,
+          pronoun,
+          numeral,
+          conjunction,
+          preposition,
+          interjection,
+          phrase,
+          ideophone,
+        ]
+    ContributionInput:
+      type: object
+      additionalProperties: false
+      required: [language, headword, part_of_speech, gloss_en, agree_to_licence]
+      properties:
+        language:
+          type: string
+          description: ISO 639-3 code of an active language
+          pattern: "^[a-z]{3}$"
+          example: bem
+        headword:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: amenshi
+        part_of_speech: { $ref: "#/components/schemas/PartOfSpeech" }
+        noun_class:
+          type: string
+          description: Singular/plural class pair, for nouns
+          pattern: "^[0-9]{1,2}(/[0-9]{1,2})?$"
+          example: "6"
+        gloss_en:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: water
+        example:
+          type: object
+          additionalProperties: false
+          required: [text, translation_en]
+          properties:
+            text: { type: string, minLength: 1, maxLength: 500 }
+            translation_en: { type: string, minLength: 1, maxLength: 500 }
+        agree_to_licence:
+          type: boolean
+          description: The contributor agrees their contribution is published under the dataset licence
+          enum: [true]
+    Contribution:
+      type: object
+      required: [entry_id, sense_id, new_sense, trust]
+      properties:
+        entry_id: { type: string, format: uuid }
+        sense_id: { type: string, format: uuid }
+        example_id: { type: string, format: uuid }
+        new_sense:
+          type: boolean
+          description: False when the word and meaning were already known; the contribution counts as agreement
+        trust: { $ref: "#/components/schemas/Trust" }
     TrustStatus:
       type: string
       description: |

@@ -1,3 +1,4 @@
+import { ErrorCard } from "@/components/error-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -10,16 +11,7 @@ export async function LanguageList() {
   const result = await getLanguages()
 
   if (!result.ok) {
-    return (
-      <Card role="alert">
-        <CardHeader>
-          <CardTitle>Languages could not be loaded</CardTitle>
-          <CardDescription className="text-pretty">
-            {result.message} Reload the page to try again.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    )
+    return <ErrorCard title="Languages could not be loaded" message={result.message} />
   }
 
   return (

@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
+import { capitalise } from "@/lib/utils"
 
 import type { SourceFormState } from "../actions"
 import { allowedUses, sourceKinds } from "../form-data"
@@ -51,7 +52,7 @@ export function SourceForm({
           <NativeSelect id="kind" name="kind" defaultValue={source?.kind ?? "licensed"}>
             {sourceKinds.map((k) => (
               <NativeSelectOption key={k} value={k}>
-                {k[0]?.toUpperCase() + k.slice(1)}
+                {capitalise(k)}
               </NativeSelectOption>
             ))}
           </NativeSelect>

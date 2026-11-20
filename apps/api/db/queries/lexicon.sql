@@ -51,3 +51,6 @@ SELECT id FROM concepts WHERE core ORDER BY gloss_en;
 -- Serialises lexicon writes per language across concurrent transactions;
 -- released when the transaction ends.
 SELECT pg_advisory_xact_lock(hashtext('lexicon:' || @language_code::text));
+
+-- name: CreateExample :exec
+INSERT INTO examples (id, sense_id, text, translation_en) VALUES ($1, $2, $3, $4);

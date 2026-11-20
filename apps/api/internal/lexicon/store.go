@@ -35,6 +35,7 @@ type Proposal struct {
 // sense already existed and the origin was added to its sources.
 type Added struct {
 	Entry, Sense, Variant bool
+	EntryID, SenseID      uuid.UUID
 }
 
 // Store reads and writes lexicon tables.
@@ -104,11 +105,12 @@ func (s *Store) Add(ctx context.Context, p Proposal) (Added, error) {
 		added.Variant = n > 0
 	}
 
+	added.EntryID = entryID
 	senseID, err := s.q.FindSense(ctx, dbgen.FindSenseParams{EntryID: entryID, ConceptID: conceptID})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		added.Sense = true
-		_, err = s.items.Create(ctx, items.KindSense, p.Language, p.Origin, func(id uuid.UUID) error {
+		senseID, err = s.items.Create(ctx, items.KindSense, p.Language, p.Origin, func(id uuid.UUID) error {
 			return s.q.CreateSense(ctx, dbgen.CreateSenseParams{
 				ID: id, EntryID: entryID, ConceptID: conceptID, Gloss: p.GlossEn,
 			})
@@ -119,7 +121,24 @@ func (s *Store) Add(ctx context.Context, p Proposal) (Added, error) {
 	if err != nil {
 		return added, fmt.Errorf("sense %q = %q: %w", headword, p.GlossEn, err)
 	}
+	added.SenseID = senseID
 	return added, nil
+}
+
+// AddExample records a usage example of a sense with its English
+// translation, as a reviewable item of its own.
+func (s *Store) AddExample(ctx context.Context, language string, senseID uuid.UUID, text, translationEn string, origin items.Origin) (uuid.UUID, error) {
+	text, translationEn = textnorm.Squash(textnorm.NFC(text)), textnorm.Squash(textnorm.NFC(translationEn))
+	if text == "" || translationEn == "" {
+		return uuid.Nil, errors.New("example text and translation are required")
+	}
+	id, err := s.items.Create(ctx, items.KindExample, language, origin, func(id uuid.UUID) error {
+		return s.q.CreateExample(ctx, dbgen.CreateExampleParams{ID: id, SenseID: senseID, Text: text, TranslationEn: translationEn})
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("example: %w", err)
+	}
+	return id, nil
 }
 
 // lock takes the language's write lock once per transaction, so concurrent

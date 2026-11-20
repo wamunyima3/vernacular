@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
 // Handler implements the source register operations of the generated strict server.
@@ -84,7 +85,7 @@ func toAPI(s Source) gen.Source {
 	}
 	return gen.Source{
 		Id: s.ID, Kind: gen.SourceKind(s.Kind), Name: s.Name, RightsHolder: s.RightsHolder, Licence: s.Licence,
-		Url: ptr(s.URL), AllowedUses: uses, Notes: ptr(s.Notes),
+		Url: httpx.Optional(s.URL), AllowedUses: uses, Notes: httpx.Optional(s.Notes),
 		HasPermissionDocument: s.HasPermissionDocument, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 	}
 }
@@ -94,11 +95,4 @@ func deref(p *string) string {
 		return ""
 	}
 	return *p
-}
-
-func ptr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }

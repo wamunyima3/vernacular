@@ -76,20 +76,21 @@ handler.go  →  service.go  →  store.go  →  dbgen (sqlc)
 - **Across modules**, code calls another module's service interface. It never reaches into another module's store or tables.
 - **Shared code** moves to `internal/platform` on its _second_ use, not before.
 
-| Module                | Owns                                                   | Phase |
-| --------------------- | ------------------------------------------------------ | ----- |
-| `languages`           | languages, varieties, counts                           | S     |
-| `items`               | `items`, `item_sources`: creating reviewable rows      | 0     |
-| `lexicon`             | concepts, entries, variants, senses, examples, search  | 1     |
-| `phrases`             | phrase packs, exact-match translate                    | 1     |
-| `detect`              | language identification                                | 1     |
-| `review`              | queue, decisions, promotion, disputes, reviewer scores | 1     |
-| `sources`             | source register, ingestion, normaliser                 | 1     |
-| `candidates`          | AI candidate jobs and agreement scoring                | 1     |
-| `accounts`            | users, roles, API keys, rate-limit plans               | 1     |
-| `reports`             | user reports                                           | 1     |
-| `releases`            | release builds and exports                             | 2     |
-| `textnorm` (platform) | NFC, case and accent folding, per-language stemmers    | 0–1   |
+| Module                | Owns                                                                                   | Phase |
+| --------------------- | -------------------------------------------------------------------------------------- | ----- |
+| `languages`           | languages, varieties, counts                                                           | S     |
+| `items`               | `items`, `item_sources`: creating reviewable rows, the trust fields every item returns | 0     |
+| `lexicon`             | concepts, entries, variants, senses, examples, search                                  | 1     |
+| `phrases`             | phrase packs, exact-match translate                                                    | 1     |
+| `detect`              | language identification                                                                | 1     |
+| `review`              | queue, decisions, promotion, disputes, reviewer scores                                 | 1     |
+| `sources`             | source register, ingestion, normaliser                                                 | 1     |
+| `candidates`          | AI candidate jobs (Claude, Google Translate)                                           | 1     |
+| `contributions`       | proposals from registered contributors                                                 | 1     |
+| `accounts`            | users, roles, API keys, rate-limit plans                                               | 1     |
+| `reports`             | user reports                                                                           | 1     |
+| `releases`            | release builds and exports                                                             | 2     |
+| `textnorm` (platform) | NFC, case and accent folding                                                           | 0–1   |
 
 ## 6. Trust model
 

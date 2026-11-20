@@ -61,6 +61,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/contributions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Propose a word (contributors)
+         * @description Adds an entry and sense, and optionally an example, as `sourced` and queues them for
+         *     blind review (CON-1, US-18). If the word and meaning already exist, the contribution
+         *     is recorded as agreement with them instead.
+         */
+        post: operations["createContribution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources": {
         parameters: {
             query?: never;
@@ -222,6 +244,45 @@ export interface components {
         SourceList: {
             data: components["schemas"]["Source"][];
         };
+        /** @enum {string} */
+        PartOfSpeech: "noun" | "verb" | "adjective" | "adverb" | "pronoun" | "numeral" | "conjunction" | "preposition" | "interjection" | "phrase" | "ideophone";
+        ContributionInput: {
+            /**
+             * @description ISO 639-3 code of an active language
+             * @example bem
+             */
+            language: string;
+            /** @example amenshi */
+            headword: string;
+            part_of_speech: components["schemas"]["PartOfSpeech"];
+            /**
+             * @description Singular/plural class pair, for nouns
+             * @example 6
+             */
+            noun_class?: string;
+            /** @example water */
+            gloss_en: string;
+            example?: {
+                text: string;
+                translation_en: string;
+            };
+            /**
+             * @description The contributor agrees their contribution is published under the dataset licence
+             * @enum {boolean}
+             */
+            agree_to_licence: true;
+        };
+        Contribution: {
+            /** Format: uuid */
+            entry_id: string;
+            /** Format: uuid */
+            sense_id: string;
+            /** Format: uuid */
+            example_id?: string;
+            /** @description False when the word and meaning were already known; the contribution counts as agreement */
+            new_sense: boolean;
+            trust: components["schemas"]["Trust"];
+        };
         /**
          * @description How far an item has been checked (ADR-0004). Only `verified` is returned by default;
          *     `disputed` is never returned.
@@ -360,6 +421,31 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    createContribution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContributionInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded and queued for review */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contribution"];
+                };
+            };
             default: components["responses"]["Error"];
         };
     };

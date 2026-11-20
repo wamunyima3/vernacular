@@ -9,6 +9,22 @@ import (
 	"context"
 )
 
+const getLanguageStatus = `-- name: GetLanguageStatus :one
+SELECT name, status FROM languages WHERE code = $1
+`
+
+type GetLanguageStatusRow struct {
+	Name   string
+	Status string
+}
+
+func (q *Queries) GetLanguageStatus(ctx context.Context, code string) (GetLanguageStatusRow, error) {
+	row := q.db.QueryRow(ctx, getLanguageStatus, code)
+	var i GetLanguageStatusRow
+	err := row.Scan(&i.Name, &i.Status)
+	return i, err
+}
+
 const listLanguages = `-- name: ListLanguages :many
 SELECT code, name, own_name, wave, status
 FROM languages

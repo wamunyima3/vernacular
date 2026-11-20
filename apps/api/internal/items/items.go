@@ -73,3 +73,40 @@ func (s *Store) Link(ctx context.Context, id uuid.UUID, o Origin) error {
 	}
 	return nil
 }
+
+// Contributed is the origin of rows a registered contributor proposed
+// (CON-1). They start as `sourced`, like imports, and record their author.
+func Contributed(sourceID uuid.UUID, authorID string) Origin {
+	return Origin{Status: dbgen.TrustStatusSourced, SourceID: sourceID, Reference: "contribution", AuthorID: authorID}
+}
+
+// SourceRef is one source an item cites.
+type SourceRef struct {
+	Name, Licence, URL, Reference, Model string
+}
+
+// Trust is the provenance every returned item carries (PRV-1).
+type Trust struct {
+	Status               string
+	Sources              []SourceRef
+	Accepts, Corrections int
+}
+
+// Trust reads an item's status, sources and review counts.
+func (s *Store) Trust(ctx context.Context, id uuid.UUID) (Trust, error) {
+	row, err := s.q.GetTrust(ctx, id)
+	if err != nil {
+		return Trust{}, fmt.Errorf("get trust of %s: %w", id, err)
+	}
+	refs, err := s.q.ListTrustSources(ctx, id)
+	if err != nil {
+		return Trust{}, fmt.Errorf("list sources of %s: %w", id, err)
+	}
+	t := Trust{Status: string(row.Status), Accepts: int(row.Accepts), Corrections: int(row.Corrections)}
+	for _, r := range refs {
+		t.Sources = append(t.Sources, SourceRef{
+			Name: r.Name, Licence: r.Licence, URL: r.Url.String, Reference: r.Reference, Model: r.Model.String,
+		})
+	}
+	return t, nil
+}

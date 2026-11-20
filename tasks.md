@@ -111,7 +111,10 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-AI-03a** Apply the /simplify findings on P1-AI-02/03 (S): agreement and priority are now the `review_agreement` view, read by the queue; restem reads active languages; provider source names live in `candidates`
 
 - [x] **P1-REV-00** Give `items` and `item_sources` one owner (`internal/items`) with a store that lexicon calls, and have `sources` depend on a lexicon writer interface instead of `lexicon.NewStore` (S) → architecture §5
-- [ ] **P1-REV-01** Contribute slice: propose entry, sense, example or correction (M) → CON-1, US-18
+- [x] **P1-REV-01** Contribute slice: propose entry, sense and example (M) → CON-1, US-18
+  - [x] api: `POST /v1/contributions`, stored as `sourced` citing "Community contributors" and the author
+  - [x] web: `(tools)/contribute`, with the trust badge on the receipt
+- [ ] **P1-REV-01b** Corrections: propose a change to an existing item, linked to it and kept in its history (M) → CON-1, US-18, PRV-2. Needs item reads (P1-API) and promotion rules (P1-REV-03)
 - [ ] **P1-REV-02** Review queue slice, blind and mobile-first (L, split before starting) → CON-2, CON-3, DQ-4, AI-4, US-20
 - [ ] **P1-REV-03** Promotion rules: two independent accepts make an item `verified`; a correction keeps its history (M) → DQ-2, PRV-2, US-22
 - [ ] **P1-REV-04** Disputes slice for senior reviewers (M) → CON-4, DQ-8, US-23

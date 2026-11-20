@@ -59,6 +59,27 @@ func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) error 
 	return err
 }
 
+const createExample = `-- name: CreateExample :exec
+INSERT INTO examples (id, sense_id, text, translation_en) VALUES ($1, $2, $3, $4)
+`
+
+type CreateExampleParams struct {
+	ID            uuid.UUID
+	SenseID       uuid.UUID
+	Text          string
+	TranslationEn string
+}
+
+func (q *Queries) CreateExample(ctx context.Context, arg CreateExampleParams) error {
+	_, err := q.db.Exec(ctx, createExample,
+		arg.ID,
+		arg.SenseID,
+		arg.Text,
+		arg.TranslationEn,
+	)
+	return err
+}
+
 const createSense = `-- name: CreateSense :exec
 INSERT INTO senses (id, entry_id, concept_id, gloss, position)
 VALUES ($1, $2, $3, $4, (SELECT coalesce(max(position), 0) + 1 FROM senses WHERE entry_id = $2))

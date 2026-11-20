@@ -11,6 +11,7 @@ import (
 	validator "github.com/oapi-codegen/nethttp-middleware"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/health"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
@@ -24,6 +25,7 @@ type (
 	healthOps    = health.Handler
 	languagesOps = languages.Handler
 	sourcesOps   = sources.Handler
+	contribOps   = contributions.Handler
 )
 
 // api satisfies gen.StrictServerInterface by embedding one handler per module.
@@ -33,6 +35,7 @@ type api struct {
 	*healthOps
 	*languagesOps
 	*sourcesOps
+	*contribOps
 }
 
 var _ gen.StrictServerInterface = api{}
@@ -46,10 +49,11 @@ type Options struct {
 
 // Deps are the module dependencies the server wires together.
 type Deps struct {
-	DB        health.Pinger
-	Accounts  accounts.Authenticator
-	Languages languages.Lister
-	Sources   *sources.Register
+	DB            health.Pinger
+	Accounts      accounts.Authenticator
+	Languages     languages.Lister
+	Sources       *sources.Register
+	Contributions *contributions.Service
 }
 
 // New returns the full HTTP handler for the API.
@@ -63,6 +67,7 @@ func New(opts Options, deps Deps) http.Handler {
 		healthOps:    health.NewHandler(deps.DB, errs),
 		languagesOps: languages.NewHandler(deps.Languages),
 		sourcesOps:   sources.NewHandler(deps.Sources),
+		contribOps:   contributions.NewHandler(deps.Contributions),
 	}, nil, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  errs.RequestError,
 		ResponseErrorHandlerFunc: errs.ResponseError,

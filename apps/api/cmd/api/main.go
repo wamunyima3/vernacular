@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
@@ -53,10 +54,11 @@ func run() error {
 	handler := server.New(
 		server.Options{Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL},
 		server.Deps{
-			DB:        pool,
-			Accounts:  accounts.NewStore(pool),
-			Languages: languages.NewService(languages.NewStore(pool)),
-			Sources:   sources.NewRegister(pool, bucket),
+			DB:            pool,
+			Accounts:      accounts.NewStore(pool),
+			Languages:     languages.NewService(languages.NewStore(pool)),
+			Sources:       sources.NewRegister(pool, bucket),
+			Contributions: contributions.NewService(pool),
 		},
 	)
 

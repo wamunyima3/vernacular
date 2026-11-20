@@ -20,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
@@ -94,7 +95,7 @@ func restemActive(ctx context.Context, db database.Beginner) error {
 		}
 		lex := lexicon.NewStore(tx)
 		for _, l := range langs {
-			if l.Status != "active" {
+			if l.Status != string(gen.LanguageStatusActive) {
 				continue
 			}
 			n, err := lex.Restem(ctx, l.Code)
