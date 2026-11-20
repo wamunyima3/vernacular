@@ -6,8 +6,8 @@ run:
 
 linters:
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  # Copy-paste detection is jscpd's job (.jscpd.json), across Go and TS.
   enable:
-    - dupl        # copy-pasted blocks
     - goconst     # repeated string literals that should be constants
     - gocyclo     # functions that do too much
     - revive      # style and naming
@@ -19,8 +19,6 @@ linters:
     - unconvert
     - unparam
   settings:
-    dupl:
-      threshold: 100
     gocyclo:
       min-complexity: 15
     goconst:
@@ -31,7 +29,7 @@ linters:
     generated: strict # skips internal/gen and */dbgen ("Code generated ... DO NOT EDIT")
     rules:
       - path: _test\.go
-        linters: [dupl, goconst]
+        linters: [goconst]
 
 formatters:
   enable:

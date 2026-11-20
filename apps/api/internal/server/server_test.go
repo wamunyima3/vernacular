@@ -12,6 +12,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
 )
 
@@ -72,7 +73,7 @@ func TestListLanguages(t *testing.T) {
 			name:       "store failure becomes a uniform internal error",
 			deps:       server.Deps{Languages: fakeLanguages{err: errors.New("db down")}},
 			wantStatus: http.StatusInternalServerError,
-			wantError:  "internal",
+			wantError:  httpx.CodeInternal,
 		},
 	}
 	for _, tt := range tests {
@@ -130,7 +131,7 @@ func TestUnknownRouteUsesErrorBody(t *testing.T) {
 	if status := get(t, newServer(server.Deps{}), "/v1/nope", &body); status != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", status)
 	}
-	if body.Code != "not_found" {
-		t.Fatalf("code = %q, want not_found", body.Code)
+	if body.Code != httpx.CodeNotFound {
+		t.Fatalf("code = %q, want %q", body.Code, httpx.CodeNotFound)
 	}
 }

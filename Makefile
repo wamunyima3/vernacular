@@ -10,6 +10,7 @@ API_DIR      := apps/api
 # Go dev tools are pinned in apps/api/tools/go.mod, outside the app's own go.mod.
 GO_TOOL      := go tool -modfile=tools/go.mod
 COMPOSE      := docker compose -f deploy/docker-compose.yml
+GOOSE        := $(GO_TOOL) goose -dir db/migrations postgres "$(DATABASE_URL)"
 # Everything `make gen` writes. Never edited by hand.
 GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts
 
@@ -33,11 +34,15 @@ down: ## Stop local services
 
 .PHONY: migrate
 migrate: ## Apply database migrations
-	cd $(API_DIR) && $(GO_TOOL) goose -dir db/migrations postgres "$(DATABASE_URL)" up
+	cd $(API_DIR) && $(GOOSE) up
 
 .PHONY: migrate-down
 migrate-down: ## Roll back the last migration
-	cd $(API_DIR) && $(GO_TOOL) goose -dir db/migrations postgres "$(DATABASE_URL)" down
+	cd $(API_DIR) && $(GOOSE) down
+
+.PHONY: migrate-roundtrip
+migrate-roundtrip: ## Prove every migration applies, rolls back and re-applies
+	cd $(API_DIR) && $(GOOSE) up && $(GOOSE) reset && $(GOOSE) up
 
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI contract and SQL queries
@@ -63,19 +68,24 @@ dev-web:
 	pnpm --filter @vernacular/web dev
 
 .PHONY: test
-test: ## Run Go and web tests
-	cd $(API_DIR) && go test -race ./...
+test: test-api ## Run Go and web tests
 	pnpm test
 
+.PHONY: test-api
+test-api:
+	cd $(API_DIR) && go test -race ./...
+
 .PHONY: lint
-lint: ## Lint Go and TS, check formatting
-	cd $(API_DIR) && golangci-lint run ./...
+lint: lint-api ## Lint Go and TS, check formatting
 	pnpm lint
 	pnpm format:check
 
+.PHONY: lint-api
+lint-api: # golangci-lint v2 (version pinned in CI); includes go vet
+	cd $(API_DIR) && golangci-lint run ./...
+
 .PHONY: typecheck
-typecheck: ## Type-check Go and TS
-	cd $(API_DIR) && go vet ./...
+typecheck: ## Type-check TS (Go is type-checked by build, vet and lint)
 	pnpm typecheck
 
 .PHONY: dup

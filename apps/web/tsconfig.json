@@ -1,7 +1,6 @@
 {
   "extends": "@vernacular/tsconfig/base.json",
   "compilerOptions": {
-    "allowJs": true,
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [{ "name": "next" }],
@@ -12,8 +11,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

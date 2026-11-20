@@ -11,9 +11,15 @@ pre-commit:
       glob: "*.go"
       run: golangci-lint run --fix --new-from-rev=HEAD ./...
       stage_fixed: true
-    - name: eslint
+    # One job per linted package so only staged files are checked.
+    - name: eslint-web
+      root: apps/web/
       glob: "*.{ts,tsx,mjs}"
-      run: pnpm lint
+      run: pnpm exec eslint {staged_files}
+    - name: eslint-api-client
+      root: packages/api-client/
+      glob: "*.{ts,mjs}"
+      run: pnpm exec eslint {staged_files}
 
 commit-msg:
   jobs:

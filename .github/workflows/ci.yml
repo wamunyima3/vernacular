@@ -1,3 +1,4 @@
+# Each step calls the same make or pnpm target a developer runs locally.
 name: CI
 
 on:
@@ -13,9 +14,6 @@ jobs:
   api:
     name: API (Go)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
     services:
       postgres:
         image: postgres:17-alpine
@@ -26,8 +24,6 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U vernacular" --health-interval 2s --health-retries 30
-    env:
-      DATABASE_URL: postgres://vernacular:vernacular@localhost:5432/vernacular?sslmode=disable
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -36,37 +32,15 @@ jobs:
           cache-dependency-path: |
             apps/api/go.sum
             apps/api/tools/go.sum
-      - name: Migrations apply cleanly (up, down, up)
-        run: |
-          go tool -modfile=tools/go.mod goose -dir db/migrations postgres "$DATABASE_URL" up
-          go tool -modfile=tools/go.mod goose -dir db/migrations postgres "$DATABASE_URL" reset
-          go tool -modfile=tools/go.mod goose -dir db/migrations postgres "$DATABASE_URL" up
-      - run: go vet ./...
-      - run: go test -race ./...
+      - run: make migrate-roundtrip
+      - run: make test-api
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.15.0
           working-directory: apps/api
 
   web:
-    name: Web and packages (TS)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-
-  contract:
-    name: Generated code and duplication
+    name: Web, contract and duplication
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -81,8 +55,16 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ github.sha }}
+          restore-keys: turbo-
       - run: pnpm install --frozen-lockfile
-      - name: Generated code matches the contract and queries
-        run: make gen-check
-      - name: Duplication below threshold
-        run: pnpm check:dup
+      - run: make gen-check
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm check:dup

@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 /** Public developer portal shell. */
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function PortalLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <header className="border-b">
