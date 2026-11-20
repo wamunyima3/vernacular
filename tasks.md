@@ -28,11 +28,11 @@ Goal: a documented, runnable skeleton with quality gates, so feature work can st
 - [x] **S-03** Architecture document and ADRs 0001–0005 (M) → §9, §10
 - [x] **S-04** AGENTS.md, CLAUDE.md and CONTRIBUTING.md (S)
 - [x] **S-05** Monorepo tooling: pnpm workspace, Turborepo, Makefile, docker compose, MIT licence (S) → NFR-10
-- [ ] **S-06** Go API skeleton (M) → NFR-4, NFR-7
-  - [ ] contract: `contracts/openapi.yaml` with `/healthz` and `GET /v1/languages`
-  - [ ] api: chi server, config, slog, pgx pool, oapi-codegen strict server
-  - [ ] db: goose migration for `languages` (seed bem, nya); sqlc query
-  - [ ] test: handler test for `/v1/languages`
+- [x] **S-06** Go API skeleton (M) → NFR-4, NFR-7
+  - [x] contract: `contracts/openapi.yaml` with `/healthz` and `GET /v1/languages`
+  - [x] api: chi server, config, slog, pgx pool, oapi-codegen strict server
+  - [x] db: goose migration for `languages` (seed bem, nya); sqlc query
+  - [x] test: handler test for `/v1/languages`
 - [ ] **S-07** Next.js web skeleton (M) → DEV-2
   - [ ] web: Next.js 16 + Tailwind + shadcn/ui, `(portal)` and `(tools)` route groups
   - [ ] packages: `@vernacular/api-client` generated from the contract

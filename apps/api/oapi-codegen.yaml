@@ -1,0 +1,10 @@
+# Generates the strict chi server interface and API types from contracts/openapi.yaml.
+# Run through `make gen`. Output is never edited by hand.
+package: gen
+output: internal/gen/api.gen.go
+generate:
+  chi-server: true
+  strict-server: true
+  models: true
+output-options:
+  skip-prune: false

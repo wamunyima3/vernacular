@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: Vernacular API
+  version: 0.1.0
+  summary: Verified words, phrases and translations for Zambian languages.
+  description: |
+    Every item the API returns says where it came from and who checked it.
+    Only items accepted by two independent native-speaker reviewers are `verified`,
+    and only verified items are returned by default.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: system
+  - name: languages
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Liveness and database readiness
+      tags: [system]
+      responses:
+        "200":
+          description: Service and database are reachable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          $ref: "#/components/responses/Error"
+  /v1/languages:
+    get:
+      operationId: listLanguages
+      summary: Supported and planned languages
+      description: Languages in rollout order. `status` is `active` once the language serves data.
+      tags: [languages]
+      responses:
+        "200":
+          description: All languages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LanguageList" }
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    LanguageCode:
+      type: string
+      description: ISO 639-3 code
+      pattern: "^[a-z]{3}$"
+      example: bem
+    Language:
+      type: object
+      required: [code, name, own_name, wave, status]
+      properties:
+        code: { $ref: "#/components/schemas/LanguageCode" }
+        name:
+          type: string
+          description: English name
+          example: Bemba
+        own_name:
+          type: string
+          description: Name of the language in the language itself
+          example: Ichibemba
+        wave:
+          type: integer
+          description: Rollout wave from the delivery plan
+          minimum: 1
+          example: 1
+        status:
+          type: string
+          enum: [active, planned]
+    LanguageList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Language" }
+    Error:
+      type: object
+      required: [code, message, docs_url]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable code
+          example: not_found
+        message:
+          type: string
+          example: Entry not found
+        docs_url:
+          type: string
+          format: uri

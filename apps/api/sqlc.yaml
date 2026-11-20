@@ -1,0 +1,13 @@
+# One `sql` block per domain module. Generated code lands in internal/<module>/dbgen.
+version: "2"
+sql:
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/languages.sql
+    gen:
+      go:
+        package: dbgen
+        out: internal/languages/dbgen
+        sql_package: pgx/v5
+        emit_json_tags: false
+        emit_interface: false
