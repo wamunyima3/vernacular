@@ -10,3 +10,4 @@ One file per decision that is hard to reverse. Copy `0000-template.md`, take the
 | [0004](0004-verification-levels.md) | Verification levels and shared trust fields | Accepted |
 | [0005](0005-concept-hub.md)         | Concepts as the hub between languages       | Accepted |
 | [0006](0006-items-table.md)         | One `items` table for everything reviewable | Accepted |
+| [0007](0007-better-auth.md)         | Better Auth for accounts and sessions       | Accepted |

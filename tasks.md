@@ -73,7 +73,7 @@ Done when: at least one licensed source per language is signed, and the schema a
 - [x] **P0-ENG-02** Shared trust fields (`status`, `sources`, `reviews`, `release`) as one OpenAPI component, reused by every item schema (S) → PRV-1, ADR-0004
 - [x] **P0-ENG-03** Uniform error body (`code`, `message`, `docs_url`) and error middleware (S) → §10 errors
 - [x] **P0-ENG-04** Text normalisation package: NFC, case and accent folding (`golang.org/x/text`) with table tests (S) → NFR-7
-- [ ] **P0-ENG-05** Evaluate Better Auth vs Auth.js against the roles developer, contributor, reviewer, senior reviewer and admin; write ADR (S)
+- [x] **P0-ENG-05** Evaluate Better Auth vs Auth.js against the roles developer, contributor, reviewer, senior reviewer and admin; write ADR (S)
 - [ ] **P0-ENG-06** Auth slice: sign up, sign in and roles (M) → US-01, US-18
   - [ ] api: users and roles tables, session validation middleware
   - [ ] web: sign-up and sign-in screens
