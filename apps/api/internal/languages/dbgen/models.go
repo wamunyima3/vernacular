@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -354,7 +355,7 @@ type AuditLog struct {
 }
 
 type Concept struct {
-	ID         pgtype.UUID
+	ID         uuid.UUID
 	GlossEn    string
 	Definition string
 	Domain     string
@@ -364,11 +365,11 @@ type Concept struct {
 }
 
 type Entry struct {
-	ID           pgtype.UUID
+	ID           uuid.UUID
 	LanguageCode string
 	Headword     string
 	HeadwordFold pgtype.Text
-	PartOfSpeech PartOfSpeech
+	PartOfSpeech NullPartOfSpeech
 	NounClass    pgtype.Text
 	Plural       pgtype.Text
 	Root         pgtype.Text
@@ -379,8 +380,8 @@ type Entry struct {
 }
 
 type Example struct {
-	ID            pgtype.UUID
-	SenseID       pgtype.UUID
+	ID            uuid.UUID
+	SenseID       uuid.UUID
 	Text          string
 	TranslationEn string
 	CreatedAt     pgtype.Timestamptz
@@ -388,7 +389,7 @@ type Example struct {
 }
 
 type Item struct {
-	ID           pgtype.UUID
+	ID           uuid.UUID
 	Kind         ItemKind
 	LanguageCode string
 	Status       TrustStatus
@@ -398,8 +399,8 @@ type Item struct {
 }
 
 type ItemSource struct {
-	ItemID    pgtype.UUID
-	SourceID  pgtype.UUID
+	ItemID    uuid.UUID
+	SourceID  uuid.UUID
 	Reference string
 	Model     pgtype.Text
 	CreatedAt pgtype.Timestamptz
@@ -416,9 +417,9 @@ type Language struct {
 }
 
 type Phrase struct {
-	ID           pgtype.UUID
+	ID           uuid.UUID
 	LanguageCode string
-	ConceptID    pgtype.UUID
+	ConceptID    uuid.NullUUID
 	Pack         string
 	Text         string
 	TextFold     pgtype.Text
@@ -430,7 +431,7 @@ type Phrase struct {
 }
 
 type Release struct {
-	ID          pgtype.UUID
+	ID          uuid.UUID
 	Name        string
 	PublishedAt pgtype.Timestamptz
 	Counts      []byte
@@ -440,14 +441,14 @@ type Release struct {
 }
 
 type ReleaseItem struct {
-	ReleaseID pgtype.UUID
-	ItemID    pgtype.UUID
+	ReleaseID uuid.UUID
+	ItemID    uuid.UUID
 	Snapshot  []byte
 }
 
 type Review struct {
-	ID         pgtype.UUID
-	ItemID     pgtype.UUID
+	ID         uuid.UUID
+	ItemID     uuid.UUID
 	ReviewerID string
 	Decision   ReviewDecision
 	Correction []byte
@@ -467,9 +468,9 @@ type ReviewerApproval struct {
 }
 
 type Sense struct {
-	ID         pgtype.UUID
-	EntryID    pgtype.UUID
-	ConceptID  pgtype.UUID
+	ID         uuid.UUID
+	EntryID    uuid.UUID
+	ConceptID  uuid.NullUUID
 	Position   int16
 	Gloss      string
 	Definition string
@@ -491,7 +492,7 @@ type Session struct {
 }
 
 type Source struct {
-	ID            pgtype.UUID
+	ID            uuid.UUID
 	Kind          SourceKind
 	Name          string
 	RightsHolder  string
@@ -519,8 +520,8 @@ type User struct {
 }
 
 type Variant struct {
-	ID        pgtype.UUID
-	EntryID   pgtype.UUID
+	ID        uuid.UUID
+	EntryID   uuid.UUID
 	Spelling  string
 	Fold      pgtype.Text
 	Note      string

@@ -1,5 +1,13 @@
 # One `sql` block per domain module. Generated code lands in internal/<module>/dbgen.
 version: "2"
+overrides:
+  go:
+    overrides:
+      - db_type: uuid
+        go_type: github.com/google/uuid.UUID
+      - db_type: uuid
+        nullable: true
+        go_type: github.com/google/uuid.NullUUID
 sql:
   - engine: postgresql
     schema: db/migrations
@@ -16,4 +24,20 @@ sql:
       go:
         package: dbgen
         out: internal/accounts/dbgen
+        sql_package: pgx/v5
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/lexicon.sql
+    gen:
+      go:
+        package: dbgen
+        out: internal/lexicon/dbgen
+        sql_package: pgx/v5
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/sources.sql
+    gen:
+      go:
+        package: dbgen
+        out: internal/sources/dbgen
         sql_package: pgx/v5

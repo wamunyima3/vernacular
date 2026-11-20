@@ -42,6 +42,7 @@ cp .env.example .env   # then set BETTER_AUTH_SECRET: openssl rand -base64 32
 make setup      # pnpm install, Go modules, git hooks
 make up         # start Postgres
 make migrate    # create tables and seed languages
+make seed       # import open sources (GATITOS Bemba, about 3,000 entries)
 make dev        # API on :8080, web on :3000
 ```
 

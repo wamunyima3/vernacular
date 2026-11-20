@@ -44,6 +44,14 @@ migrate-down: ## Roll back the last migration
 migrate-roundtrip: ## Prove every migration applies, rolls back and re-applies
 	cd $(API_DIR) && $(GOOSE) up && $(GOOSE) reset && $(GOOSE) up
 
+.PHONY: ingest
+ingest: ## Import a registered source, e.g. make ingest FEED=gatitos-en-bem
+	cd $(API_DIR) && go run ./cmd/ingest -feed $(FEED)
+
+.PHONY: seed
+seed: ## Import every open source we hold a licence for (GATITOS Bemba)
+	$(MAKE) ingest FEED=gatitos-en-bem
+
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI contract and SQL queries
 	cd $(API_DIR) && $(GO_TOOL) oapi-codegen -config oapi-codegen.yaml ../../contracts/openapi.yaml

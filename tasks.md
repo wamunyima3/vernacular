@@ -64,7 +64,7 @@ Done when: at least one licensed source per language is signed, and the schema a
 - [x] **P0-CNT-01** Download Google SMOL and GATITOS and list exactly which Zambian languages they cover (S) → [findings](docs/sources/smol-gatitos.md)
 - [x] **P0-CNT-02** Draft the Bemba and Nyanja style guides in `docs/style-guides/` (M) → DQ-5
 - [ ] **P0-CNT-03** Core concept list (~4,000) → LEX-7
-  - [ ] **P0-CNT-03a** Seed concepts from the English side of GATITOS en→bem, with a repeatable import command (S)
+  - [x] **P0-CNT-03a** Seed concepts from the English side of GATITOS en→bem, with a repeatable import command (S): `make seed` gives 3,977 core concepts and 2,848 Bemba entries, all `sourced`
   - [ ] **P0-CNT-03b** Add Zambian everyday terms by domain (health, farming, money, government, family) (M)
 
 ### Engineering
@@ -79,7 +79,7 @@ Done when: at least one licensed source per language is signed, and the schema a
   - [x] web: sign-up and sign-in screens
   - [x] test: role guard tests
 - [x] **P0-ENG-07** UI designs for portal and review tools; run `/baseline-ui` on them (M)
-- [ ] **P0-ENG-08** Throwaway lookup prototype against a few hundred hand-checked entries (M) → first ten tasks, #10
+- [x] **P0-ENG-08** ~~Throwaway lookup prototype against a few hundred hand-checked entries~~ Replaced: no hand-checked entries exist until reviewers are recruited (P0-OUT-07), so the real search slice (P1-API-02) is built on GATITOS `sourced` data instead (M)
 - [x] **P0-ENG-09** Evaluate Fumadocs vs Nextra, and Scalar for the API reference; write ADR (S) → DEV-2
 
 ---
@@ -93,8 +93,8 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [ ] **P1-SRC-01** Source register slice (M) → DQ-1, US-25
   - [ ] api: CRUD for sources, permission document upload (S3-compatible)
   - [ ] web: `(tools)/sources` screen
-  - [ ] test: an ingest is refused for a source without a register row
-- [ ] **P1-SRC-02** Ingestion framework: `cmd/ingest` with one parser per source behind a shared interface (M) → US-30
+  - [x] test: an ingest is refused for a source without a register row
+- [x] **P1-SRC-02** Ingestion framework: `cmd/ingest` with one parser per source behind a shared interface (M) → US-30
 - [ ] **P1-SRC-03** Normaliser: orthography rules, duplicate merge, concept linking (M) → LEX-3, LEX-7
 - [ ] **P1-SRC-04** Rule-based stemmer for Bemba (M) → LEX-4
 - [ ] **P1-SRC-05** Rule-based stemmer for Nyanja (M) → LEX-4
