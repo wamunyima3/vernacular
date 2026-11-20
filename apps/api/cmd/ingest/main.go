@@ -3,6 +3,7 @@
 //	ingest -feed gatitos-en-bem [-file local.jsonl]   a registered source, as `sourced` data
 //	ingest -all                                        every feed in sources.Feeds
 //	ingest -concepts data/concepts/x.csv               one of our own core concept lists
+//	ingest -restem                                     recompute search stems after a stemmer change
 package main
 
 import (
@@ -17,6 +18,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
+	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
@@ -33,6 +37,7 @@ func run(ctx context.Context) error {
 	file := flag.String("file", "", "read this local copy instead of downloading (checksum still verified)")
 	concepts := flag.String("concepts", "", "CSV of core concepts (domain,gloss_en) to import instead of a feed")
 	all := flag.Bool("all", false, "import every feed")
+	restem := flag.Bool("restem", false, "recompute search stems for every active language")
 	flag.Parse()
 
 	pool, err := database.Connect(ctx, os.Getenv("DATABASE_URL"))
@@ -42,6 +47,8 @@ func run(ctx context.Context) error {
 	defer pool.Close()
 
 	switch {
+	case *restem:
+		return restemAll(ctx, pool)
 	case *concepts != "":
 		return importConcepts(ctx, pool, *concepts)
 	case *all:
@@ -75,6 +82,19 @@ func importFeed(ctx context.Context, db database.Beginner, feed sources.Feed, fi
 	fmt.Printf("%s: %d records, %d new entries, %d new senses, %d new variants\n",
 		feed.Name, stats.Records, stats.Entries, stats.Senses, stats.Variants)
 	return nil
+}
+
+func restemAll(ctx context.Context, db database.Beginner) error {
+	return database.InTx(ctx, db, "ingest:restem", func(tx pgx.Tx) error {
+		for _, lang := range []string{"bem", "nya"} {
+			n, err := lexicon.NewStore(tx).Restem(ctx, lang)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%s: %d stems changed\n", lang, n)
+		}
+		return nil
+	})
 }
 
 func importConcepts(ctx context.Context, db database.Beginner, path string) error {

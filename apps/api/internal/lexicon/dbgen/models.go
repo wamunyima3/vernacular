@@ -378,6 +378,7 @@ type Entry struct {
 	Register     Register
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	Stem         pgtype.Text
 }
 
 type Example struct {

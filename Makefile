@@ -50,6 +50,10 @@ migrate-roundtrip: ## Prove every migration applies, rolls back and re-applies
 ingest: ## Import a registered source, e.g. make ingest FEED=gatitos-en-bem
 	cd $(API_DIR) && go run ./cmd/ingest -feed $(FEED)
 
+.PHONY: restem
+restem: ## Recompute search stems after changing a stemmer
+	cd $(API_DIR) && go run ./cmd/ingest -restem
+
 .PHONY: seed
 seed: ## Import our core concept lists and every open source we hold a licence for
 	cd $(API_DIR) && go run ./cmd/ingest -all

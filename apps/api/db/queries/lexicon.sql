@@ -21,7 +21,7 @@ SELECT id FROM entries
 WHERE language_code = $1 AND headword = $2 AND part_of_speech IS NOT DISTINCT FROM $3;
 
 -- name: CreateEntry :exec
-INSERT INTO entries (id, language_code, headword, part_of_speech) VALUES ($1, $2, $3, $4);
+INSERT INTO entries (id, language_code, headword, part_of_speech, stem) VALUES ($1, $2, $3, $4, $5);
 
 -- name: FindSense :one
 SELECT id FROM senses WHERE entry_id = $1 AND concept_id = $2;
@@ -33,3 +33,9 @@ VALUES ($1, $2, $3, $4, (SELECT coalesce(max(position), 0) + 1 FROM senses WHERE
 -- name: AddVariant :execrows
 INSERT INTO variants (entry_id, spelling, note) VALUES ($1, $2, $3)
 ON CONFLICT (entry_id, spelling) DO NOTHING;
+
+-- name: ListHeadwords :many
+SELECT id, headword, stem FROM entries WHERE language_code = $1;
+
+-- name: SetStem :exec
+UPDATE entries SET stem = $2 WHERE id = $1;

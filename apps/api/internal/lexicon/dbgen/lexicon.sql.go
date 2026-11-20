@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addVariant = `-- name: AddVariant :execrows
@@ -31,7 +32,7 @@ func (q *Queries) AddVariant(ctx context.Context, arg AddVariantParams) (int64, 
 }
 
 const createEntry = `-- name: CreateEntry :exec
-INSERT INTO entries (id, language_code, headword, part_of_speech) VALUES ($1, $2, $3, $4)
+INSERT INTO entries (id, language_code, headword, part_of_speech, stem) VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateEntryParams struct {
@@ -39,6 +40,7 @@ type CreateEntryParams struct {
 	LanguageCode string
 	Headword     string
 	PartOfSpeech NullPartOfSpeech
+	Stem         pgtype.Text
 }
 
 func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) error {
@@ -47,6 +49,7 @@ func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) error 
 		arg.LanguageCode,
 		arg.Headword,
 		arg.PartOfSpeech,
+		arg.Stem,
 	)
 	return err
 }
@@ -105,6 +108,50 @@ func (q *Queries) FindSense(ctx context.Context, arg FindSenseParams) (uuid.UUID
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listHeadwords = `-- name: ListHeadwords :many
+SELECT id, headword, stem FROM entries WHERE language_code = $1
+`
+
+type ListHeadwordsRow struct {
+	ID       uuid.UUID
+	Headword string
+	Stem     pgtype.Text
+}
+
+func (q *Queries) ListHeadwords(ctx context.Context, languageCode string) ([]ListHeadwordsRow, error) {
+	rows, err := q.db.Query(ctx, listHeadwords, languageCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHeadwordsRow
+	for rows.Next() {
+		var i ListHeadwordsRow
+		if err := rows.Scan(&i.ID, &i.Headword, &i.Stem); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setStem = `-- name: SetStem :exec
+UPDATE entries SET stem = $2 WHERE id = $1
+`
+
+type SetStemParams struct {
+	ID   uuid.UUID
+	Stem pgtype.Text
+}
+
+func (q *Queries) SetStem(ctx context.Context, arg SetStemParams) error {
+	_, err := q.db.Exec(ctx, setStem, arg.ID, arg.Stem)
+	return err
 }
 
 const upsertConcept = `-- name: UpsertConcept :one

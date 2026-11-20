@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon/dbgen"
@@ -68,7 +69,10 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 	if errors.Is(err, pgx.ErrNoRows) {
 		added.Entry = true
 		entryID, err = s.items.Create(ctx, items.KindEntry, in.Language, origin, func(id uuid.UUID) error {
-			return s.q.CreateEntry(ctx, dbgen.CreateEntryParams{ID: id, LanguageCode: in.Language, Headword: headword, PartOfSpeech: pos})
+			return s.q.CreateEntry(ctx, dbgen.CreateEntryParams{
+				ID: id, LanguageCode: in.Language, Headword: headword, PartOfSpeech: pos,
+				Stem: pgtype.Text{String: Stem(in.Language, textnorm.Fold(headword)), Valid: true},
+			})
 		})
 	}
 	if err != nil {
@@ -96,6 +100,27 @@ func (s *Store) AddSourced(ctx context.Context, in SourcedSense) (Added, error) 
 		return added, fmt.Errorf("sense %q = %q: %w", headword, in.GlossEn, err)
 	}
 	return added, nil
+}
+
+// Restem recomputes the stem of every entry in a language, after the
+// stemmer's rules change. It returns how many stems changed.
+func (s *Store) Restem(ctx context.Context, language string) (int, error) {
+	rows, err := s.q.ListHeadwords(ctx, language)
+	if err != nil {
+		return 0, fmt.Errorf("list headwords: %w", err)
+	}
+	changed := 0
+	for _, r := range rows {
+		stem := Stem(language, textnorm.Fold(r.Headword))
+		if r.Stem.Valid && r.Stem.String == stem {
+			continue
+		}
+		if err := s.q.SetStem(ctx, dbgen.SetStemParams{ID: r.ID, Stem: pgtype.Text{String: stem, Valid: true}}); err != nil {
+			return changed, fmt.Errorf("set stem of %q: %w", r.Headword, err)
+		}
+		changed++
+	}
+	return changed, nil
 }
 
 // DomainGeneral is the domain of concepts no list has classified yet.
