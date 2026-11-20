@@ -80,7 +80,7 @@ Done when: at least one licensed source per language is signed, and the schema a
   - [x] test: role guard tests
 - [x] **P0-ENG-07** UI designs for portal and review tools; run `/baseline-ui` on them (M)
 - [ ] **P0-ENG-08** Throwaway lookup prototype against a few hundred hand-checked entries (M) → first ten tasks, #10
-- [ ] **P0-ENG-09** Evaluate Fumadocs vs Nextra, and Scalar for the API reference; write ADR (S) → DEV-2
+- [x] **P0-ENG-09** Evaluate Fumadocs vs Nextra, and Scalar for the API reference; write ADR (S) → DEV-2
 
 ---
 
