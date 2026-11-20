@@ -97,7 +97,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-SRC-02** Ingestion framework: `cmd/ingest` with one parser per source behind a shared interface (M) → US-30
 - [x] **P1-SRC-03** Normaliser: orthography rules, duplicate merge, concept linking (M) → LEX-3, LEX-7: style-guide spellings with source spellings kept as variants; concepts link by normalised English gloss
 - [x] **P1-SRC-04** Rule-based stemmer for Bemba (M) → LEX-4
-- [ ] **P1-SRC-05** Rule-based stemmer for Nyanja (M) → LEX-4
+- [x] **P1-SRC-05** Rule-based stemmer for Nyanja (M) → LEX-4: rules from the style guide; tune once Nyanja data arrives
 
 ### AI-assisted candidates
 
