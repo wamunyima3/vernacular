@@ -117,7 +117,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [ ] **P1-REV-01b** Corrections: propose a change to an existing item, linked to it and kept in its history (M) → CON-1, US-18, PRV-2. Needs item reads (P1-API) and promotion rules (P1-REV-03)
 - [ ] **P1-REV-02** Review queue slice, blind and mobile-first → CON-2, CON-3, DQ-4, AI-4, US-20, US-21
   - [x] **P1-REV-02a** api: `GET /v1/review/next` gives one concept with every pending candidate, no provider names, quick confirms first; `POST /v1/reviews` records accepts and rejects. Only approved languages, never the reviewer's own or already-reviewed items. Decisions only; promotion is P1-REV-03 (M)
-  - [ ] **P1-REV-02b** web: `(tools)/review`, one card per screen, fixed action bar, reject reasons, skip, empty state (M)
+  - [x] **P1-REV-02b** web: `(tools)/review`, one card per screen, fixed action bar, reject reasons, skip, empty state (M)
   - [ ] **P1-REV-02c** Undo a decision for 5 seconds (S)
 - [ ] **P1-REV-03** Promotion rules: two independent accepts make an item `verified`; "Write my own" corrections keep the history (M) → DQ-2, PRV-2, US-22
 - [ ] **P1-REV-04** Disputes slice for senior reviewers (M) → CON-4, DQ-8, US-23

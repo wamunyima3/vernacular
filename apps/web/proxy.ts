@@ -13,4 +13,4 @@ export function proxy(request: NextRequest) {
 }
 
 // Signed-in areas from app/(tools). Add each new tools route here.
-export const config = { matcher: ["/account/:path*", "/sources/:path*", "/contribute"] }
+export const config = { matcher: ["/account/:path*", "/sources/:path*", "/contribute", "/review"] }
