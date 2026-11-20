@@ -14,6 +14,8 @@ Developers call the API to add local language support to apps, government portal
 | [docs/user-stories.md](docs/user-stories.md) | User stories per persona, with acceptance criteria                                     |
 | [docs/architecture.md](docs/architecture.md) | System shape, modules, data model, trust model, contract-first flow                    |
 | [docs/adr/](docs/adr/)                       | Architecture decision records                                                          |
+| [docs/design/ui.md](docs/design/ui.md)       | Screen designs for the portal and review tools                                         |
+| [docs/style-guides/](docs/style-guides/)     | Spelling and entry rules per language, for reviewers                                   |
 | [tasks.md](tasks.md)                         | The task tracker: every piece of work, by phase                                        |
 | [AGENTS.md](AGENTS.md)                       | Rules for developers and AI agents: conventions, workflow, definition of done          |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | How to contribute code or language data                                                |
