@@ -119,8 +119,10 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
   - [x] **P1-REV-02a** api: `GET /v1/review/next` gives one concept with every pending candidate, no provider names, quick confirms first; `POST /v1/reviews` records accepts and rejects. Only approved languages, never the reviewer's own or already-reviewed items. Decisions only; promotion is P1-REV-03 (M)
   - [x] **P1-REV-02b** web: `(tools)/review`, one card per screen, fixed action bar, reject reasons, skip, empty state (M)
   - [x] **P1-REV-02c** Undo a decision for 5 seconds (S)
-- [ ] **P1-REV-03** Promotion rules: two independent accepts make an item `verified`; "Write my own" corrections keep the history; undo recomputes status through the same promotion function, so a promoting accept can be undone (M) → DQ-2, PRV-2, US-22
-- [ ] **P1-REV-04** Disputes slice for senior reviewers (M) → CON-4, DQ-8, US-23
+- [ ] **P1-REV-03** Promotion and corrections → DQ-2, PRV-2, US-22
+  - [x] **P1-REV-03a** One promotion function: two independent accepts make an item `verified`, one makes it `reviewed`, disagreement makes it `disputed`, two rejects make it `rejected` (new status, never returned). Decide and undo both recompute through it, so a promoting accept can be undone (M)
+  - [ ] **P1-REV-03b** "Write my own": a reviewer's correction becomes a new candidate for others to review; the candidates it replaces keep their history (M)
+- [ ] **P1-REV-04** Disputes slice for senior reviewers; reports and senior resolutions become inputs to `review.Status`, so an undo cannot overwrite them (M) → CON-4, DQ-8, US-23
 - [ ] **P1-REV-05** Reviewer qualification test set and agreement-rate tracking (M) → DQ-3, DQ-7, US-24
 - [ ] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
 - [ ] **P1-REV-07** Public contributor credit page (S) → CON-5, US-19

@@ -37,34 +37,66 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (uui
 	return id, err
 }
 
-const deleteOwnReviews = `-- name: DeleteOwnReviews :many
-DELETE FROM reviews
-WHERE id = ANY($1::uuid[]) AND reviewer_id = $2
-RETURNING item_id, created_at
+const deleteReviews = `-- name: DeleteReviews :exec
+DELETE FROM reviews WHERE id = ANY($1::uuid[])
 `
 
-type DeleteOwnReviewsParams struct {
-	Ids        []uuid.UUID
-	ReviewerID string
+func (q *Queries) DeleteReviews(ctx context.Context, ids []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteReviews, ids)
+	return err
 }
 
-type DeleteOwnReviewsRow struct {
-	ItemID    uuid.UUID
-	CreatedAt time.Time
-}
+const listItemDecisions = `-- name: ListItemDecisions :many
+SELECT decision FROM reviews WHERE item_id = $1
+`
 
-// Deletes the given reviews if this reviewer made them; the caller checks that
-// all were found and still undoable, and rolls back otherwise.
-func (q *Queries) DeleteOwnReviews(ctx context.Context, arg DeleteOwnReviewsParams) ([]DeleteOwnReviewsRow, error) {
-	rows, err := q.db.Query(ctx, deleteOwnReviews, arg.Ids, arg.ReviewerID)
+func (q *Queries) ListItemDecisions(ctx context.Context, itemID uuid.UUID) ([]ReviewDecision, error) {
+	rows, err := q.db.Query(ctx, listItemDecisions, itemID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DeleteOwnReviewsRow
+	var items []ReviewDecision
 	for rows.Next() {
-		var i DeleteOwnReviewsRow
-		if err := rows.Scan(&i.ItemID, &i.CreatedAt); err != nil {
+		var decision ReviewDecision
+		if err := rows.Scan(&decision); err != nil {
+			return nil, err
+		}
+		items = append(items, decision)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOwnReviews = `-- name: ListOwnReviews :many
+SELECT id, item_id, created_at FROM reviews
+WHERE id = ANY($1::uuid[]) AND reviewer_id = $2
+`
+
+type ListOwnReviewsParams struct {
+	Ids        []uuid.UUID
+	ReviewerID string
+}
+
+type ListOwnReviewsRow struct {
+	ID        uuid.UUID
+	ItemID    uuid.UUID
+	CreatedAt time.Time
+}
+
+// The reviewer's reviews among ids; others' are left out.
+func (q *Queries) ListOwnReviews(ctx context.Context, arg ListOwnReviewsParams) ([]ListOwnReviewsRow, error) {
+	rows, err := q.db.Query(ctx, listOwnReviews, arg.Ids, arg.ReviewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOwnReviewsRow
+	for rows.Next() {
+		var i ListOwnReviewsRow
+		if err := rows.Scan(&i.ID, &i.ItemID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -26,9 +26,13 @@ INSERT INTO reviews (item_id, reviewer_id, decision, comment)
 VALUES ($1, $2, $3, $4)
 RETURNING id;
 
--- name: DeleteOwnReviews :many
--- Deletes the given reviews if this reviewer made them; the caller checks that
--- all were found and still undoable, and rolls back otherwise.
-DELETE FROM reviews
-WHERE id = ANY(@ids::uuid[]) AND reviewer_id = @reviewer_id
-RETURNING item_id, created_at;
+-- name: ListOwnReviews :many
+-- The reviewer's reviews among ids; others' are left out.
+SELECT id, item_id, created_at FROM reviews
+WHERE id = ANY(@ids::uuid[]) AND reviewer_id = @reviewer_id;
+
+-- name: DeleteReviews :exec
+DELETE FROM reviews WHERE id = ANY(@ids::uuid[]);
+
+-- name: ListItemDecisions :many
+SELECT decision FROM reviews WHERE item_id = $1;

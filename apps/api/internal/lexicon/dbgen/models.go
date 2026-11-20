@@ -402,6 +402,7 @@ const (
 	TrustStatusSourced  TrustStatus = "sourced"
 	TrustStatusMachine  TrustStatus = "machine"
 	TrustStatusDisputed TrustStatus = "disputed"
+	TrustStatusRejected TrustStatus = "rejected"
 )
 
 func (e *TrustStatus) Scan(src interface{}) error {
@@ -446,6 +447,7 @@ func AllTrustStatusValues() []TrustStatus {
 		TrustStatusSourced,
 		TrustStatusMachine,
 		TrustStatusDisputed,
+		TrustStatusRejected,
 	}
 }
 

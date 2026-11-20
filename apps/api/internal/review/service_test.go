@@ -58,9 +58,10 @@ func fixture(t *testing.T, tx pgx.Tx) (water uuid.UUID, tree uuid.UUID) {
 	return water, tree
 }
 
-func reviewer(t *testing.T) context.Context {
+// reviewer signs in an approved reviewer of "tst"; the fixture's user is r1.
+func reviewer(t *testing.T, id ...string) context.Context {
 	return accounts.WithPrincipal(t.Context(), accounts.Principal{
-		ID: "r1", Role: gen.RoleContributor, Approvals: []accounts.Approval{{Language: "tst", Level: gen.ReviewerLevelReviewer}},
+		ID: append(id, "r1")[0], Role: gen.RoleContributor, Approvals: []accounts.Approval{{Language: "tst", Level: gen.ReviewerLevelReviewer}},
 	})
 }
 

@@ -43,12 +43,27 @@ func (s *Store) create(ctx context.Context, itemID uuid.UUID, reviewerID string,
 	return id, nil
 }
 
-// deleteOwn deletes the reviewer's reviews among ids and returns what they
-// were about. Reviews by others are left alone and not returned.
-func (s *Store) deleteOwn(ctx context.Context, ids []uuid.UUID, reviewerID string) ([]dbgen.DeleteOwnReviewsRow, error) {
-	rows, err := s.q.DeleteOwnReviews(ctx, dbgen.DeleteOwnReviewsParams{Ids: ids, ReviewerID: reviewerID})
+// own returns the reviewer's reviews among ids, with what they are about.
+func (s *Store) own(ctx context.Context, ids []uuid.UUID, reviewerID string) ([]dbgen.ListOwnReviewsRow, error) {
+	rows, err := s.q.ListOwnReviews(ctx, dbgen.ListOwnReviewsParams{Ids: ids, ReviewerID: reviewerID})
 	if err != nil {
-		return nil, fmt.Errorf("delete reviews: %w", err)
+		return nil, fmt.Errorf("list own reviews: %w", err)
 	}
 	return rows, nil
+}
+
+func (s *Store) delete(ctx context.Context, ids []uuid.UUID) error {
+	if err := s.q.DeleteReviews(ctx, ids); err != nil {
+		return fmt.Errorf("delete reviews: %w", err)
+	}
+	return nil
+}
+
+// decisions lists every decision on an item.
+func (s *Store) decisions(ctx context.Context, itemID uuid.UUID) ([]dbgen.ReviewDecision, error) {
+	out, err := s.q.ListItemDecisions(ctx, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("list decisions on %s: %w", itemID, err)
+	}
+	return out, nil
 }

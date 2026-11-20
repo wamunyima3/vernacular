@@ -4,9 +4,11 @@
 package review
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,6 +52,7 @@ type Lexicon interface {
 // Items is what decisions need from the items module.
 type Items interface {
 	Lock(ctx context.Context, id uuid.UUID) (items.Locked, bool, error)
+	SetStatus(ctx context.Context, id uuid.UUID, status items.Status) error
 }
 
 // Bound to the request's transaction.
@@ -107,8 +110,10 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 	out := make([]Recorded, 0, len(decisions))
 	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
 		store, its := NewStore(tx), newItems(tx)
-		for _, d := range decisions {
-			if err := checkTarget(ctx, its, me, d.SenseID); err != nil {
+		// Lock items in one order everywhere, so concurrent decisions and undos cannot deadlock.
+		for _, d := range slices.SortedFunc(slices.Values(decisions), bySense) {
+			item, err := checkTarget(ctx, its, me, d.SenseID)
+			if err != nil {
 				return err
 			}
 			id, err := store.create(ctx, d.SenseID, me.ID, d.Decision, comment)
@@ -116,6 +121,9 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 				return httpx.Conflict("You have already reviewed " + d.SenseID.String())
 			}
 			if err != nil {
+				return err
+			}
+			if err := promote(ctx, store, its, d.SenseID, item.Origin); err != nil {
 				return err
 			}
 			out = append(out, Recorded{ID: id, Decision: d})
@@ -139,7 +147,8 @@ func (s *Service) Undo(ctx context.Context, ids []uuid.UUID) error {
 		return err
 	}
 	return database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
-		deleted, err := NewStore(tx).deleteOwn(ctx, ids, me.ID)
+		store, its := NewStore(tx), newItems(tx)
+		own, err := store.own(ctx, ids, me.ID)
 		if err != nil {
 			return err
 		}
@@ -147,41 +156,54 @@ func (s *Service) Undo(ctx context.Context, ids []uuid.UUID) error {
 		for _, id := range ids {
 			distinct[id] = true
 		}
-		if len(deleted) != len(distinct) {
+		if len(own) != len(distinct) {
 			return httpx.ErrNotFound
 		}
-		its := newItems(tx)
-		for _, d := range deleted {
-			if time.Since(d.CreatedAt) > UndoWindow {
+		targets := make([]uuid.UUID, len(own))
+		for i, r := range own {
+			if time.Since(r.CreatedAt) > UndoWindow {
 				return httpx.Conflict(fmt.Sprintf("Decisions can only be undone within %v", UndoWindow))
 			}
-			item, _, err := its.Lock(ctx, d.ItemID)
-			if err != nil {
+			targets[i] = r.ItemID
+		}
+		slices.SortFunc(targets, compareIDs) // the same lock order as Decide
+		locked := make([]items.Locked, len(targets))
+		for i, id := range targets {
+			if locked[i], _, err = its.Lock(ctx, id); err != nil {
 				return err
 			}
-			// P1-REV-03 replaces this with a status recompute, so a promoting accept can be undone.
-			if !item.Open {
-				return httpx.Conflict("This item is " + string(item.Status) + " and can no longer be changed")
+		}
+		if err := store.delete(ctx, ids); err != nil {
+			return err
+		}
+		// Recompute through the promotion rule, so a promoting accept can be undone.
+		for i, id := range targets {
+			if err := promote(ctx, store, its, id, locked[i].Origin); err != nil {
+				return err
 			}
 		}
 		return nil
 	})
 }
 
+func compareIDs(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) }
+
+func bySense(a, b Decision) int { return compareIDs(a.SenseID, b.SenseID) }
+
 // checkTarget locks one item and applies the blind-review rules (CON-2, CON-3).
-func checkTarget(ctx context.Context, its Items, me accounts.Principal, id uuid.UUID) error {
+func checkTarget(ctx context.Context, its Items, me accounts.Principal, id uuid.UUID) (items.Locked, error) {
 	t, ok, err := its.Lock(ctx, id)
 	switch {
 	case err != nil:
-		return err
+		return t, err
 	case !ok || t.Kind != items.KindSense:
-		return httpx.BadRequest("No sense " + id.String())
+		return t, httpx.BadRequest("No sense " + id.String())
 	case !me.CanReview(t.Language):
-		return httpx.ErrForbidden
+		return t, httpx.ErrForbidden
 	case t.AuthorID == me.ID:
-		return httpx.Forbidden("You cannot review an item you wrote")
+		return t, httpx.Forbidden("You cannot review an item you wrote")
 	case !t.Open:
-		return httpx.Conflict("This item is " + string(t.Status) + " and no longer in the queue")
+		return t, httpx.Conflict("This item is " + string(t.Status) + " and no longer in the queue")
 	}
-	return nil
+	return t, nil
 }

@@ -119,7 +119,8 @@ type Locked struct {
 	Language string
 	Status   dbgen.TrustStatus
 	AuthorID string
-	Open     bool // still takes reviews (open_for_review)
+	Open     bool   // still takes reviews (open_for_review)
+	Origin   Status // before any review: machine or sourced
 }
 
 // Lock reads an item and locks it until the transaction ends, so decisions
@@ -132,5 +133,27 @@ func (s *Store) Lock(ctx context.Context, id uuid.UUID) (Locked, bool, error) {
 	if err != nil {
 		return Locked{}, false, fmt.Errorf("lock item %s: %w", id, err)
 	}
-	return Locked{Kind: row.Kind, Language: row.LanguageCode, Status: row.Status, AuthorID: row.AuthorID.String, Open: row.Open}, true, nil
+	return Locked{Kind: row.Kind, Language: row.LanguageCode, Status: row.Status, AuthorID: row.AuthorID.String, Open: row.Open, Origin: row.Origin}, true, nil
+}
+
+// Status is an item's trust status (ADR-0004).
+type Status = dbgen.TrustStatus
+
+// Trust statuses. `rejected` is internal: never returned by the API.
+const (
+	StatusVerified = dbgen.TrustStatusVerified
+	StatusReviewed = dbgen.TrustStatusReviewed
+	StatusSourced  = dbgen.TrustStatusSourced
+	StatusMachine  = dbgen.TrustStatusMachine
+	StatusDisputed = dbgen.TrustStatusDisputed
+	StatusRejected = dbgen.TrustStatusRejected
+)
+
+// SetStatus records a status the review module's promotion function decided.
+// Nothing else may call it (AGENTS.md rule 2).
+func (s *Store) SetStatus(ctx context.Context, id uuid.UUID, status Status) error {
+	if err := s.q.SetItemStatus(ctx, dbgen.SetItemStatusParams{ID: id, Status: status}); err != nil {
+		return fmt.Errorf("set status of %s: %w", id, err)
+	}
+	return nil
 }

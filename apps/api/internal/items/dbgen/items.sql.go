@@ -123,8 +123,11 @@ func (q *Queries) ListTrustSources(ctx context.Context, itemID uuid.UUID) ([]Lis
 }
 
 const lockItem = `-- name: LockItem :one
-SELECT kind, language_code, status, author_id, open_for_review(status) AS open
-FROM items WHERE id = $1 FOR UPDATE
+SELECT i.kind, i.language_code, i.status, i.author_id, open_for_review(i.status) AS open,
+       (SELECT (CASE WHEN bool_or(s.kind <> 'machine') THEN 'sourced' ELSE 'machine' END)::trust_status
+        FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
+        WHERE isrc.item_id = i.id) AS origin
+FROM items i WHERE i.id = $1 FOR UPDATE OF i
 `
 
 type LockItemRow struct {
@@ -133,10 +136,13 @@ type LockItemRow struct {
 	Status       TrustStatus
 	AuthorID     pgtype.Text
 	Open         bool
+	Origin       TrustStatus
 }
 
 // Locks the item until the transaction ends, so concurrent reviews of it
 // are decided one after another.
+// origin is the status the item had before any review: `machine` when only
+// machine sources cite it, otherwise `sourced` (ADR-0004).
 func (q *Queries) LockItem(ctx context.Context, id uuid.UUID) (LockItemRow, error) {
 	row := q.db.QueryRow(ctx, lockItem, id)
 	var i LockItemRow
@@ -146,6 +152,22 @@ func (q *Queries) LockItem(ctx context.Context, id uuid.UUID) (LockItemRow, erro
 		&i.Status,
 		&i.AuthorID,
 		&i.Open,
+		&i.Origin,
 	)
 	return i, err
+}
+
+const setItemStatus = `-- name: SetItemStatus :exec
+UPDATE items SET status = $2, updated_at = now() WHERE id = $1
+`
+
+type SetItemStatusParams struct {
+	ID     uuid.UUID
+	Status TrustStatus
+}
+
+// Only the review module's promotion function calls this (AGENTS.md rule 2).
+func (q *Queries) SetItemStatus(ctx context.Context, arg SetItemStatusParams) error {
+	_, err := q.db.Exec(ctx, setItemStatus, arg.ID, arg.Status)
+	return err
 }
