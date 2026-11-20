@@ -11,6 +11,7 @@
     "**/.next/**",
     "**/internal/gen/**",
     "**/dbgen/**",
+    "**/db/migrations/**",
     "**/schema.d.ts",
     "**/components/ui/**",
     "**/*_test.go",
