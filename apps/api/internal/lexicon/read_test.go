@@ -26,7 +26,7 @@ func TestSearch(t *testing.T) {
 		{"umupazzo", "umupazzo", ""}, // only a disputed sense: never returned
 	}
 	for _, tt := range tests {
-		hits, err := lex.Search(ctx, "bem", tt.query, 50)
+		hits, err := lex.Search(ctx, "bem", tt.query, 50, machine)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,7 +85,7 @@ func searchFixture(t *testing.T) (*lexicon.Store, pgx.Tx) {
 func TestGet(t *testing.T) {
 	lex, tx := searchFixture(t)
 	ctx := t.Context()
-	hits, err := lex.Search(ctx, "bem", "icipazzo", 50)
+	hits, err := lex.Search(ctx, "bem", "icipazzo", 50, machine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestGet(t *testing.T) {
 		INSERT INTO examples (id, sense_id, text, translation_en) SELECT id, $1, 'zz text', 'zz translation' FROM i`, hit.Entry.Senses[0].ID); err != nil {
 		t.Fatal(err)
 	}
-	e, ok, err := lex.Get(ctx, hit.Entry.ID)
+	e, ok, err := lex.Get(ctx, hit.Entry.ID, machine)
 	if err != nil || !ok {
 		t.Fatalf("Get = %v, %v", ok, err)
 	}
@@ -112,7 +112,7 @@ func TestGet(t *testing.T) {
 	if err := tx.QueryRow(ctx, `SELECT id FROM entries WHERE language_code = 'bem' AND headword = 'umupazzo'`).Scan(&disputed); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok, err := lex.Get(ctx, disputed); ok || err != nil {
+	if _, ok, err := lex.Get(ctx, disputed, machine); ok || err != nil {
 		t.Errorf("disputed-only entry: Get = %v, %v; want not found", ok, err)
 	}
 }
@@ -129,12 +129,12 @@ func TestConceptEntries(t *testing.T) {
 	if _, err := lex.Add(ctx, lexicon.Proposal{Language: "nya", Headword: "zzcinthu", GlossEn: "zz ichipazzo", Origin: items.Machine(claude, "m", "n")}); err != nil {
 		t.Fatal(err)
 	}
-	hits, err := lex.Search(ctx, "bem", "icipazzo", 50)
+	hits, err := lex.Search(ctx, "bem", "icipazzo", 50, machine)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := find(hits, "icipazzo").Entry.Senses[0].ConceptID.UUID
-	c, ok, err := lex.ConceptEntries(ctx, id)
+	c, ok, err := lex.ConceptEntries(ctx, id, machine)
 	if err != nil || !ok {
 		t.Fatalf("ConceptEntries = %v, %v", ok, err)
 	}
@@ -145,7 +145,47 @@ func TestConceptEntries(t *testing.T) {
 	if c.GlossEn != "zz ichipazzo" || !slices.Equal(got, []string{"bem:icipazzo", "nya:zzcinthu"}) {
 		t.Errorf("concept %q entries = %v", c.GlossEn, got)
 	}
-	if _, ok, err := lex.ConceptEntries(ctx, uuid.New()); ok || err != nil {
+	if _, ok, err := lex.ConceptEntries(ctx, uuid.New(), machine); ok || err != nil {
 		t.Errorf("unknown concept: %v, %v; want not found", ok, err)
+	}
+}
+
+// machine opts in to every servable status, as the fixture's items are machine.
+var machine = lexicon.Filter{MinStatus: "machine"}
+
+// TestFilter: by default only verified meanings are returned (TRN-4), lower
+// levels only on request (AI-6), and variety narrows entries (LEX-6).
+func TestFilter(t *testing.T) {
+	lex, tx := searchFixture(t)
+	ctx := t.Context()
+	count := func(f lexicon.Filter) int {
+		t.Helper()
+		hits, err := lex.Search(ctx, "bem", "umukazzo", 50, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if find(hits, "umukazzo") != nil {
+			return 1
+		}
+		return 0
+	}
+	if got := count(lexicon.Filter{}); got != 0 {
+		t.Errorf("default filter returned a machine entry")
+	}
+	if got := count(lexicon.Filter{MinStatus: "sourced"}); got != 0 {
+		t.Errorf("min_status=sourced returned a machine entry")
+	}
+	if got := count(machine); got != 1 {
+		t.Errorf("min_status=machine left the entry out")
+	}
+	if _, err := tx.Exec(ctx, `UPDATE items SET status = 'verified' WHERE id IN (
+		SELECT s.id FROM senses s JOIN entries e ON e.id = s.entry_id WHERE e.headword = 'umukazzo')`); err != nil {
+		t.Fatal(err)
+	}
+	if got := count(lexicon.Filter{}); got != 1 {
+		t.Errorf("default filter left out a verified entry")
+	}
+	if got := count(lexicon.Filter{Variety: "zz-none"}); got != 0 {
+		t.Errorf("an unknown variety still matched")
 	}
 }

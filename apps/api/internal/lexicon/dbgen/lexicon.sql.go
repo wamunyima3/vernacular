@@ -246,8 +246,9 @@ WITH found AS (
     FROM senses s
     JOIN items i ON i.id = s.id
     JOIN entries e ON e.id = s.entry_id
-    WHERE s.concept_id = ANY($1::uuid[]) AND servable(i.status)
-      AND (coalesce(cardinality($2::text[]), 0) = 0 OR e.language_code = ANY($2::text[]))
+    WHERE s.concept_id = ANY($1::uuid[]) AND at_least(i.status, $2)
+      AND ($3::text IS NULL OR e.variety = $3::text)
+      AND (coalesce(cardinality($4::text[]), 0) = 0 OR e.language_code = ANY($4::text[]))
 ), ranked AS (
     SELECT concept_id, id, language_code, headword, row_number() OVER (PARTITION BY concept_id ORDER BY language_code, headword, id) AS n
     FROM found
@@ -258,6 +259,8 @@ ORDER BY language_code, headword, id
 
 type ListConceptEntriesParams struct {
 	ConceptIds []uuid.UUID
+	MinStatus  TrustStatus
+	Variety    pgtype.Text
 	Languages  []string
 }
 
@@ -266,10 +269,15 @@ type ListConceptEntriesRow struct {
 	ID        uuid.UUID
 }
 
-// Entries with a servable sense expressing one of the concepts (LEX-7), in
-// the given languages or, when none are given, in all. At most 200 per concept.
+// Entries with a sense at or above min_status expressing one of the concepts
+// (LEX-7), in the given languages and variety, or in all when none are given. At most 200 per concept.
 func (q *Queries) ListConceptEntries(ctx context.Context, arg ListConceptEntriesParams) ([]ListConceptEntriesRow, error) {
-	rows, err := q.db.Query(ctx, listConceptEntries, arg.ConceptIds, arg.Languages)
+	rows, err := q.db.Query(ctx, listConceptEntries,
+		arg.ConceptIds,
+		arg.MinStatus,
+		arg.Variety,
+		arg.Languages,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -391,6 +399,50 @@ func (q *Queries) ListEntries(ctx context.Context, ids []uuid.UUID) ([]ListEntri
 	return items, nil
 }
 
+const listExamples = `-- name: ListExamples :many
+SELECT x.id, x.sense_id, x.text, x.translation_en
+FROM examples x JOIN items i ON i.id = x.id
+WHERE x.sense_id = ANY($1::uuid[]) AND at_least(i.status, $2)
+ORDER BY x.sense_id, x.created_at, x.id
+`
+
+type ListExamplesParams struct {
+	SenseIds  []uuid.UUID
+	MinStatus TrustStatus
+}
+
+type ListExamplesRow struct {
+	ID            uuid.UUID
+	SenseID       uuid.UUID
+	Text          string
+	TranslationEn string
+}
+
+func (q *Queries) ListExamples(ctx context.Context, arg ListExamplesParams) ([]ListExamplesRow, error) {
+	rows, err := q.db.Query(ctx, listExamples, arg.SenseIds, arg.MinStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListExamplesRow
+	for rows.Next() {
+		var i ListExamplesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenseID,
+			&i.Text,
+			&i.TranslationEn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHeadwords = `-- name: ListHeadwords :many
 SELECT id, headword, stem FROM entries WHERE language_code = $1
 `
@@ -467,53 +519,19 @@ func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSe
 	return items, nil
 }
 
-const listServableExamples = `-- name: ListServableExamples :many
-SELECT x.id, x.sense_id, x.text, x.translation_en
-FROM examples x JOIN items i ON i.id = x.id
-WHERE x.sense_id = ANY($1::uuid[]) AND servable(i.status)
-ORDER BY x.sense_id, x.created_at, x.id
-`
-
-type ListServableExamplesRow struct {
-	ID            uuid.UUID
-	SenseID       uuid.UUID
-	Text          string
-	TranslationEn string
-}
-
-func (q *Queries) ListServableExamples(ctx context.Context, senseIds []uuid.UUID) ([]ListServableExamplesRow, error) {
-	rows, err := q.db.Query(ctx, listServableExamples, senseIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListServableExamplesRow
-	for rows.Next() {
-		var i ListServableExamplesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.SenseID,
-			&i.Text,
-			&i.TranslationEn,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listServableSenses = `-- name: ListServableSenses :many
+const listSenses = `-- name: ListSenses :many
 SELECT s.id, s.entry_id, s.gloss, s.definition, s.concept_id
 FROM senses s JOIN items i ON i.id = s.id
-WHERE s.entry_id = ANY($1::uuid[]) AND servable(i.status)
+WHERE s.entry_id = ANY($1::uuid[]) AND at_least(i.status, $2)
 ORDER BY s.entry_id, s.position, s.id
 `
 
-type ListServableSensesRow struct {
+type ListSensesParams struct {
+	EntryIds  []uuid.UUID
+	MinStatus TrustStatus
+}
+
+type ListSensesRow struct {
 	ID         uuid.UUID
 	EntryID    uuid.UUID
 	Gloss      string
@@ -521,16 +539,16 @@ type ListServableSensesRow struct {
 	ConceptID  uuid.NullUUID
 }
 
-// The servable senses of entries, in order.
-func (q *Queries) ListServableSenses(ctx context.Context, entryIds []uuid.UUID) ([]ListServableSensesRow, error) {
-	rows, err := q.db.Query(ctx, listServableSenses, entryIds)
+// The senses of entries at or above min_status, in order.
+func (q *Queries) ListSenses(ctx context.Context, arg ListSensesParams) ([]ListSensesRow, error) {
+	rows, err := q.db.Query(ctx, listSenses, arg.EntryIds, arg.MinStatus)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListServableSensesRow
+	var items []ListSensesRow
 	for rows.Next() {
-		var i ListServableSensesRow
+		var i ListSensesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EntryID,
@@ -591,18 +609,18 @@ func (q *Queries) LockLanguage(ctx context.Context, languageCode string) error {
 const searchEntries = `-- name: SearchEntries :many
 WITH hits AS (
     SELECT e.id, 'headword' AS matched, 1 AS rank, 1::real AS score
-    FROM entries e WHERE e.language_code = $2 AND e.headword_fold = $3::text
+    FROM entries e WHERE e.language_code = $4 AND e.headword_fold = $5::text
     UNION ALL
     SELECT e.id, 'variant', 2, 1 FROM entries e
-    WHERE e.language_code = $2 AND e.headword_fold = $4::text AND $4::text <> $3::text
+    WHERE e.language_code = $4 AND e.headword_fold = $6::text AND $6::text <> $5::text
     UNION ALL
     SELECT v.entry_id, 'variant', 2, 1 FROM variants v JOIN entries e ON e.id = v.entry_id
-    WHERE e.language_code = $2 AND v.fold = $3::text
+    WHERE e.language_code = $4 AND v.fold = $5::text
     UNION ALL
-    SELECT e.id, 'root', 3, 1 FROM entries e WHERE e.language_code = $2 AND e.stem = $5::text
+    SELECT e.id, 'root', 3, 1 FROM entries e WHERE e.language_code = $4 AND e.stem = $7::text
     UNION ALL
-    SELECT e.id, 'similar', 4, similarity(e.headword_fold, $3::text)
-    FROM entries e WHERE e.language_code = $2 AND e.headword_fold % $3::text
+    SELECT e.id, 'similar', 4, similarity(e.headword_fold, $5::text)
+    FROM entries e WHERE e.language_code = $4 AND e.headword_fold % $5::text
 ), best AS (
     SELECT DISTINCT ON (id) id, matched, rank, score FROM hits ORDER BY id, rank, score DESC
 )
@@ -611,18 +629,21 @@ FROM best b
 JOIN entries e ON e.id = b.id
 JOIN items i ON i.id = e.id
 WHERE servable(i.status)
+  AND ($1::text IS NULL OR e.variety = $1::text)
   AND EXISTS (SELECT 1 FROM senses s JOIN items si ON si.id = s.id
-              WHERE s.entry_id = e.id AND servable(si.status))
+              WHERE s.entry_id = e.id AND at_least(si.status, $2))
 ORDER BY b.rank, b.score DESC, e.headword, e.id
-LIMIT $1
+LIMIT $3
 `
 
 type SearchEntriesParams struct {
-	Lim      int32
-	Language string
-	Fold     string
-	Standard string
-	Stem     string
+	Variety   pgtype.Text
+	MinStatus TrustStatus
+	Lim       int32
+	Language  string
+	Fold      string
+	Standard  string
+	Stem      string
 }
 
 type SearchEntriesRow struct {
@@ -632,10 +653,12 @@ type SearchEntriesRow struct {
 
 // Entry search (LEX-4, US-05). Each entry keeps its best match: the headword,
 // a spelling variant (stored, or the style guide's spelling of the query), the
-// search stem, or a similar spelling by trigram. Only servable entries with a
-// servable sense are returned.
+// search stem, or a similar spelling by trigram. Only servable entries of the variety (any when
+// none) with a sense at or above min_status are returned.
 func (q *Queries) SearchEntries(ctx context.Context, arg SearchEntriesParams) ([]SearchEntriesRow, error) {
 	rows, err := q.db.Query(ctx, searchEntries,
+		arg.Variety,
+		arg.MinStatus,
 		arg.Lim,
 		arg.Language,
 		arg.Fold,

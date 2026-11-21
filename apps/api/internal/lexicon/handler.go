@@ -12,11 +12,11 @@ import (
 
 // Reader is what the handler needs from the lexicon.
 type Reader interface {
-	Search(ctx context.Context, language, query string, limit int) ([]Hit, error)
-	Get(ctx context.Context, id uuid.UUID) (Entry, bool, error)
-	ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntries, bool, error)
-	FromEnglish(ctx context.Context, query string, languages []string, limit int) ([]LookupHit, error)
-	ToEnglish(ctx context.Context, language, query string, limit int) ([]LookupHit, error)
+	Search(ctx context.Context, language, query string, limit int, f Filter) ([]Hit, error)
+	Get(ctx context.Context, id uuid.UUID, f Filter) (Entry, bool, error)
+	ConceptEntries(ctx context.Context, id uuid.UUID, f Filter) (ConceptEntries, bool, error)
+	FromEnglish(ctx context.Context, query string, languages []string, limit int, f Filter) ([]LookupHit, error)
+	ToEnglish(ctx context.Context, language, query string, limit int, f Filter) ([]LookupHit, error)
 }
 
 // Handler implements the lexicon read operations of the generated strict server.
@@ -31,7 +31,7 @@ func NewHandler(svc Reader) *Handler {
 
 // SearchEntries implements GET /v1/entries/search.
 func (h *Handler) SearchEntries(ctx context.Context, req gen.SearchEntriesRequestObject) (gen.SearchEntriesResponseObject, error) {
-	hits, err := h.svc.Search(ctx, req.Params.Language, req.Params.Q, httpx.DerefOr(req.Params.Limit, 20))
+	hits, err := h.svc.Search(ctx, req.Params.Language, req.Params.Q, httpx.DerefOr(req.Params.Limit, 20), filter(req.Params.MinStatus, req.Params.Variety))
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func entrySummary(e Entry) gen.EntrySummary {
 
 // GetEntry implements GET /v1/entries/{id}.
 func (h *Handler) GetEntry(ctx context.Context, req gen.GetEntryRequestObject) (gen.GetEntryResponseObject, error) {
-	e, ok, err := h.svc.Get(ctx, req.Id)
+	e, ok, err := h.svc.Get(ctx, req.Id, filter(req.Params.MinStatus, nil))
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func sense(s Sense) gen.Sense {
 
 // GetConcept implements GET /v1/concepts/{id}.
 func (h *Handler) GetConcept(ctx context.Context, req gen.GetConceptRequestObject) (gen.GetConceptResponseObject, error) {
-	c, ok, err := h.svc.ConceptEntries(ctx, req.Id)
+	c, ok, err := h.svc.ConceptEntries(ctx, req.Id, filter(req.Params.MinStatus, req.Params.Variety))
 	if err != nil {
 		return nil, err
 	}
@@ -117,16 +117,16 @@ const english = "eng"
 func (h *Handler) Lookup(ctx context.Context, req gen.LookupRequestObject) (gen.LookupResponseObject, error) {
 	p := req.Params
 	to := httpx.Deref(p.To)
-	limit := httpx.DerefOr(p.Limit, 5)
+	limit, f := httpx.DerefOr(p.Limit, 5), filter(p.MinStatus, p.Variety)
 	var hits []LookupHit
 	var err error
 	switch {
 	case p.From == english:
-		hits, err = h.svc.FromEnglish(ctx, p.Q, to, limit)
+		hits, err = h.svc.FromEnglish(ctx, p.Q, to, limit, f)
 	case len(to) > 0 && !slices.Equal(to, []string{english}):
 		return nil, httpx.BadRequest("From a Zambian language, lookups translate only to eng.")
 	default:
-		hits, err = h.svc.ToEnglish(ctx, p.From, p.Q, limit)
+		hits, err = h.svc.ToEnglish(ctx, p.From, p.Q, limit, f)
 	}
 	if err != nil {
 		return nil, err
@@ -141,4 +141,9 @@ func (h *Handler) Lookup(ctx context.Context, req gen.LookupRequestObject) (gen.
 		data[i].Concept.Id, data[i].Concept.GlossEn = hit.ConceptID, hit.GlossEn
 	}
 	return gen.Lookup200JSONResponse{Data: data}, nil
+}
+
+// filter reads the shared read-endpoint parameters.
+func filter(minStatus *gen.MinStatus, variety *string) Filter {
+	return Filter{MinStatus: string(httpx.Deref(minStatus)), Variety: httpx.Deref(variety)}
 }

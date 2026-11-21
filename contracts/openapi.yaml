@@ -72,6 +72,8 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        - $ref: "#/components/parameters/MinStatus"
+        - $ref: "#/components/parameters/Variety"
       responses:
         "200":
           description: Matching entries
@@ -93,6 +95,7 @@ paths:
       tags: [lexicon]
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/MinStatus"
       responses:
         "200":
           description: The entry
@@ -113,6 +116,8 @@ paths:
       tags: [lexicon]
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/MinStatus"
+        - $ref: "#/components/parameters/Variety"
       responses:
         "200":
           description: The concept
@@ -160,6 +165,8 @@ paths:
           in: query
           description: Most concepts to return
           schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+        - $ref: "#/components/parameters/MinStatus"
+        - $ref: "#/components/parameters/Variety"
       responses:
         "200":
           description: Matching concepts with their entries
@@ -627,6 +634,20 @@ paths:
           $ref: "#/components/responses/Error"
 components:
   parameters:
+    MinStatus:
+      name: min_status
+      in: query
+      description: |
+        The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+        `machine` only when asked for. `disputed` is never returned. Entries and concepts
+        with no meaning at this level are left out, so a strict caller gets nothing rather
+        than a guess.
+      schema: { $ref: "#/components/schemas/MinStatus" }
+    Variety:
+      name: variety
+      in: query
+      description: Only entries of this variety, such as a town or regional form (LEX-6)
+      schema: { type: string, pattern: "^[a-z][a-z0-9-]*$", maxLength: 40 }
     Id:
       name: id
       in: path
@@ -984,6 +1005,10 @@ components:
           type: array
           description: Entries expressing the concept, by language then headword; at most 200
           items: { $ref: "#/components/schemas/EntrySummary" }
+    MinStatus:
+      type: string
+      enum: [verified, reviewed, sourced, machine]
+      default: verified
     Match:
       type: string
       description: |

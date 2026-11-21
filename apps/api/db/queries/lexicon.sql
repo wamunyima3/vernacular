@@ -74,8 +74,8 @@ GROUP BY e.language_code;
 -- name: SearchEntries :many
 -- Entry search (LEX-4, US-05). Each entry keeps its best match: the headword,
 -- a spelling variant (stored, or the style guide's spelling of the query), the
--- search stem, or a similar spelling by trigram. Only servable entries with a
--- servable sense are returned.
+-- search stem, or a similar spelling by trigram. Only servable entries of the variety (any when
+-- none) with a sense at or above min_status are returned.
 WITH hits AS (
     SELECT e.id, 'headword' AS matched, 1 AS rank, 1::real AS score
     FROM entries e WHERE e.language_code = @language AND e.headword_fold = @fold::text
@@ -98,16 +98,17 @@ FROM best b
 JOIN entries e ON e.id = b.id
 JOIN items i ON i.id = e.id
 WHERE servable(i.status)
+  AND (sqlc.narg(variety)::text IS NULL OR e.variety = sqlc.narg(variety)::text)
   AND EXISTS (SELECT 1 FROM senses s JOIN items si ON si.id = s.id
-              WHERE s.entry_id = e.id AND servable(si.status))
+              WHERE s.entry_id = e.id AND at_least(si.status, @min_status))
 ORDER BY b.rank, b.score DESC, e.headword, e.id
 LIMIT @lim;
 
--- name: ListServableSenses :many
--- The servable senses of entries, in order.
+-- name: ListSenses :many
+-- The senses of entries at or above min_status, in order.
 SELECT s.id, s.entry_id, s.gloss, s.definition, s.concept_id
 FROM senses s JOIN items i ON i.id = s.id
-WHERE s.entry_id = ANY(@entry_ids::uuid[]) AND servable(i.status)
+WHERE s.entry_id = ANY(@entry_ids::uuid[]) AND at_least(i.status, @min_status)
 ORDER BY s.entry_id, s.position, s.id;
 
 -- name: ListEntries :many
@@ -120,24 +121,25 @@ WHERE e.id = ANY(@ids::uuid[]) AND servable(i.status);
 -- name: ListVariants :many
 SELECT spelling, note FROM variants WHERE entry_id = $1 ORDER BY spelling;
 
--- name: ListServableExamples :many
+-- name: ListExamples :many
 SELECT x.id, x.sense_id, x.text, x.translation_en
 FROM examples x JOIN items i ON i.id = x.id
-WHERE x.sense_id = ANY(@sense_ids::uuid[]) AND servable(i.status)
+WHERE x.sense_id = ANY(@sense_ids::uuid[]) AND at_least(i.status, @min_status)
 ORDER BY x.sense_id, x.created_at, x.id;
 
 -- name: GetConcept :one
 SELECT id, gloss_en, definition, domain, core FROM concepts WHERE id = $1;
 
 -- name: ListConceptEntries :many
--- Entries with a servable sense expressing one of the concepts (LEX-7), in
--- the given languages or, when none are given, in all. At most 200 per concept.
+-- Entries with a sense at or above min_status expressing one of the concepts
+-- (LEX-7), in the given languages and variety, or in all when none are given. At most 200 per concept.
 WITH found AS (
     SELECT DISTINCT s.concept_id, e.id, e.language_code, e.headword
     FROM senses s
     JOIN items i ON i.id = s.id
     JOIN entries e ON e.id = s.entry_id
-    WHERE s.concept_id = ANY(@concept_ids::uuid[]) AND servable(i.status)
+    WHERE s.concept_id = ANY(@concept_ids::uuid[]) AND at_least(i.status, @min_status)
+      AND (sqlc.narg(variety)::text IS NULL OR e.variety = sqlc.narg(variety)::text)
       AND (coalesce(cardinality(@languages::text[]), 0) = 0 OR e.language_code = ANY(@languages::text[]))
 ), ranked AS (
     SELECT *, row_number() OVER (PARTITION BY concept_id ORDER BY language_code, headword, id) AS n

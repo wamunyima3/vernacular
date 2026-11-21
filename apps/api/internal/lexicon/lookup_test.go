@@ -35,10 +35,10 @@ func TestLookup(t *testing.T) {
 		}
 		t.Errorf("%s: concept not found in %+v", name, hits)
 	}
-	hits, err := lex.FromEnglish(ctx, "ZZ Ichipazzo", []string{"nya"}, 5)
+	hits, err := lex.FromEnglish(ctx, "ZZ Ichipazzo", []string{"nya"}, 5, machine)
 	check("from English", hits, err, "headword", "zzcinthu")
-	hits, err = lex.FromEnglish(ctx, "zz ichipazo", []string{"bem"}, 5)
+	hits, err = lex.FromEnglish(ctx, "zz ichipazo", []string{"bem"}, 5, machine)
 	check("typo in English", hits, err, "similar", "icipazzo")
-	hits, err = lex.ToEnglish(ctx, "bem", "ichipazzo", 5)
+	hits, err = lex.ToEnglish(ctx, "bem", "ichipazzo", 5, machine)
 	check("to English", hits, err, "variant", "icipazzo")
 }

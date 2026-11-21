@@ -27,7 +27,7 @@ type LookupHit struct {
 // FromEnglish finds concepts by English gloss and their entries in the
 // languages, all when none are given (LEX-2, US-04). Concepts with no
 // servable entry there are left out.
-func (s *Store) FromEnglish(ctx context.Context, query string, languages []string, limit int) ([]LookupHit, error) {
+func (s *Store) FromEnglish(ctx context.Context, query string, languages []string, limit int, f Filter) ([]LookupHit, error) {
 	concepts, err := s.q.FindConcepts(ctx, dbgen.FindConceptsParams{Fold: textnorm.Fold(query), Lim: int32(limit)}) //nolint:gosec // limit is 1..20, checked by the contract
 	if err != nil {
 		return nil, fmt.Errorf("find concepts: %w", err)
@@ -36,7 +36,7 @@ func (s *Store) FromEnglish(ctx context.Context, query string, languages []strin
 	for i, c := range concepts {
 		ids[i] = c.ID
 	}
-	byConcept, err := s.conceptEntries(ctx, ids, languages)
+	byConcept, err := s.conceptEntries(ctx, ids, languages, f)
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +55,8 @@ func (s *Store) FromEnglish(ctx context.Context, query string, languages []strin
 
 // ToEnglish searches a language's entries and gives each meaning found in
 // English: one hit per concept, in the order search ranked them.
-func (s *Store) ToEnglish(ctx context.Context, language, query string, limit int) ([]LookupHit, error) {
-	found, err := s.Search(ctx, language, query, toEnglishEntries)
+func (s *Store) ToEnglish(ctx context.Context, language, query string, limit int, f Filter) ([]LookupHit, error) {
+	found, err := s.Search(ctx, language, query, toEnglishEntries, f)
 	if err != nil {
 		return nil, err
 	}

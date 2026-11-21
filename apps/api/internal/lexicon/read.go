@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon/dbgen"
@@ -45,6 +46,23 @@ type Entry struct {
 	Trust                                               items.Trust
 }
 
+// Filter narrows what the read endpoints return (TRN-4, AI-6, LEX-6).
+type Filter struct {
+	MinStatus string // least-checked status to return; verified when empty (ADR-0004)
+	Variety   string // only entries of this variety; any when empty
+}
+
+func (f Filter) min() dbgen.TrustStatus {
+	if f.MinStatus == "" {
+		return dbgen.TrustStatusVerified
+	}
+	return dbgen.TrustStatus(f.MinStatus)
+}
+
+func (f Filter) variety() pgtype.Text {
+	return pgtype.Text{String: f.Variety, Valid: f.Variety != ""}
+}
+
 // What a query matched (US-05); the search query names them too.
 const (
 	MatchHeadword = "headword"
@@ -60,11 +78,12 @@ type Hit struct {
 // Search finds a language's entries for a query, best matches first (LEX-4).
 // The query is folded (NFR-7), spelled as the style guide does, and stemmed,
 // so variants and prefixed or inflected forms match.
-func (s *Store) Search(ctx context.Context, language, query string, limit int) ([]Hit, error) {
+func (s *Store) Search(ctx context.Context, language, query string, limit int, f Filter) ([]Hit, error) {
 	fold := textnorm.Fold(query)
 	standard, _ := Standardise(language, fold)
 	rows, err := s.q.SearchEntries(ctx, dbgen.SearchEntriesParams{
 		Language: language, Fold: fold, Standard: standard, Stem: Stem(language, standard), Lim: int32(limit), //nolint:gosec // limit is 1..50, checked by the contract
+		MinStatus: f.min(), Variety: f.variety(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("search entries: %w", err)
@@ -73,7 +92,7 @@ func (s *Store) Search(ctx context.Context, language, query string, limit int) (
 	for i, r := range rows {
 		ids[i] = r.ID
 	}
-	entries, err := s.entries(ctx, ids)
+	entries, err := s.entries(ctx, ids, f)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +107,8 @@ func (s *Store) Search(ctx context.Context, language, query string, limit int) (
 
 // Get reads a full servable entry: variants, senses and their examples
 // (US-16). False when there is no such entry or it cannot be served.
-func (s *Store) Get(ctx context.Context, id uuid.UUID) (Entry, bool, error) {
-	entries, err := s.entries(ctx, []uuid.UUID{id})
+func (s *Store) Get(ctx context.Context, id uuid.UUID, f Filter) (Entry, bool, error) {
+	entries, err := s.entries(ctx, []uuid.UUID{id}, f)
 	e, ok := entries[id]
 	if err != nil || !ok {
 		return Entry{}, false, err
@@ -101,7 +120,7 @@ func (s *Store) Get(ctx context.Context, id uuid.UUID) (Entry, bool, error) {
 	for _, v := range variants {
 		e.Variants = append(e.Variants, Variant{Spelling: v.Spelling, Note: v.Note})
 	}
-	if err := s.withExamples(ctx, e.Senses); err != nil {
+	if err := s.withExamples(ctx, e.Senses, f); err != nil {
 		return Entry{}, false, err
 	}
 	return e, true, nil
@@ -109,7 +128,7 @@ func (s *Store) Get(ctx context.Context, id uuid.UUID) (Entry, bool, error) {
 
 // entries reads servable entries with their servable senses and everyone's
 // trust fields, in four queries however many there are.
-func (s *Store) entries(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]Entry, error) {
+func (s *Store) entries(ctx context.Context, ids []uuid.UUID, f Filter) (map[uuid.UUID]Entry, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -117,7 +136,7 @@ func (s *Store) entries(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]Ent
 	if err != nil {
 		return nil, fmt.Errorf("list entries: %w", err)
 	}
-	senses, err := s.q.ListServableSenses(ctx, ids)
+	senses, err := s.q.ListSenses(ctx, dbgen.ListSensesParams{EntryIds: ids, MinStatus: f.min()})
 	if err != nil {
 		return nil, fmt.Errorf("list senses: %w", err)
 	}
@@ -150,12 +169,12 @@ func (s *Store) entries(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]Ent
 }
 
 // withExamples fills in the senses' servable examples with their trust.
-func (s *Store) withExamples(ctx context.Context, senses []Sense) error {
+func (s *Store) withExamples(ctx context.Context, senses []Sense, f Filter) error {
 	ids := make([]uuid.UUID, len(senses))
 	for i, sn := range senses {
 		ids[i] = sn.ID
 	}
-	rows, err := s.q.ListServableExamples(ctx, ids)
+	rows, err := s.q.ListExamples(ctx, dbgen.ListExamplesParams{SenseIds: ids, MinStatus: f.min()})
 	if err != nil || len(rows) == 0 {
 		return err
 	}
@@ -185,7 +204,7 @@ type ConceptEntries struct {
 }
 
 // ConceptEntries reads a concept across all languages. False when there is none.
-func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntries, bool, error) {
+func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID, f Filter) (ConceptEntries, bool, error) {
 	c, err := s.Concept(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ConceptEntries{}, false, nil
@@ -193,7 +212,7 @@ func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntrie
 	if err != nil {
 		return ConceptEntries{}, false, err
 	}
-	byConcept, err := s.conceptEntries(ctx, []uuid.UUID{id}, nil)
+	byConcept, err := s.conceptEntries(ctx, []uuid.UUID{id}, nil, f)
 	if err != nil {
 		return ConceptEntries{}, false, err
 	}
@@ -202,8 +221,10 @@ func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntrie
 
 // conceptEntries reads, per concept, the servable entries expressing it in
 // the languages (all when none), each keeping only that concept's senses.
-func (s *Store) conceptEntries(ctx context.Context, conceptIDs []uuid.UUID, languages []string) (map[uuid.UUID][]Entry, error) {
-	rows, err := s.q.ListConceptEntries(ctx, dbgen.ListConceptEntriesParams{ConceptIds: conceptIDs, Languages: languages})
+func (s *Store) conceptEntries(ctx context.Context, conceptIDs []uuid.UUID, languages []string, f Filter) (map[uuid.UUID][]Entry, error) {
+	rows, err := s.q.ListConceptEntries(ctx, dbgen.ListConceptEntriesParams{
+		ConceptIds: conceptIDs, Languages: languages, MinStatus: f.min(), Variety: f.variety(),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list concept entries: %w", err)
 	}
@@ -211,7 +232,7 @@ func (s *Store) conceptEntries(ctx context.Context, conceptIDs []uuid.UUID, lang
 	for i, r := range rows {
 		ids[i] = r.ID
 	}
-	entries, err := s.entries(ctx, ids)
+	entries, err := s.entries(ctx, ids, f)
 	if err != nil {
 		return nil, err
 	}

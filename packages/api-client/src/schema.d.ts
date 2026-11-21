@@ -733,6 +733,11 @@ export interface components {
             entries: components["schemas"]["EntrySummary"][];
         };
         /**
+         * @default verified
+         * @enum {string}
+         */
+        MinStatus: "verified" | "reviewed" | "sourced" | "machine";
+        /**
          * @description What the query matched (US-05): the headword (or, from English, the gloss), a
          *     spelling variant, the root of an inflected or prefixed form, or a similar spelling.
          * @enum {string}
@@ -964,6 +969,15 @@ export interface components {
         };
     };
     parameters: {
+        /**
+         * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+         *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+         *     with no meaning at this level are left out, so a strict caller gets nothing rather
+         *     than a guess.
+         */
+        MinStatus: components["schemas"]["MinStatus"];
+        /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
+        Variety: string;
         Id: string;
     };
     requestBodies: never;
@@ -1021,6 +1035,15 @@ export interface operations {
                 /** @example amenshi */
                 q: string;
                 limit?: number;
+                /**
+                 * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+                 *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+                 *     with no meaning at this level are left out, so a strict caller gets nothing rather
+                 *     than a guess.
+                 */
+                min_status?: components["parameters"]["MinStatus"];
+                /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
+                variety?: components["parameters"]["Variety"];
             };
             header?: never;
             path?: never;
@@ -1043,7 +1066,15 @@ export interface operations {
     };
     getEntry: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+                 *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+                 *     with no meaning at this level are left out, so a strict caller gets nothing rather
+                 *     than a guess.
+                 */
+                min_status?: components["parameters"]["MinStatus"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["Id"];
@@ -1067,7 +1098,17 @@ export interface operations {
     };
     getConcept: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+                 *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+                 *     with no meaning at this level are left out, so a strict caller gets nothing rather
+                 *     than a guess.
+                 */
+                min_status?: components["parameters"]["MinStatus"];
+                /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
+                variety?: components["parameters"]["Variety"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["Id"];
@@ -1107,6 +1148,15 @@ export interface operations {
                 to?: components["schemas"]["LanguageCode"][];
                 /** @description Most concepts to return */
                 limit?: number;
+                /**
+                 * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+                 *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+                 *     with no meaning at this level are left out, so a strict caller gets nothing rather
+                 *     than a guess.
+                 */
+                min_status?: components["parameters"]["MinStatus"];
+                /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
+                variety?: components["parameters"]["Variety"];
             };
             header?: never;
             path?: never;
