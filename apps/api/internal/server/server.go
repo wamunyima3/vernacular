@@ -54,6 +54,7 @@ type Options struct {
 type Deps struct {
 	DB            health.Pinger
 	Accounts      accounts.Authenticator
+	Reviewers     *accounts.Service
 	Languages     languages.Lister
 	Sources       *sources.Register
 	Contributions *contributions.Service
@@ -67,7 +68,7 @@ func New(opts Options, deps Deps) http.Handler {
 	r.Use(validateRequests(errs), accounts.Middleware(deps.Accounts, errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
-		accountsOps:  accounts.NewHandler(),
+		accountsOps:  accounts.NewHandler(deps.Reviewers),
 		healthOps:    health.NewHandler(deps.DB, errs),
 		languagesOps: languages.NewHandler(deps.Languages),
 		sourcesOps:   sources.NewHandler(deps.Sources),

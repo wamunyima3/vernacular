@@ -106,6 +106,8 @@ Every item the API returns embeds one shared `Trust` schema ([ADR-0004](adr/0004
 
 Promotion is a single function, `review.Status` in `review/promotion.go`, and is the only code path that can set `verified`. It derives an item's status from its origin, a senior reviewer's latest resolution and the reviews that count, so recording a decision, undoing one and settling a dispute all follow the same rule. It is covered by table tests for every transition, and a test fails if anything else changes `items.status`. Items two reviewers reject become `rejected`, a database-only status the API never returns ([ADR-0004](adr/0004-verification-levels.md) amendment).
 
+Reviewers are held to the outcomes they help settle (DQ-7). The `reviewer_agreement` view counts each reviewer's decisions on `verified` and `rejected` items since their last retraining, and `below_agreement()` holds the threshold: under 80% over at least 20 decisions. The session query marks such approvals `suspended`, so a reviewer loses review rights the moment they fall below it, with no scheduled job, until a senior reviewer records their retraining.
+
 ```mermaid
 stateDiagram-v2
   [*] --> machine: AI candidate

@@ -14,10 +14,12 @@ import (
 // Roles and review levels are the contract's enums (gen.Role, gen.ReviewerLevel),
 // so Go, the web app and the database CHECK share one list.
 
-// Approval lets a user review one language.
+// Approval lets a user review one language, unless it is suspended because
+// their agreement fell below the threshold (DQ-7).
 type Approval struct {
-	Language string            `json:"language"`
-	Level    gen.ReviewerLevel `json:"level"`
+	Language  string            `json:"language"`
+	Level     gen.ReviewerLevel `json:"level"`
+	Suspended bool              `json:"suspended"`
 }
 
 // Principal is the authenticated caller.
@@ -34,14 +36,30 @@ func (p Principal) HasRole(roles ...gen.Role) bool {
 	return p.Role == gen.RoleAdmin || slices.Contains(roles, p.Role)
 }
 
-// CanReview reports whether the caller may review items in a language.
-func (p Principal) CanReview(language string) bool {
-	return slices.ContainsFunc(p.Approvals, func(a Approval) bool { return a.Language == language })
+// active returns the approvals that are not suspended.
+func (p Principal) active() []Approval {
+	return slices.DeleteFunc(slices.Clone(p.Approvals), func(a Approval) bool { return a.Suspended })
 }
 
-// IsSenior reports whether the caller is a senior reviewer for a language.
+// CanReview reports whether the caller may review items in a language.
+func (p Principal) CanReview(language string) bool {
+	return slices.ContainsFunc(p.active(), func(a Approval) bool { return a.Language == language })
+}
+
+// IsSenior reports whether the caller is an active senior reviewer for a language.
 func (p Principal) IsSenior(language string) bool {
-	return slices.Contains(p.Approvals, Approval{Language: language, Level: gen.ReviewerLevelSenior})
+	return slices.Contains(p.SeniorLanguages(), language)
+}
+
+// SeniorLanguages lists the languages the caller is an active senior reviewer for.
+func (p Principal) SeniorLanguages() []string {
+	var out []string
+	for _, a := range p.active() {
+		if a.Level == gen.ReviewerLevelSenior {
+			out = append(out, a.Language)
+		}
+	}
+	return out
 }
 
 type ctxKey struct{}

@@ -124,6 +124,8 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
   - [x] **P1-REV-03b** "Write my own": a reviewer's correction becomes a new candidate for others to review; the candidates it replaces keep their history (M)
 - [x] **P1-REV-04** Disputes slice for senior reviewers; reports and senior resolutions become inputs to `review.Status`, so an undo cannot overwrite them (M). Reports join with P1-API-10 → CON-4, DQ-8, US-23
 - [ ] **P1-REV-05** Reviewer qualification test set and agreement-rate tracking (M) → DQ-3, DQ-7, US-24
+  - [x] **P1-REV-05a** Agreement rates: each reviewer's share of decisions that match settled outcomes, shown to senior reviewers; below the threshold a reviewer loses approval until a senior marks them retrained (M)
+  - [ ] **P1-REV-05b** Qualification: a short test set from verified items for new reviewers, confirmed by a senior reviewer (M). Needs verified items in the language
 - [ ] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
 - [ ] **P1-REV-07** Public contributor credit page (S) → CON-5, US-19
 

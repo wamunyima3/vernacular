@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"context"
+	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -9,10 +10,12 @@ import (
 )
 
 // Handler implements the account operations of the generated strict server.
-type Handler struct{}
+type Handler struct {
+	svc *Service
+}
 
 // NewHandler returns an accounts handler.
-func NewHandler() *Handler { return &Handler{} }
+func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 
 // GetMe implements GET /v1/me.
 func (h *Handler) GetMe(ctx context.Context, _ gen.GetMeRequestObject) (gen.GetMeResponseObject, error) {
@@ -22,9 +25,37 @@ func (h *Handler) GetMe(ctx context.Context, _ gen.GetMeRequestObject) (gen.GetM
 	}
 	approvals := make([]gen.Approval, len(p.Approvals))
 	for i, a := range p.Approvals {
-		approvals[i] = gen.Approval{Language: a.Language, Level: a.Level}
+		approvals[i] = gen.Approval{Language: a.Language, Level: a.Level, Suspended: a.Suspended}
 	}
 	return gen.GetMe200JSONResponse{
 		Id: p.ID, Name: p.Name, Email: openapi_types.Email(p.Email), Role: p.Role, Approvals: approvals,
 	}, nil
+}
+
+// ListReviewers implements GET /v1/reviewers.
+func (h *Handler) ListReviewers(ctx context.Context, req gen.ListReviewersRequestObject) (gen.ListReviewersResponseObject, error) {
+	rows, err := h.svc.Reviewers(ctx, req.Params.Language)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.Reviewer, len(rows))
+	for i, r := range rows {
+		var retrained *time.Time
+		if r.RetrainedAt.Valid {
+			retrained = &r.RetrainedAt.Time
+		}
+		out[i] = gen.Reviewer{
+			UserId: r.ID, Name: r.Name, Level: gen.ReviewerLevel(r.Level), Decided: int(r.Decided), Agreed: int(r.Agreed),
+			Suspended: r.Suspended, RetrainedAt: retrained,
+		}
+	}
+	return gen.ListReviewers200JSONResponse{Reviewers: out}, nil
+}
+
+// MarkRetrained implements POST /v1/reviewers/{user_id}/retraining.
+func (h *Handler) MarkRetrained(ctx context.Context, req gen.MarkRetrainedRequestObject) (gen.MarkRetrainedResponseObject, error) {
+	if err := h.svc.Retrain(ctx, req.UserId, req.Body.Language); err != nil {
+		return nil, err
+	}
+	return gen.MarkRetrained204Response{}, nil
 }

@@ -10,6 +10,7 @@ import { apiErrorMessage } from "@/lib/api-error"
 
 import { requireSession } from "../../auth/session"
 import { getLanguages, languageName } from "../../languages/get-languages"
+import { agreementThreshold } from "../../reviewers/threshold"
 import { type Params, readLast, readSession, reviewUrl } from "../review-url"
 import { ReviewCard } from "./review-card"
 import { UndoToast } from "./undo-toast"
@@ -52,7 +53,15 @@ async function Current({ params }: { params: Params }) {
   if (!me)
     return <ErrorCard title="Your account could not be loaded" message={apiErrorMessage(meError)} />
 
-  const approved = me.approvals.map((a) => a.language)
+  const approved = me.approvals.filter((a) => !a.suspended).map((a) => a.language)
+  if (approved.length === 0 && me.approvals.length > 0) {
+    return (
+      <NoticeCard title="Your review approval is paused">
+        Your agreement with settled outcomes fell below {agreementThreshold.percent}%. A senior
+        reviewer for your language resumes it after retraining.
+      </NoticeCard>
+    )
+  }
   if (approved.length === 0) {
     return (
       <NoticeCard title="You are not a reviewer yet" actions={contribute}>

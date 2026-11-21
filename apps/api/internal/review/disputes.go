@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
-	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
@@ -34,17 +33,6 @@ type DisputeReview struct {
 	CreatedAt  time.Time
 }
 
-// seniorLanguages lists the languages p settles disputes in.
-func seniorLanguages(p accounts.Principal) []string {
-	var out []string
-	for _, a := range p.Approvals {
-		if a.Level == gen.ReviewerLevelSenior {
-			out = append(out, a.Language)
-		}
-	}
-	return out
-}
-
 // Disputes lists the disputes the signed-in senior reviewer can settle,
 // oldest first.
 func (s *Service) Disputes(ctx context.Context) ([]Dispute, error) {
@@ -52,7 +40,7 @@ func (s *Service) Disputes(ctx context.Context) ([]Dispute, error) {
 	if err != nil {
 		return nil, err
 	}
-	languages := seniorLanguages(me)
+	languages := me.SeniorLanguages()
 	if len(languages) == 0 {
 		return nil, httpx.ErrForbidden
 	}

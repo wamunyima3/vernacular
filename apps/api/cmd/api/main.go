@@ -57,6 +57,7 @@ func run() error {
 		server.Deps{
 			DB:            pool,
 			Accounts:      accounts.NewStore(pool),
+			Reviewers:     accounts.NewService(pool),
 			Languages:     languages.NewService(languages.NewStore(pool)),
 			Sources:       sources.NewRegister(pool, bucket),
 			Contributions: contributions.NewService(pool),

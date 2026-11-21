@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation"
 
+import { ConfirmAction } from "@/components/confirm-action"
 import { Separator } from "@/components/ui/separator"
 import { api } from "@/lib/api"
 
 import { sessionWithAdmin } from "../../auth/admin"
 import { deleteSource, updateSource, uploadPermission } from "../actions"
 import { AdminOnly } from "./admin-only"
-import { DeleteSource } from "./delete-source"
 import { PermissionUpload } from "./permission-upload"
 import { SourceForm } from "./source-form"
 
@@ -34,7 +34,14 @@ export async function SourceEditor({ params }: { params: Promise<{ id: string }>
         downloadHref={`/sources/${id}/permission`}
       />
       <Separator />
-      <DeleteSource name={source.name} action={deleteSource.bind(null, id)} />
+      <ConfirmAction
+        label="Delete source"
+        title={`Delete ${source.name}?`}
+        description="This removes it from the register. A source that items cite cannot be deleted."
+        action={deleteSource.bind(null, id)}
+        destructive
+        className="flex flex-col items-start gap-3"
+      />
     </div>
   )
 }

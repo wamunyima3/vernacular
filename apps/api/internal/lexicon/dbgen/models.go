@@ -651,6 +651,13 @@ type ReviewAgreement struct {
 	Priority     ReviewPriority
 }
 
+type ReviewerAgreement struct {
+	UserID       string
+	LanguageCode string
+	Decided      int32
+	Agreed       int32
+}
+
 type ReviewerApproval struct {
 	UserID       string
 	LanguageCode string
@@ -658,6 +665,7 @@ type ReviewerApproval struct {
 	ApprovedBy   pgtype.Text
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	RetrainedAt  pgtype.Timestamptz
 }
 
 type Sense struct {

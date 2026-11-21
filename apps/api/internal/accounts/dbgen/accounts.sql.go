@@ -7,18 +7,26 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getSessionUser = `-- name: GetSessionUser :one
 SELECT u.id, u.name, u.email, u.role,
        coalesce(
-           json_agg(json_build_object('language', a.language_code, 'level', a.level) ORDER BY a.language_code)
+           json_agg(json_build_object('language', a.language_code, 'level', a.level,
+                                      'suspended', below_agreement(g.decided, g.agreed))
+                    ORDER BY a.language_code)
                FILTER (WHERE a.user_id IS NOT NULL),
            '[]'
        )::jsonb AS approvals
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 LEFT JOIN reviewer_approvals a ON a.user_id = u.id
+LEFT JOIN LATERAL (
+    SELECT decided, agreed FROM reviewer_agreement
+    WHERE user_id = a.user_id AND language_code = a.language_code
+) g ON true
 WHERE s.token = $1
   AND s.expires_at > now()
   AND NOT (coalesce(u.banned, false) AND (u.ban_expires IS NULL OR u.ban_expires > now()))
@@ -46,6 +54,72 @@ func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionU
 		&i.Approvals,
 	)
 	return i, err
+}
+
+const listReviewers = `-- name: ListReviewers :many
+SELECT u.id, u.name, a.level, g.decided, g.agreed,
+       below_agreement(g.decided, g.agreed) AS suspended, a.retrained_at
+FROM reviewer_approvals a
+JOIN users u ON u.id = a.user_id
+JOIN reviewer_agreement g ON g.user_id = a.user_id AND g.language_code = a.language_code
+WHERE a.language_code = $1
+ORDER BY suspended DESC, u.name, u.id
+`
+
+type ListReviewersRow struct {
+	ID          string
+	Name        string
+	Level       ReviewerLevel
+	Decided     int32
+	Agreed      int32
+	Suspended   bool
+	RetrainedAt pgtype.Timestamptz
+}
+
+// A language's reviewers with their agreement (DQ-7), suspended ones first.
+func (q *Queries) ListReviewers(ctx context.Context, languageCode string) ([]ListReviewersRow, error) {
+	rows, err := q.db.Query(ctx, listReviewers, languageCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReviewersRow
+	for rows.Next() {
+		var i ListReviewersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Level,
+			&i.Decided,
+			&i.Agreed,
+			&i.Suspended,
+			&i.RetrainedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markRetrained = `-- name: MarkRetrained :execrows
+UPDATE reviewer_approvals SET retrained_at = now() WHERE user_id = $1 AND language_code = $2
+`
+
+type MarkRetrainedParams struct {
+	UserID       string
+	LanguageCode string
+}
+
+func (q *Queries) MarkRetrained(ctx context.Context, arg MarkRetrainedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markRetrained, arg.UserID, arg.LanguageCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setRole = `-- name: SetRole :execrows

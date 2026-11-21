@@ -170,6 +170,57 @@ paths:
           description: Undone; the items are back in the reviewer's queue
         default:
           $ref: "#/components/responses/Error"
+  /v1/reviewers:
+    get:
+      operationId: listReviewers
+      summary: Reviewers of a language with their agreement rates (senior reviewers)
+      description: |
+        Every approved reviewer of the language, suspended ones first (DQ-7). A reviewer is
+        suspended below 80% agreement over at least 20 settled decisions.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: language
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "200":
+          description: The language's reviewers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewerList" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/reviewers/{user_id}/retraining:
+    post:
+      operationId: markRetrained
+      summary: Record that a reviewer was retrained (senior reviewers)
+      description: Restarts the reviewer's agreement count in the language, which lifts a suspension.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [language]
+              properties:
+                language: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "204":
+          description: Recorded
+        default:
+          $ref: "#/components/responses/Error"
   /v1/disputes:
     get:
       operationId: listDisputes
@@ -404,10 +455,37 @@ components:
       enum: [reviewer, senior]
     Approval:
       type: object
-      required: [language, level]
+      required: [language, level, suspended]
       properties:
         language: { $ref: "#/components/schemas/LanguageCode" }
         level: { $ref: "#/components/schemas/ReviewerLevel" }
+        suspended:
+          type: boolean
+          description: |
+            Agreement fell below the threshold, so the approval is paused until a senior
+            reviewer marks the reviewer retrained (DQ-7)
+    Reviewer:
+      type: object
+      required: [user_id, name, level, decided, agreed, suspended]
+      properties:
+        user_id: { type: string }
+        name: { type: string }
+        level: { $ref: "#/components/schemas/ReviewerLevel" }
+        decided:
+          type: integer
+          description: Decisions on items whose outcome is settled, since the last retraining
+        agreed:
+          type: integer
+          description: Of those, the decisions that match the outcome
+        suspended: { type: boolean }
+        retrained_at: { type: string, format: date-time }
+    ReviewerList:
+      type: object
+      required: [reviewers]
+      properties:
+        reviewers:
+          type: array
+          items: { $ref: "#/components/schemas/Reviewer" }
     Me:
       type: object
       required: [id, name, email, role, approvals]

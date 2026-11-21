@@ -132,6 +132,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reviewers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reviewers of a language with their agreement rates (senior reviewers)
+         * @description Every approved reviewer of the language, suspended ones first (DQ-7). A reviewer is
+         *     suspended below 80% agreement over at least 20 settled decisions.
+         */
+        get: operations["listReviewers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reviewers/{user_id}/retraining": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that a reviewer was retrained (senior reviewers)
+         * @description Restarts the reviewer's agreement count in the language, which lifts a suspension.
+         */
+        post: operations["markRetrained"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/disputes": {
         parameters: {
             query?: never;
@@ -290,6 +331,26 @@ export interface components {
         Approval: {
             language: components["schemas"]["LanguageCode"];
             level: components["schemas"]["ReviewerLevel"];
+            /**
+             * @description Agreement fell below the threshold, so the approval is paused until a senior
+             *     reviewer marks the reviewer retrained (DQ-7)
+             */
+            suspended: boolean;
+        };
+        Reviewer: {
+            user_id: string;
+            name: string;
+            level: components["schemas"]["ReviewerLevel"];
+            /** @description Decisions on items whose outcome is settled, since the last retraining */
+            decided: number;
+            /** @description Of those, the decisions that match the outcome */
+            agreed: number;
+            suspended: boolean;
+            /** Format: date-time */
+            retrained_at?: string;
+        };
+        ReviewerList: {
+            reviewers: components["schemas"]["Reviewer"][];
         };
         Me: {
             id: string;
@@ -708,6 +769,56 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Undone; the items are back in the reviewer's queue */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listReviewers: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The language's reviewers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewerList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    markRetrained: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    language: components["schemas"]["LanguageCode"];
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded */
             204: {
                 headers: {
                     [name: string]: unknown;
