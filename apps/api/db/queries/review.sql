@@ -47,14 +47,17 @@ UPDATE reviews SET set_aside_by = @resolution_id WHERE item_id = @item_id AND se
 SELECT outcome FROM resolutions WHERE item_id = $1 ORDER BY created_at DESC LIMIT 1;
 
 -- name: ListDisputes :many
--- Disputed senses in the languages, oldest first. A dispute is as old as the
--- last counted review, which is the one that made the reviewers disagree.
-SELECT i.id, i.language_code, max(r.created_at)::timestamptz AS disputed_since
+-- Disputed senses in the languages, oldest first. A dispute is as old as what
+-- made it: the last counted review, or the confirmation of a report.
+SELECT i.id, i.language_code,
+       greatest(
+           (SELECT max(r.created_at) FROM reviews r WHERE r.item_id = i.id AND r.set_aside_by IS NULL),
+           (SELECT max(p.handled_at) FROM reports p
+            WHERE p.item_id = i.id AND p.state = 'confirmed' AND p.settled_by IS NULL)
+       )::timestamptz AS disputed_since
 FROM items i
-JOIN reviews r ON r.item_id = i.id AND r.set_aside_by IS NULL
 WHERE i.status = 'disputed' AND i.kind = 'sense'
   AND i.language_code = ANY(@languages::text[])
-GROUP BY i.id
 ORDER BY disputed_since, i.id
 LIMIT 50;
 
@@ -78,3 +81,41 @@ SELECT name, words, reviews FROM credits
 WHERE language_code = $1
 ORDER BY words + reviews DESC, name, user_id
 LIMIT 500;
+
+-- name: HasUnsettledReport :one
+-- A confirmed report no resolution has settled yet makes the item disputed.
+SELECT EXISTS (SELECT 1 FROM reports
+               WHERE item_id = $1 AND state = 'confirmed' AND settled_by IS NULL);
+
+-- name: SettleReports :exec
+UPDATE reports SET settled_by = @resolution_id, updated_at = now()
+WHERE item_id = @item_id AND state = 'confirmed' AND settled_by IS NULL;
+
+-- name: CreateReport :one
+-- Only a sense can be reported; no row means there is no such sense.
+INSERT INTO reports (item_id, reason, reporter_id)
+SELECT i.id, @reason, sqlc.narg(reporter_id) FROM items i WHERE i.id = @item_id AND i.kind = 'sense'
+RETURNING id;
+
+-- name: ListOpenReports :many
+-- Open reports in the languages, oldest first, with the sense they are about.
+SELECT p.id, p.item_id, p.reason, p.reporter_id, p.created_at, i.language_code, i.status,
+       e.headword, s.gloss
+FROM reports p
+JOIN items i ON i.id = p.item_id
+JOIN senses s ON s.id = p.item_id
+JOIN entries e ON e.id = s.entry_id
+WHERE p.state = 'open' AND i.language_code = ANY(@languages::text[])
+ORDER BY p.created_at, p.id
+LIMIT 100;
+
+-- name: GetReportItem :one
+SELECT item_id FROM reports WHERE id = $1;
+
+-- name: LockReport :one
+-- Taken after the item's lock, as resolutions take them in that order too.
+SELECT reporter_id, state FROM reports WHERE id = $1 FOR UPDATE;
+
+-- name: HandleReport :exec
+UPDATE reports SET state = @state, handled_by = @handled_by, handled_at = now(), note = @note, updated_at = now()
+WHERE id = @id;

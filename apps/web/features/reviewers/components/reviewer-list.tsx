@@ -1,11 +1,10 @@
 import type { Schemas } from "@vernacular/api-client"
-import Link from "next/link"
 
 import { ConfirmAction } from "@/components/confirm-action"
 import { ErrorCard } from "@/components/error-card"
+import { LanguageTabs, pickLanguage } from "@/components/language-tabs"
 import { NoticeCard } from "@/components/notice-card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -43,7 +42,10 @@ export async function ReviewerList({ asked }: { asked?: string }) {
       </NoticeCard>
     )
   }
-  const language = senior.some((a) => a.language === asked) ? asked! : senior[0]!.language
+  const language = pickLanguage(
+    senior.map((a) => a.language),
+    asked,
+  )
   const [{ data, error }, names] = await Promise.all([
     api.GET("/v1/reviewers", { params: { query: { language } } }),
     languages,
@@ -53,21 +55,14 @@ export async function ReviewerList({ asked }: { asked?: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {senior.length > 1 && (
-        <nav className="flex flex-wrap gap-2" aria-label="Language">
-          {senior.map((a) => (
-            <Button
-              key={a.language}
-              size="sm"
-              variant={a.language === language ? "secondary" : "ghost"}
-              nativeButton={false}
-              render={<Link href={`/reviewers?${new URLSearchParams({ language: a.language })}`} />}
-            >
-              {languageName(names, a.language)}
-            </Button>
-          ))}
-        </nav>
-      )}
+      <LanguageTabs
+        languages={senior.map((a) => ({
+          code: a.language,
+          name: languageName(names, a.language),
+        }))}
+        current={language}
+        path="/reviewers"
+      />
       <p className="text-sm text-pretty text-muted-foreground">
         {languageName(names, language)}: agreement with settled outcomes since each reviewer&apos;s
         last retraining. Below {threshold.percent}% over at least {threshold.decisions} decisions,

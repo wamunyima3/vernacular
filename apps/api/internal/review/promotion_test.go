@@ -25,29 +25,32 @@ func TestStatus(t *testing.T) {
 		name       string
 		origin     items.Status
 		resolution dbgen.ResolutionOutcome
+		reported   bool
 		decisions  []dbgen.ReviewDecision
 		want       items.Status
 	}{
-		{"unreviewed machine", items.StatusMachine, "", nil, items.StatusMachine},
-		{"unreviewed sourced", items.StatusSourced, "", nil, items.StatusSourced},
-		{"one accept", items.StatusMachine, "", []dbgen.ReviewDecision{accept}, items.StatusReviewed},
-		{"two accepts", items.StatusMachine, "", []dbgen.ReviewDecision{accept, accept}, items.StatusVerified},
-		{"three accepts", items.StatusSourced, "", []dbgen.ReviewDecision{accept, accept, accept}, items.StatusVerified},
-		{"one reject waits for another opinion", items.StatusSourced, "", []dbgen.ReviewDecision{reject}, items.StatusSourced},
-		{"two rejects", items.StatusMachine, "", []dbgen.ReviewDecision{reject, reject}, items.StatusRejected},
-		{"a correction counts as a reject", items.StatusMachine, "", []dbgen.ReviewDecision{reject, correct}, items.StatusRejected},
-		{"accept then reject", items.StatusMachine, "", []dbgen.ReviewDecision{accept, reject}, items.StatusDisputed},
-		{"two accepts and a reject", items.StatusSourced, "", []dbgen.ReviewDecision{accept, accept, reject}, items.StatusDisputed},
-		{"accept and correction", items.StatusSourced, "", []dbgen.ReviewDecision{correct, accept}, items.StatusDisputed},
-		{"kept by a senior", items.StatusMachine, keep, []dbgen.ReviewDecision{accept, reject}, items.StatusVerified},
-		{"kept, then a reviewer undoes", items.StatusMachine, keep, []dbgen.ReviewDecision{reject}, items.StatusVerified},
-		{"sent back, nothing since", items.StatusSourced, sendBack, nil, items.StatusSourced},
-		{"sent back, one accept since", items.StatusMachine, sendBack, []dbgen.ReviewDecision{accept}, items.StatusReviewed},
+		{"unreviewed machine", items.StatusMachine, "", false, nil, items.StatusMachine},
+		{"unreviewed sourced", items.StatusSourced, "", false, nil, items.StatusSourced},
+		{"one accept", items.StatusMachine, "", false, []dbgen.ReviewDecision{accept}, items.StatusReviewed},
+		{"two accepts", items.StatusMachine, "", false, []dbgen.ReviewDecision{accept, accept}, items.StatusVerified},
+		{"three accepts", items.StatusSourced, "", false, []dbgen.ReviewDecision{accept, accept, accept}, items.StatusVerified},
+		{"one reject waits for another opinion", items.StatusSourced, "", false, []dbgen.ReviewDecision{reject}, items.StatusSourced},
+		{"two rejects", items.StatusMachine, "", false, []dbgen.ReviewDecision{reject, reject}, items.StatusRejected},
+		{"a correction counts as a reject", items.StatusMachine, "", false, []dbgen.ReviewDecision{reject, correct}, items.StatusRejected},
+		{"accept then reject", items.StatusMachine, "", false, []dbgen.ReviewDecision{accept, reject}, items.StatusDisputed},
+		{"two accepts and a reject", items.StatusSourced, "", false, []dbgen.ReviewDecision{accept, accept, reject}, items.StatusDisputed},
+		{"accept and correction", items.StatusSourced, "", false, []dbgen.ReviewDecision{correct, accept}, items.StatusDisputed},
+		{"kept by a senior", items.StatusMachine, keep, false, []dbgen.ReviewDecision{accept, reject}, items.StatusVerified},
+		{"kept, then a reviewer undoes", items.StatusMachine, keep, false, []dbgen.ReviewDecision{reject}, items.StatusVerified},
+		{"sent back, nothing since", items.StatusSourced, sendBack, false, nil, items.StatusSourced},
+		{"sent back, one accept since", items.StatusMachine, sendBack, false, []dbgen.ReviewDecision{accept}, items.StatusReviewed},
+		{"a confirmed report disputes it", items.StatusMachine, "", true, []dbgen.ReviewDecision{accept, accept}, items.StatusDisputed},
+		{"a confirmed report after a keep", items.StatusMachine, keep, true, nil, items.StatusDisputed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := review.Status(tt.origin, tt.resolution, tt.decisions); got != tt.want {
-				t.Errorf("Status(%s, %v) = %s, want %s", tt.origin, tt.decisions, got, tt.want)
+			if got := review.Status(tt.origin, tt.resolution, tt.reported, tt.decisions); got != tt.want {
+				t.Errorf("Status(%s, %q, reported %v, %v) = %s, want %s", tt.origin, tt.resolution, tt.reported, tt.decisions, got, tt.want)
 			}
 		})
 	}

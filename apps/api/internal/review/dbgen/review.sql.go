@@ -10,7 +10,28 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createReport = `-- name: CreateReport :one
+INSERT INTO reports (item_id, reason, reporter_id)
+SELECT i.id, $1, $2 FROM items i WHERE i.id = $3 AND i.kind = 'sense'
+RETURNING id
+`
+
+type CreateReportParams struct {
+	Reason     string
+	ReporterID pgtype.Text
+	ItemID     uuid.UUID
+}
+
+// Only a sense can be reported; no row means there is no such sense.
+func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createReport, arg.Reason, arg.ReporterID, arg.ItemID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
 
 const createResolution = `-- name: CreateResolution :one
 INSERT INTO resolutions (item_id, senior_id, outcome, note) VALUES ($1, $2, $3, $4)
@@ -84,6 +105,39 @@ func (q *Queries) GetLatestResolution(ctx context.Context, itemID uuid.UUID) (Re
 	return outcome, err
 }
 
+const getReportItem = `-- name: GetReportItem :one
+SELECT item_id FROM reports WHERE id = $1
+`
+
+func (q *Queries) GetReportItem(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getReportItem, id)
+	var item_id uuid.UUID
+	err := row.Scan(&item_id)
+	return item_id, err
+}
+
+const handleReport = `-- name: HandleReport :exec
+UPDATE reports SET state = $1, handled_by = $2, handled_at = now(), note = $3, updated_at = now()
+WHERE id = $4
+`
+
+type HandleReportParams struct {
+	State     ReportState
+	HandledBy pgtype.Text
+	Note      string
+	ID        uuid.UUID
+}
+
+func (q *Queries) HandleReport(ctx context.Context, arg HandleReportParams) error {
+	_, err := q.db.Exec(ctx, handleReport,
+		arg.State,
+		arg.HandledBy,
+		arg.Note,
+		arg.ID,
+	)
+	return err
+}
+
 const hasReviewed = `-- name: HasReviewed :one
 SELECT EXISTS (SELECT 1 FROM reviews WHERE item_id = $1 AND reviewer_id = $2)
 `
@@ -96,6 +150,19 @@ type HasReviewedParams struct {
 // Whether the reviewer ever reviewed the item, set aside or not.
 func (q *Queries) HasReviewed(ctx context.Context, arg HasReviewedParams) (bool, error) {
 	row := q.db.QueryRow(ctx, hasReviewed, arg.ItemID, arg.ReviewerID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const hasUnsettledReport = `-- name: HasUnsettledReport :one
+SELECT EXISTS (SELECT 1 FROM reports
+               WHERE item_id = $1 AND state = 'confirmed' AND settled_by IS NULL)
+`
+
+// A confirmed report no resolution has settled yet makes the item disputed.
+func (q *Queries) HasUnsettledReport(ctx context.Context, itemID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasUnsettledReport, itemID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -177,12 +244,15 @@ func (q *Queries) ListCredits(ctx context.Context, languageCode string) ([]ListC
 }
 
 const listDisputes = `-- name: ListDisputes :many
-SELECT i.id, i.language_code, max(r.created_at)::timestamptz AS disputed_since
+SELECT i.id, i.language_code,
+       greatest(
+           (SELECT max(r.created_at) FROM reviews r WHERE r.item_id = i.id AND r.set_aside_by IS NULL),
+           (SELECT max(p.handled_at) FROM reports p
+            WHERE p.item_id = i.id AND p.state = 'confirmed' AND p.settled_by IS NULL)
+       )::timestamptz AS disputed_since
 FROM items i
-JOIN reviews r ON r.item_id = i.id AND r.set_aside_by IS NULL
 WHERE i.status = 'disputed' AND i.kind = 'sense'
   AND i.language_code = ANY($1::text[])
-GROUP BY i.id
 ORDER BY disputed_since, i.id
 LIMIT 50
 `
@@ -193,8 +263,8 @@ type ListDisputesRow struct {
 	DisputedSince time.Time
 }
 
-// Disputed senses in the languages, oldest first. A dispute is as old as the
-// last counted review, which is the one that made the reviewers disagree.
+// Disputed senses in the languages, oldest first. A dispute is as old as what
+// made it: the last counted review, or the confirmation of a report.
 func (q *Queries) ListDisputes(ctx context.Context, languages []string) ([]ListDisputesRow, error) {
 	rows, err := q.db.Query(ctx, listDisputes, languages)
 	if err != nil {
@@ -205,6 +275,61 @@ func (q *Queries) ListDisputes(ctx context.Context, languages []string) ([]ListD
 	for rows.Next() {
 		var i ListDisputesRow
 		if err := rows.Scan(&i.ID, &i.LanguageCode, &i.DisputedSince); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenReports = `-- name: ListOpenReports :many
+SELECT p.id, p.item_id, p.reason, p.reporter_id, p.created_at, i.language_code, i.status,
+       e.headword, s.gloss
+FROM reports p
+JOIN items i ON i.id = p.item_id
+JOIN senses s ON s.id = p.item_id
+JOIN entries e ON e.id = s.entry_id
+WHERE p.state = 'open' AND i.language_code = ANY($1::text[])
+ORDER BY p.created_at, p.id
+LIMIT 100
+`
+
+type ListOpenReportsRow struct {
+	ID           uuid.UUID
+	ItemID       uuid.UUID
+	Reason       string
+	ReporterID   pgtype.Text
+	CreatedAt    time.Time
+	LanguageCode string
+	Status       TrustStatus
+	Headword     string
+	Gloss        string
+}
+
+// Open reports in the languages, oldest first, with the sense they are about.
+func (q *Queries) ListOpenReports(ctx context.Context, languages []string) ([]ListOpenReportsRow, error) {
+	rows, err := q.db.Query(ctx, listOpenReports, languages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOpenReportsRow
+	for rows.Next() {
+		var i ListOpenReportsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.Reason,
+			&i.ReporterID,
+			&i.CreatedAt,
+			&i.LanguageCode,
+			&i.Status,
+			&i.Headword,
+			&i.Gloss,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -283,6 +408,23 @@ func (q *Queries) ListProviderQuality(ctx context.Context) ([]ProviderQuality, e
 	return items, nil
 }
 
+const lockReport = `-- name: LockReport :one
+SELECT reporter_id, state FROM reports WHERE id = $1 FOR UPDATE
+`
+
+type LockReportRow struct {
+	ReporterID pgtype.Text
+	State      ReportState
+}
+
+// Taken after the item's lock, as resolutions take them in that order too.
+func (q *Queries) LockReport(ctx context.Context, id uuid.UUID) (LockReportRow, error) {
+	row := q.db.QueryRow(ctx, lockReport, id)
+	var i LockReportRow
+	err := row.Scan(&i.ReporterID, &i.State)
+	return i, err
+}
+
 const nextReviewCard = `-- name: NextReviewCard :many
 WITH open AS (
     SELECT a.item_id, a.concept_id, a.priority, i.created_at
@@ -350,5 +492,20 @@ type SetReviewsAsideParams struct {
 
 func (q *Queries) SetReviewsAside(ctx context.Context, arg SetReviewsAsideParams) error {
 	_, err := q.db.Exec(ctx, setReviewsAside, arg.ResolutionID, arg.ItemID)
+	return err
+}
+
+const settleReports = `-- name: SettleReports :exec
+UPDATE reports SET settled_by = $1, updated_at = now()
+WHERE item_id = $2 AND state = 'confirmed' AND settled_by IS NULL
+`
+
+type SettleReportsParams struct {
+	ResolutionID uuid.NullUUID
+	ItemID       uuid.UUID
+}
+
+func (q *Queries) SettleReports(ctx context.Context, arg SettleReportsParams) error {
+	_, err := q.db.Exec(ctx, settleReports, arg.ResolutionID, arg.ItemID)
 	return err
 }

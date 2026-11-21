@@ -141,7 +141,8 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-API-07b** English source list for the six packs (greetings, numbers, dates, interface labels, health, money), loaded as phrase concepts, so P1-AI-01 can generate phrase candidates and reviewers can check them (S) → PHR-1, AI-1
 - [x] **P1-API-08** `POST /v1/detect` (evaluate existing language ID models first) (M) → TRN-1, US-09
 - [x] **P1-API-09** Exact-match translation against verified phrases (S) → TRN-2, US-10
-- [ ] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers; a confirmed report is an input to `review.Status` (→ `disputed`) and shows on `/disputes` (M) → PRV-3, US-15
+- [x] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers; a confirmed report is an input to `review.Status` (→ `disputed`) and shows on `/disputes` (M) → PRV-3, US-15
+  - The portal's "Report a problem" button comes with the search results in P1-WEB-02, which calls `POST /v1/reports`.
 - [ ] **P1-API-11** API keys slice: create and revoke keys in the portal; keys hashed at rest (M) → DEV-1, NFR-5, US-01
 - [ ] **P1-API-12** Rate limiting per key and per IP, with rate-limit headers; derive client IP only from trusted proxy headers, not chi RealIP (S) → DEV-3, NFR-5, US-13
 - [ ] **P1-API-13** Compression, `ETag` tied to the release, cache headers (S) → NFR-3, US-11
@@ -149,7 +150,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 ### Portal
 
 - [ ] **P1-WEB-01** Home with live verified counts (S)
-- [ ] **P1-WEB-02** Try it: search box with JSON beside the result (M) → US-02
+- [ ] **P1-WEB-02** Try it: search box with JSON beside the result, and a "Report a problem" button on each meaning (M) → US-02, US-15
 - [ ] **P1-WEB-03** Interactive API reference from the contract (S) → DEV-2
 - [ ] **P1-WEB-04** Docs: concepts, verification levels, varieties, licences (M) → DEV-2
 - [ ] **P1-WEB-05** Tutorial and copy-ready examples (JS, Go, Python, curl) (M) → DEV-2

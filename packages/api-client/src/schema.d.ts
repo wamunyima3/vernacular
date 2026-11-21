@@ -473,6 +473,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open reports in a language (reviewers)
+         * @description The reviewers' report inbox, oldest first, at most 100.
+         */
+        get: operations["listReports"];
+        put?: never;
+        /**
+         * Report a wrong meaning
+         * @description Anyone can report a sense as wrong, signed in or not (PRV-3, US-15). The report
+         *     reaches the reviewers of its language. If a reviewer confirms it, the sense becomes
+         *     `disputed` until a senior reviewer settles it.
+         */
+        post: operations["createReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss a report (reviewers)
+         * @description Confirming says the report has merit: the sense becomes `disputed` and goes to the
+         *     senior reviewers (US-15). Dismissing closes it. Reviewers cannot decide their own
+         *     reports.
+         */
+        post: operations["decideReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources": {
         parameters: {
             query?: never;
@@ -850,6 +898,22 @@ export interface components {
              * @example 0.93
              */
             confidence: number;
+        };
+        Report: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sense_id: string;
+            language: components["schemas"]["LanguageCode"];
+            headword: string;
+            gloss: string;
+            status: components["schemas"]["TrustStatus"];
+            reason: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ReportList: {
+            data: components["schemas"]["Report"][];
         };
         /**
          * @description What the query matched (US-05): the headword (or, from English, the gloss), a
@@ -1737,6 +1801,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Resolution"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listReports: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Open reports */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    sense_id: string;
+                    /** @example This word means moon, not water. */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Reported */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    decideReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirm: boolean;
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Decided; the sense's status afterwards */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status: components["schemas"]["TrustStatus"];
+                    };
                 };
             };
             default: components["responses"]["Error"];

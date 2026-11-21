@@ -136,3 +136,37 @@ func (h *Handler) ListCredits(ctx context.Context, req gen.ListCreditsRequestObj
 	}
 	return gen.ListCredits200JSONResponse{Credits: out}, nil
 }
+
+// CreateReport implements POST /v1/reports.
+func (h *Handler) CreateReport(ctx context.Context, req gen.CreateReportRequestObject) (gen.CreateReportResponseObject, error) {
+	id, err := h.svc.Report(ctx, req.Body.SenseId, req.Body.Reason)
+	if err != nil {
+		return nil, err
+	}
+	return gen.CreateReport201JSONResponse{Id: id}, nil
+}
+
+// ListReports implements GET /v1/reports.
+func (h *Handler) ListReports(ctx context.Context, req gen.ListReportsRequestObject) (gen.ListReportsResponseObject, error) {
+	rows, err := h.svc.Reports(ctx, req.Params.Language)
+	if err != nil {
+		return nil, err
+	}
+	data := make([]gen.Report, len(rows))
+	for i, r := range rows {
+		data[i] = gen.Report{
+			Id: r.ID, SenseId: r.ItemID, Language: r.LanguageCode, Headword: r.Headword, Gloss: r.Gloss,
+			Status: gen.TrustStatus(r.Status), Reason: r.Reason, CreatedAt: r.CreatedAt,
+		}
+	}
+	return gen.ListReports200JSONResponse{Data: data}, nil
+}
+
+// DecideReport implements POST /v1/reports/{id}/decision.
+func (h *Handler) DecideReport(ctx context.Context, req gen.DecideReportRequestObject) (gen.DecideReportResponseObject, error) {
+	status, err := h.svc.DecideReport(ctx, req.Id, req.Body.Confirm, req.Body.Note)
+	if err != nil {
+		return nil, err
+	}
+	return gen.DecideReport200JSONResponse{Status: gen.TrustStatus(status)}, nil
+}

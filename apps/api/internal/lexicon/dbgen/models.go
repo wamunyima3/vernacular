@@ -192,6 +192,57 @@ func AllRegisterValues() []Register {
 	}
 }
 
+type ReportState string
+
+const (
+	ReportStateOpen      ReportState = "open"
+	ReportStateConfirmed ReportState = "confirmed"
+	ReportStateDismissed ReportState = "dismissed"
+)
+
+func (e *ReportState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReportState(s)
+	case string:
+		*e = ReportState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReportState: %T", src)
+	}
+	return nil
+}
+
+type NullReportState struct {
+	ReportState ReportState
+	Valid       bool // Valid is true if ReportState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReportState) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReportState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReportState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReportState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReportState), nil
+}
+
+func AllReportStateValues() []ReportState {
+	return []ReportState{
+		ReportStateOpen,
+		ReportStateConfirmed,
+		ReportStateDismissed,
+	}
+}
+
 type ResolutionOutcome string
 
 const (
@@ -644,6 +695,20 @@ type ReleaseItem struct {
 	ReleaseID uuid.UUID
 	ItemID    uuid.UUID
 	Snapshot  []byte
+}
+
+type Report struct {
+	ID         uuid.UUID
+	ItemID     uuid.UUID
+	Reason     string
+	ReporterID pgtype.Text
+	State      ReportState
+	HandledBy  pgtype.Text
+	HandledAt  pgtype.Timestamptz
+	Note       string
+	SettledBy  uuid.NullUUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Resolution struct {

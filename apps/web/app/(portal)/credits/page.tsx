@@ -1,9 +1,8 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { Suspense } from "react"
 
 import { ErrorCard } from "@/components/error-card"
-import { Button } from "@/components/ui/button"
+import { LanguageTabs } from "@/components/language-tabs"
 import { CreditList, CreditListSkeleton } from "@/features/credits/components/credit-list"
 import { getLanguages } from "@/features/languages/get-languages"
 
@@ -22,20 +21,7 @@ async function Credits({ searchParams }: PageProps<"/credits">) {
   if (!current) return null
   return (
     <>
-      <nav className="flex flex-wrap gap-2" aria-label="Language">
-        {active.map((l) => (
-          <Button
-            key={l.code}
-            size="sm"
-            variant={l.code === current.code ? "secondary" : "ghost"}
-            aria-current={l.code === current.code ? "page" : undefined}
-            nativeButton={false}
-            render={<Link href={`/credits?${new URLSearchParams({ language: l.code })}`} />}
-          >
-            {l.name}
-          </Button>
-        ))}
-      </nav>
+      <LanguageTabs languages={active} current={current.code} path="/credits" />
       <Suspense key={current.code} fallback={<CreditListSkeleton />}>
         <CreditList language={current.code} />
       </Suspense>

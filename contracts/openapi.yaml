@@ -606,6 +606,103 @@ paths:
               schema: { $ref: "#/components/schemas/Resolution" }
         default:
           $ref: "#/components/responses/Error"
+  /v1/reports:
+    post:
+      operationId: createReport
+      summary: Report a wrong meaning
+      description: |
+        Anyone can report a sense as wrong, signed in or not (PRV-3, US-15). The report
+        reaches the reviewers of its language. If a reviewer confirms it, the sense becomes
+        `disputed` until a senior reviewer settles it.
+      tags: [review]
+      security:
+        - {}
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sense_id, reason]
+              properties:
+                sense_id: { type: string, format: uuid }
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 1000
+                  example: This word means moon, not water.
+      responses:
+        "201":
+          description: Reported
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string, format: uuid }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+    get:
+      operationId: listReports
+      summary: Open reports in a language (reviewers)
+      description: The reviewers' report inbox, oldest first, at most 100.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: language
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "200":
+          description: Open reports
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportList" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/reports/{id}/decision:
+    post:
+      operationId: decideReport
+      summary: Confirm or dismiss a report (reviewers)
+      description: |
+        Confirming says the report has merit: the sense becomes `disputed` and goes to the
+        senior reviewers (US-15). Dismissing closes it. Reviewers cannot decide their own
+        reports.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirm, note]
+              properties:
+                confirm: { type: boolean }
+                note: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        "200":
+          description: Decided; the sense's status afterwards
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { $ref: "#/components/schemas/TrustStatus" }
+        default:
+          $ref: "#/components/responses/Error"
   /v1/sources:
     get:
       operationId: listSources
@@ -1157,6 +1254,25 @@ components:
           description: ISO 639-3 code; `eng` for English
           example: bem
         confidence: { type: number, format: double, minimum: 0, maximum: 1, example: 0.93 }
+    Report:
+      type: object
+      required: [id, sense_id, language, headword, gloss, status, reason, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        sense_id: { type: string, format: uuid }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        headword: { type: string }
+        gloss: { type: string }
+        status: { $ref: "#/components/schemas/TrustStatus" }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
+    ReportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Report" }
     Match:
       type: string
       description: |

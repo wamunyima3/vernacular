@@ -12,6 +12,9 @@ export default function ToolsLayout({ children }: LayoutProps<"/">) {
         <Link href="/review" className="text-muted-foreground hover:text-foreground">
           Review
         </Link>
+        <Link href="/reports" className="text-muted-foreground hover:text-foreground">
+          Reports
+        </Link>
         <Link href="/disputes" className="text-muted-foreground hover:text-foreground">
           Disputes
         </Link>

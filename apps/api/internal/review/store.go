@@ -65,24 +65,28 @@ func (s *Store) delete(ctx context.Context, ids []uuid.UUID) error {
 
 // promotionInputs reads what the promotion rule needs besides origin: the
 // latest resolution, if any, and the decisions that count.
-func (s *Store) promotionInputs(ctx context.Context, itemID uuid.UUID) (dbgen.ResolutionOutcome, []dbgen.ReviewDecision, error) {
+func (s *Store) promotionInputs(ctx context.Context, itemID uuid.UUID) (dbgen.ResolutionOutcome, bool, []dbgen.ReviewDecision, error) {
 	var resolution dbgen.ResolutionOutcome
 	latest, err := s.q.GetLatestResolution(ctx, itemID)
 	switch {
 	case err == nil:
 		resolution = latest
 	case !errors.Is(err, pgx.ErrNoRows):
-		return "", nil, fmt.Errorf("latest resolution of %s: %w", itemID, err)
+		return "", false, nil, fmt.Errorf("latest resolution of %s: %w", itemID, err)
+	}
+	reported, err := s.q.HasUnsettledReport(ctx, itemID)
+	if err != nil {
+		return "", false, nil, fmt.Errorf("unsettled reports of %s: %w", itemID, err)
 	}
 	reviews, err := s.counted(ctx, []uuid.UUID{itemID})
 	if err != nil {
-		return "", nil, err
+		return "", false, nil, err
 	}
 	decisions := make([]dbgen.ReviewDecision, len(reviews))
 	for i, r := range reviews {
 		decisions[i] = r.Decision
 	}
-	return resolution, decisions, nil
+	return resolution, reported, decisions, nil
 }
 
 // counted lists the reviews of items that count, oldest first per item.
@@ -108,8 +112,12 @@ func (s *Store) resolve(ctx context.Context, itemID uuid.UUID, seniorID string, 
 	if err != nil {
 		return fmt.Errorf("resolve %s: %w", itemID, err)
 	}
+	resolution := uuid.NullUUID{UUID: id, Valid: true}
+	if err := s.q.SettleReports(ctx, dbgen.SettleReportsParams{ResolutionID: resolution, ItemID: itemID}); err != nil {
+		return fmt.Errorf("settle reports of %s: %w", itemID, err)
+	}
 	if outcome == dbgen.ResolutionOutcomeSendBack {
-		err = s.q.SetReviewsAside(ctx, dbgen.SetReviewsAsideParams{ResolutionID: uuid.NullUUID{UUID: id, Valid: true}, ItemID: itemID})
+		err = s.q.SetReviewsAside(ctx, dbgen.SetReviewsAsideParams{ResolutionID: resolution, ItemID: itemID})
 		if err != nil {
 			return fmt.Errorf("set reviews of %s aside: %w", itemID, err)
 		}

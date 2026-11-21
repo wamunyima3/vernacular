@@ -10,12 +10,16 @@ import (
 )
 
 // Status is the promotion rule (ADR-0004, DQ-2): an item's trust status from
-// its origin, a senior reviewer's latest resolution ("" when none) and the
-// decisions that count, those no send-back set aside. It is the only code
-// that decides `verified`. Reviews are already distinct, approved and never
-// the author's, because Decide refuses anything else.
-func Status(origin items.Status, resolution dbgen.ResolutionOutcome, decisions []dbgen.ReviewDecision) items.Status {
-	if resolution == dbgen.ResolutionOutcomeKeep {
+// its origin, a senior reviewer's latest resolution ("" when none), whether a
+// confirmed report awaits a resolution, and the decisions that count, those
+// no send-back set aside. It is the only code that decides `verified`.
+// Reviews are already distinct, approved and never the author's, because
+// Decide refuses anything else.
+func Status(origin items.Status, resolution dbgen.ResolutionOutcome, reported bool, decisions []dbgen.ReviewDecision) items.Status {
+	switch {
+	case reported:
+		return items.StatusDisputed
+	case resolution == dbgen.ResolutionOutcomeKeep:
 		return items.StatusVerified
 	}
 	var accepts, rejects int
@@ -43,10 +47,10 @@ func Status(origin items.Status, resolution dbgen.ResolutionOutcome, decisions [
 // promote recomputes an item's status after its reviews or resolutions
 // change. The caller holds the item's lock, which is where origin comes from.
 func promote(ctx context.Context, store *Store, its Items, itemID uuid.UUID, origin items.Status) (items.Status, error) {
-	resolution, decisions, err := store.promotionInputs(ctx, itemID)
+	resolution, reported, decisions, err := store.promotionInputs(ctx, itemID)
 	if err != nil {
 		return "", err
 	}
-	status := Status(origin, resolution, decisions)
+	status := Status(origin, resolution, reported, decisions)
 	return status, its.SetStatus(ctx, itemID, status)
 }

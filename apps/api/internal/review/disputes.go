@@ -93,15 +93,8 @@ func (s *Service) Disputes(ctx context.Context) ([]Dispute, error) {
 // Resolve settles a dispute: `keep` verifies the item and `send_back`
 // returns it to the queue. Seniors cannot settle what they wrote or reviewed.
 func (s *Service) Resolve(ctx context.Context, senseID uuid.UUID, outcome dbgen.ResolutionOutcome, note string) (items.Status, error) {
-	me, err := accounts.Require(ctx, nil)
-	if err != nil {
-		return "", err
-	}
-	if note = strings.TrimSpace(note); note == "" {
-		return "", httpx.BadRequest("Write a note saying why")
-	}
 	var status items.Status
-	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+	err := s.withNote(ctx, &note, func(tx pgx.Tx, me accounts.Principal) error {
 		store, its := NewStore(tx), newItems(tx)
 		item, ok, err := its.Lock(ctx, senseID)
 		switch {
@@ -128,4 +121,17 @@ func (s *Service) Resolve(ctx context.Context, senseID uuid.UUID, outcome dbgen.
 		return err
 	})
 	return status, err
+}
+
+// withNote runs a signed-in reviewer's decision that must say why, in a
+// transaction acting as them. note is trimmed in place.
+func (s *Service) withNote(ctx context.Context, note *string, fn func(tx pgx.Tx, me accounts.Principal) error) error {
+	me, err := accounts.Require(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if *note = strings.TrimSpace(*note); *note == "" {
+		return httpx.BadRequest("Write a note saying why")
+	}
+	return database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error { return fn(tx, me) })
 }
