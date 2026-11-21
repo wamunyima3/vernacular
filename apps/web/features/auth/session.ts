@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { cache } from "react"
 
+import { apiAs } from "@/lib/api"
 import { auth } from "@/lib/auth"
 
 /** The current session, read once per request. */
@@ -14,4 +15,10 @@ export async function requireSession(from: string) {
   const session = await getSession()
   if (!session) redirect(`/sign-in?next=${encodeURIComponent(from)}`)
   return session
+}
+
+/** An API client acting as the signed-in user, for server actions. */
+export async function apiForSession(from: string) {
+  const { session } = await requireSession(from)
+  return apiAs(session.token)
 }

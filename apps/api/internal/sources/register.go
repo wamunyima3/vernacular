@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
-	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
@@ -62,10 +61,6 @@ type DB interface {
 // NewRegister returns a register over the pool and the object store.
 func NewRegister(db DB, bucket *blob.Bucket) *Register {
 	return &Register{db: db, q: dbgen.New(db), bucket: bucket}
-}
-
-func requireAdmin(ctx context.Context) (accounts.Principal, error) {
-	return accounts.Require(ctx, func(p accounts.Principal) bool { return p.HasRole(gen.RoleAdmin) })
 }
 
 // List returns every source by name.
@@ -121,7 +116,7 @@ func (r *Register) Delete(ctx context.Context, id uuid.UUID) error {
 
 // UploadPermission stores the signed permission document for a source.
 func (r *Register) UploadPermission(ctx context.Context, id uuid.UUID, body io.Reader) (Source, error) {
-	actor, err := requireAdmin(ctx)
+	actor, err := accounts.RequireAdmin(ctx)
 	if err != nil {
 		return Source{}, err
 	}
@@ -153,7 +148,7 @@ func (r *Register) UploadPermission(ctx context.Context, id uuid.UUID, body io.R
 
 // Permission opens the permission document. The caller closes the reader.
 func (r *Register) Permission(ctx context.Context, id uuid.UUID) (io.ReadCloser, int64, error) {
-	if _, err := requireAdmin(ctx); err != nil {
+	if _, err := accounts.RequireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	row, err := r.q.GetSource(ctx, id)
@@ -173,7 +168,7 @@ func (r *Register) Permission(ctx context.Context, id uuid.UUID) (io.ReadCloser,
 // write runs an admin-only change in an audited transaction and maps
 // database errors to API problems.
 func (r *Register) write(ctx context.Context, fn func(*dbgen.Queries) (dbgen.Source, error)) (Source, error) {
-	actor, err := requireAdmin(ctx)
+	actor, err := accounts.RequireAdmin(ctx)
 	if err != nil {
 		return Source{}, err
 	}

@@ -75,6 +75,11 @@ func FromContext(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
+// RequireAdmin returns the caller if they are an admin.
+func RequireAdmin(ctx context.Context) (Principal, error) {
+	return Require(ctx, func(p Principal) bool { return p.Role == gen.RoleAdmin })
+}
+
 // Require returns the caller if they pass allow, or an error the server turns
 // into 401 (not signed in) or 403 (signed in, not allowed). A nil allow only
 // requires sign-in.

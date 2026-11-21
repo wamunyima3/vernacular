@@ -102,3 +102,33 @@ func TestSendBack(t *testing.T) {
 		t.Errorf("disputes left: %d, want 1 (water)", len(disputes))
 	}
 }
+
+// TestProviderQuality: water came from Claude and Google; the two stone
+// candidates came one from each.
+func TestProviderQuality(t *testing.T) {
+	tx := dbtest.Tx(t)
+	water, _ := fixture(t, tx)
+	svc := review.NewService(tx)
+	decide(t, svc, "r1", water, accept)
+	for _, id := range stoneCard(t, tx) {
+		decide(t, svc, "r2", id, reject)
+	}
+	admin := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "a", Role: gen.RoleAdmin})
+
+	rows, err := svc.ProviderQuality(admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][2]int32{}
+	for _, r := range rows {
+		if r.LanguageCode == "tst" {
+			got[r.Provider] = [2]int32{r.Decided, r.Accepted}
+		}
+	}
+	if want := [2]int32{2, 1}; got["Claude"] != want || got["Google Translate"] != want {
+		t.Errorf("quality = %v, want each provider 2 decided, 1 accepted", got)
+	}
+	if _, err := svc.ProviderQuality(reviewer(t)); httpx.Status(err) != 403 {
+		t.Errorf("a reviewer reads provider quality: %v, want 403", err)
+	}
+}

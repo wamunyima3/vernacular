@@ -346,6 +346,22 @@ type Approval struct {
 	Suspended bool `json:"suspended"`
 }
 
+// ApprovalInput defines model for ApprovalInput.
+type ApprovalInput struct {
+	Email openapi_types.Email `json:"email"`
+
+	// Language ISO 639-3 code
+	//
+	// Example: bem
+	Language LanguageCode  `json:"language"`
+	Level    ReviewerLevel `json:"level"`
+}
+
+// ApprovalList defines model for ApprovalList.
+type ApprovalList struct {
+	Approvals []UserApproval `json:"approvals"`
+}
+
 // Contribution defines model for Contribution.
 type Contribution struct {
 	EntryId   openapi_types.UUID  `json:"entry_id"`
@@ -502,6 +518,28 @@ type Me struct {
 
 // PartOfSpeech defines model for PartOfSpeech.
 type PartOfSpeech string
+
+// ProviderQuality defines model for ProviderQuality.
+type ProviderQuality struct {
+	Accepted  int `json:"accepted"`
+	Corrected int `json:"corrected"`
+
+	// Decided Review decisions on its candidates
+	Decided int `json:"decided"`
+
+	// Language ISO 639-3 code
+	//
+	// Example: bem
+	Language LanguageCode `json:"language"`
+
+	// Provider The machine source's name in the register
+	Provider string `json:"provider"`
+}
+
+// ProviderQualityList defines model for ProviderQualityList.
+type ProviderQualityList struct {
+	Providers []ProviderQuality `json:"providers"`
+}
 
 // Resolution defines model for Resolution.
 type Resolution struct {
@@ -716,6 +754,20 @@ type Trust struct {
 // `disputed` is never returned.
 type TrustStatus string
 
+// UserApproval defines model for UserApproval.
+type UserApproval struct {
+	Email openapi_types.Email `json:"email"`
+
+	// Language ISO 639-3 code
+	//
+	// Example: bem
+	Language  LanguageCode  `json:"language"`
+	Level     ReviewerLevel `json:"level"`
+	Name      string        `json:"name"`
+	Suspended bool          `json:"suspended"`
+	UserId    string        `json:"user_id"`
+}
+
 // SourceId defines model for SourceId.
 type SourceId = openapi_types.UUID
 
@@ -745,6 +797,9 @@ type DeleteReviewsParams struct {
 	Ids []openapi_types.UUID `form:"ids" json:"ids"`
 }
 
+// ApproveReviewerJSONRequestBody defines body for ApproveReviewer for application/json ContentType.
+type ApproveReviewerJSONRequestBody = ApprovalInput
+
 // CreateContributionJSONRequestBody defines body for CreateContribution for application/json ContentType.
 type CreateContributionJSONRequestBody = ContributionInput
 
@@ -768,6 +823,15 @@ type ServerInterface interface {
 	// GetHealth Liveness and database readiness
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// ListApprovals Every reviewer approval (admin)
+	// (GET /v1/approvals)
+	ListApprovals(w http.ResponseWriter, r *http.Request)
+	// ApproveReviewer Approve a user to review a language, or change their level (admin)
+	// (PUT /v1/approvals)
+	ApproveReviewer(w http.ResponseWriter, r *http.Request)
+	// RevokeApproval Remove a reviewer approval (admin)
+	// (DELETE /v1/approvals/{user_id}/{language})
+	RevokeApproval(w http.ResponseWriter, r *http.Request, userId string, language LanguageCode)
 	// CreateContribution Propose a word (contributors)
 	// (POST /v1/contributions)
 	CreateContribution(w http.ResponseWriter, r *http.Request)
@@ -783,6 +847,9 @@ type ServerInterface interface {
 	// GetMe The signed-in user, with role and review approvals
 	// (GET /v1/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// GetProviderQuality Acceptance and correction rates per AI provider and language (admin)
+	// (GET /v1/provider-quality)
+	GetProviderQuality(w http.ResponseWriter, r *http.Request)
 	// GetNextReview The next concept to review (reviewers)
 	// (GET /v1/review/next)
 	GetNextReview(w http.ResponseWriter, r *http.Request, params GetNextReviewParams)
@@ -831,6 +898,24 @@ func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListApprovals Every reviewer approval (admin)
+// (GET /v1/approvals)
+func (_ Unimplemented) ListApprovals(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ApproveReviewer Approve a user to review a language, or change their level (admin)
+// (PUT /v1/approvals)
+func (_ Unimplemented) ApproveReviewer(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RevokeApproval Remove a reviewer approval (admin)
+// (DELETE /v1/approvals/{user_id}/{language})
+func (_ Unimplemented) RevokeApproval(w http.ResponseWriter, r *http.Request, userId string, language LanguageCode) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // CreateContribution Propose a word (contributors)
 // (POST /v1/contributions)
 func (_ Unimplemented) CreateContribution(w http.ResponseWriter, r *http.Request) {
@@ -858,6 +943,12 @@ func (_ Unimplemented) ListLanguages(w http.ResponseWriter, r *http.Request) {
 // GetMe The signed-in user, with role and review approvals
 // (GET /v1/me)
 func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetProviderQuality Acceptance and correction rates per AI provider and language (admin)
+// (GET /v1/provider-quality)
+func (_ Unimplemented) GetProviderQuality(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -956,6 +1047,69 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// ListApprovals operation middleware
+func (siw *ServerInterfaceWrapper) ListApprovals(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListApprovals(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ApproveReviewer operation middleware
+func (siw *ServerInterfaceWrapper) ApproveReviewer(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ApproveReviewer(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeApproval operation middleware
+func (siw *ServerInterfaceWrapper) RevokeApproval(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "language" -------------
+	var language LanguageCode
+
+	err = runtime.BindStyledParameterWithOptions("simple", "language", chi.URLParam(r, "language"), &language, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeApproval(w, r, userId, language)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateContribution operation middleware
 func (siw *ServerInterfaceWrapper) CreateContribution(w http.ResponseWriter, r *http.Request) {
 
@@ -1029,6 +1183,20 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProviderQuality operation middleware
+func (siw *ServerInterfaceWrapper) GetProviderQuality(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProviderQuality(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1483,6 +1651,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/reviews", wrapper.CreateReviews)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/approvals", wrapper.ListApprovals)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/approvals", wrapper.ApproveReviewer)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/approvals/{user_id}/{language}", wrapper.RevokeApproval)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/provider-quality", wrapper.GetProviderQuality)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/reviewers", wrapper.ListReviewers)
 	})
 	r.Group(func(r chi.Router) {
@@ -1552,6 +1732,111 @@ func (response GetHealth503JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListApprovalsRequestObject struct {
+}
+
+type ListApprovalsResponseObject interface {
+	VisitListApprovalsResponse(w http.ResponseWriter) error
+}
+
+type ListApprovals200JSONResponse ApprovalList
+
+func (response ListApprovals200JSONResponse) VisitListApprovalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListApprovalsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListApprovalsdefaultJSONResponse) VisitListApprovalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ApproveReviewerRequestObject struct {
+	Body *ApproveReviewerJSONRequestBody
+}
+
+type ApproveReviewerResponseObject interface {
+	VisitApproveReviewerResponse(w http.ResponseWriter) error
+}
+
+type ApproveReviewer204Response struct {
+}
+
+func (response ApproveReviewer204Response) VisitApproveReviewerResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ApproveReviewerdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ApproveReviewerdefaultJSONResponse) VisitApproveReviewerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeApprovalRequestObject struct {
+	UserId   string       `json:"user_id"`
+	Language LanguageCode `json:"language"`
+}
+
+type RevokeApprovalResponseObject interface {
+	VisitRevokeApprovalResponse(w http.ResponseWriter) error
+}
+
+type RevokeApproval204Response struct {
+}
+
+func (response RevokeApproval204Response) VisitRevokeApprovalResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RevokeApprovaldefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response RevokeApprovaldefaultJSONResponse) VisitRevokeApprovalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1752,6 +2037,44 @@ type GetMedefaultJSONResponse struct {
 }
 
 func (response GetMedefaultJSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProviderQualityRequestObject struct {
+}
+
+type GetProviderQualityResponseObject interface {
+	VisitGetProviderQualityResponse(w http.ResponseWriter) error
+}
+
+type GetProviderQuality200JSONResponse ProviderQualityList
+
+func (response GetProviderQuality200JSONResponse) VisitGetProviderQualityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProviderQualitydefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetProviderQualitydefaultJSONResponse) VisitGetProviderQualityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -2234,6 +2557,15 @@ type StrictServerInterface interface {
 	// GetHealth Liveness and database readiness
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
+	// ListApprovals Every reviewer approval (admin)
+	// (GET /v1/approvals)
+	ListApprovals(ctx context.Context, request ListApprovalsRequestObject) (ListApprovalsResponseObject, error)
+	// ApproveReviewer Approve a user to review a language, or change their level (admin)
+	// (PUT /v1/approvals)
+	ApproveReviewer(ctx context.Context, request ApproveReviewerRequestObject) (ApproveReviewerResponseObject, error)
+	// RevokeApproval Remove a reviewer approval (admin)
+	// (DELETE /v1/approvals/{user_id}/{language})
+	RevokeApproval(ctx context.Context, request RevokeApprovalRequestObject) (RevokeApprovalResponseObject, error)
 	// CreateContribution Propose a word (contributors)
 	// (POST /v1/contributions)
 	CreateContribution(ctx context.Context, request CreateContributionRequestObject) (CreateContributionResponseObject, error)
@@ -2249,6 +2581,9 @@ type StrictServerInterface interface {
 	// GetMe The signed-in user, with role and review approvals
 	// (GET /v1/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// GetProviderQuality Acceptance and correction rates per AI provider and language (admin)
+	// (GET /v1/provider-quality)
+	GetProviderQuality(ctx context.Context, request GetProviderQualityRequestObject) (GetProviderQualityResponseObject, error)
 	// GetNextReview The next concept to review (reviewers)
 	// (GET /v1/review/next)
 	GetNextReview(ctx context.Context, request GetNextReviewRequestObject) (GetNextReviewResponseObject, error)
@@ -2343,6 +2678,88 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
 		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListApprovals operation middleware
+func (sh *strictHandler) ListApprovals(w http.ResponseWriter, r *http.Request) {
+	var request ListApprovalsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListApprovals(ctx, request.(ListApprovalsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListApprovals")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListApprovalsResponseObject); ok {
+		if err := validResponse.VisitListApprovalsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ApproveReviewer operation middleware
+func (sh *strictHandler) ApproveReviewer(w http.ResponseWriter, r *http.Request) {
+	var request ApproveReviewerRequestObject
+
+	var body ApproveReviewerJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ApproveReviewer(ctx, request.(ApproveReviewerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ApproveReviewer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ApproveReviewerResponseObject); ok {
+		if err := validResponse.VisitApproveReviewerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeApproval operation middleware
+func (sh *strictHandler) RevokeApproval(w http.ResponseWriter, r *http.Request, userId string, language LanguageCode) {
+	var request RevokeApprovalRequestObject
+
+	request.UserId = userId
+	request.Language = language
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeApproval(ctx, request.(RevokeApprovalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeApproval")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeApprovalResponseObject); ok {
+		if err := validResponse.VisitRevokeApprovalResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2479,6 +2896,30 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProviderQuality operation middleware
+func (sh *strictHandler) GetProviderQuality(w http.ResponseWriter, r *http.Request) {
+	var request GetProviderQualityRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProviderQuality(ctx, request.(GetProviderQualityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProviderQuality")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProviderQualityResponseObject); ok {
+		if err := validResponse.VisitGetProviderQualityResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2827,93 +3268,101 @@ func (sh *strictHandler) UploadPermission(w http.ResponseWriter, r *http.Request
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"G6haP4Qmr5uH/xsA",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

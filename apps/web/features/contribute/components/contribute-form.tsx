@@ -16,7 +16,7 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
+import { LanguageField } from "@/components/language-field"
 import { Textarea } from "@/components/ui/textarea"
 import { WordClassFields } from "@/components/word-class-fields"
 
@@ -55,16 +55,7 @@ export function ContributeForm({ languages }: { languages: Schemas["Language"][]
   return (
     <form action={action} className="flex flex-col gap-6">
       <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="language">Language</FieldLabel>
-          <NativeSelect id="language" name="language" required defaultValue={v.language}>
-            {languages.map((l) => (
-              <NativeSelectOption key={l.code} value={l.code}>
-                {l.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
+        <LanguageField languages={languages} defaultValue={v.language} />
         <Field>
           <FieldLabel htmlFor="headword">Word</FieldLabel>
           <Input

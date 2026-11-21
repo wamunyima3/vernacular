@@ -108,3 +108,18 @@ func (h *Handler) ResolveDispute(ctx context.Context, req gen.ResolveDisputeRequ
 	}
 	return gen.ResolveDispute200JSONResponse{SenseId: req.SenseId, Outcome: req.Body.Outcome, Status: gen.TrustStatus(status)}, nil
 }
+
+// GetProviderQuality implements GET /v1/provider-quality.
+func (h *Handler) GetProviderQuality(ctx context.Context, _ gen.GetProviderQualityRequestObject) (gen.GetProviderQualityResponseObject, error) {
+	rows, err := h.svc.ProviderQuality(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.ProviderQuality, len(rows))
+	for i, r := range rows {
+		out[i] = gen.ProviderQuality{
+			Provider: r.Provider, Language: r.LanguageCode, Decided: int(r.Decided), Accepted: int(r.Accepted), Corrected: int(r.Corrected),
+		}
+	}
+	return gen.GetProviderQuality200JSONResponse{Providers: out}, nil
+}

@@ -80,3 +80,60 @@ func agreementFixture(t *testing.T, tx pgx.Tx) {
 		}
 	}
 }
+
+func TestApprovals(t *testing.T) {
+	tx := dbtest.Tx(t)
+	if _, err := tx.Exec(t.Context(), `INSERT INTO users (id, name, email, email_verified, role)
+		VALUES ('u1', 'Mwila', 'Mwila@test.invalid', true, 'contributor'), ('a1', 'Admin', 'admin@test.invalid', true, 'admin')`); err != nil {
+		t.Fatal(err)
+	}
+	svc := accounts.NewService(tx)
+	admin := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "a1", Role: gen.RoleAdmin})
+	level := func() []accounts.Approval {
+		t.Helper()
+		rows, err := svc.Approvals(admin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []accounts.Approval
+		for _, r := range rows {
+			if r.ID == "u1" {
+				out = append(out, accounts.Approval{Language: r.LanguageCode, Level: gen.ReviewerLevel(r.Level)})
+			}
+		}
+		return out
+	}
+
+	if err := svc.Approve(admin, "mwila@TEST.invalid", "bem", gen.ReviewerLevelReviewer); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Approve(admin, "mwila@test.invalid", "bem", gen.ReviewerLevelSenior); err != nil {
+		t.Fatal(err)
+	}
+	if got := level(); len(got) != 1 || got[0].Level != gen.ReviewerLevelSenior {
+		t.Errorf("approvals = %+v, want bem senior", got)
+	}
+	refused := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"unknown email", svc.Approve(admin, "nobody@test.invalid", "bem", gen.ReviewerLevelReviewer), 400},
+		{"unknown language", svc.Approve(admin, "mwila@test.invalid", "zzz", gen.ReviewerLevelReviewer), 400},
+		{"not an admin", svc.Approve(accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "u1"}), "mwila@test.invalid", "nya", gen.ReviewerLevelSenior), 403},
+	}
+	for _, tt := range refused {
+		if httpx.Status(tt.err) != tt.want {
+			t.Errorf("%s: %v, want %d", tt.name, tt.err, tt.want)
+		}
+	}
+	if err := svc.Revoke(admin, "u1", "bem"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Revoke(admin, "u1", "bem"); httpx.Status(err) != 404 {
+		t.Errorf("revoking twice: %v, want 404", err)
+	}
+	if got := level(); len(got) != 0 {
+		t.Errorf("after revoke: %+v", got)
+	}
+}

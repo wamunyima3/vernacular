@@ -1,3 +1,5 @@
+import { AdminOnly } from "@/components/admin-only"
+import { sourcesAdminNote } from "@/features/sources/admin-note"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -6,12 +8,11 @@ import { apiErrorMessage } from "@/lib/api-error"
 import { api } from "@/lib/api"
 
 import { sessionWithAdmin } from "../../auth/admin"
-import { AdminOnly } from "./admin-only"
 import { SourceTable } from "./source-table"
 
 export async function SourcesOverview() {
   const { isAdmin } = await sessionWithAdmin("/sources")
-  if (!isAdmin) return <AdminOnly />
+  if (!isAdmin) return <AdminOnly>{sourcesAdminNote}</AdminOnly>
 
   const { data, error } = await api.GET("/v1/sources")
   if (!data) {

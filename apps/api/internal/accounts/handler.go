@@ -59,3 +59,36 @@ func (h *Handler) MarkRetrained(ctx context.Context, req gen.MarkRetrainedReques
 	}
 	return gen.MarkRetrained204Response{}, nil
 }
+
+// ListApprovals implements GET /v1/approvals.
+func (h *Handler) ListApprovals(ctx context.Context, _ gen.ListApprovalsRequestObject) (gen.ListApprovalsResponseObject, error) {
+	rows, err := h.svc.Approvals(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.UserApproval, len(rows))
+	for i, r := range rows {
+		out[i] = gen.UserApproval{
+			UserId: r.ID, Name: r.Name, Email: openapi_types.Email(r.Email), Language: r.LanguageCode,
+			Level: gen.ReviewerLevel(r.Level), Suspended: r.Suspended,
+		}
+	}
+	return gen.ListApprovals200JSONResponse{Approvals: out}, nil
+}
+
+// ApproveReviewer implements PUT /v1/approvals.
+func (h *Handler) ApproveReviewer(ctx context.Context, req gen.ApproveReviewerRequestObject) (gen.ApproveReviewerResponseObject, error) {
+	in := req.Body
+	if err := h.svc.Approve(ctx, string(in.Email), in.Language, in.Level); err != nil {
+		return nil, err
+	}
+	return gen.ApproveReviewer204Response{}, nil
+}
+
+// RevokeApproval implements DELETE /v1/approvals/{user_id}/{language}.
+func (h *Handler) RevokeApproval(ctx context.Context, req gen.RevokeApprovalRequestObject) (gen.RevokeApprovalResponseObject, error) {
+	if err := h.svc.Revoke(ctx, req.UserId, req.Language); err != nil {
+		return nil, err
+	}
+	return gen.RevokeApproval204Response{}, nil
+}

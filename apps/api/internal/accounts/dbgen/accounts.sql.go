@@ -11,6 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteApproval = `-- name: DeleteApproval :execrows
+DELETE FROM reviewer_approvals WHERE user_id = $1 AND language_code = $2
+`
+
+type DeleteApprovalParams struct {
+	UserID       string
+	LanguageCode string
+}
+
+func (q *Queries) DeleteApproval(ctx context.Context, arg DeleteApprovalParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteApproval, arg.UserID, arg.LanguageCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getSessionUser = `-- name: GetSessionUser :one
 SELECT u.id, u.name, u.email, u.role,
        coalesce(
@@ -54,6 +71,51 @@ func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionU
 		&i.Approvals,
 	)
 	return i, err
+}
+
+const listApprovals = `-- name: ListApprovals :many
+SELECT u.id, u.name, u.email, a.language_code, a.level,
+       below_agreement(g.decided, g.agreed) AS suspended
+FROM reviewer_approvals a
+JOIN users u ON u.id = a.user_id
+JOIN reviewer_agreement g ON g.user_id = a.user_id AND g.language_code = a.language_code
+ORDER BY a.language_code, u.name, u.id
+`
+
+type ListApprovalsRow struct {
+	ID           string
+	Name         string
+	Email        string
+	LanguageCode string
+	Level        ReviewerLevel
+	Suspended    bool
+}
+
+func (q *Queries) ListApprovals(ctx context.Context) ([]ListApprovalsRow, error) {
+	rows, err := q.db.Query(ctx, listApprovals)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListApprovalsRow
+	for rows.Next() {
+		var i ListApprovalsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.LanguageCode,
+			&i.Level,
+			&i.Suspended,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listReviewers = `-- name: ListReviewers :many
@@ -137,4 +199,33 @@ func (q *Queries) SetRole(ctx context.Context, arg SetRoleParams) (int64, error)
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertApproval = `-- name: UpsertApproval :one
+INSERT INTO reviewer_approvals (user_id, language_code, level, approved_by)
+SELECT u.id, $1, $2, $3
+FROM users u WHERE lower(u.email) = lower($4)
+ON CONFLICT (user_id, language_code) DO UPDATE SET level = EXCLUDED.level, approved_by = EXCLUDED.approved_by
+RETURNING user_id
+`
+
+type UpsertApprovalParams struct {
+	LanguageCode string
+	Level        ReviewerLevel
+	ApprovedBy   pgtype.Text
+	Email        string
+}
+
+// Approves the user with the email, or changes their level. No row when no
+// user has the email.
+func (q *Queries) UpsertApproval(ctx context.Context, arg UpsertApprovalParams) (string, error) {
+	row := q.db.QueryRow(ctx, upsertApproval,
+		arg.LanguageCode,
+		arg.Level,
+		arg.ApprovedBy,
+		arg.Email,
+	)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
 }

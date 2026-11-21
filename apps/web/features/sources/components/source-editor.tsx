@@ -1,3 +1,5 @@
+import { AdminOnly } from "@/components/admin-only"
+import { sourcesAdminNote } from "@/features/sources/admin-note"
 import { notFound } from "next/navigation"
 
 import { ConfirmAction } from "@/components/confirm-action"
@@ -6,14 +8,13 @@ import { api } from "@/lib/api"
 
 import { sessionWithAdmin } from "../../auth/admin"
 import { deleteSource, updateSource, uploadPermission } from "../actions"
-import { AdminOnly } from "./admin-only"
 import { PermissionUpload } from "./permission-upload"
 import { SourceForm } from "./source-form"
 
 export async function SourceEditor({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { isAdmin } = await sessionWithAdmin(`/sources/${id}`)
-  if (!isAdmin) return <AdminOnly />
+  if (!isAdmin) return <AdminOnly>{sourcesAdminNote}</AdminOnly>
 
   const { data: source, response } = await api.GET("/v1/sources/{id}", {
     params: { path: { id } },

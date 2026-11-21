@@ -36,3 +36,23 @@ ORDER BY suspended DESC, u.name, u.id;
 
 -- name: MarkRetrained :execrows
 UPDATE reviewer_approvals SET retrained_at = now() WHERE user_id = $1 AND language_code = $2;
+
+-- name: ListApprovals :many
+SELECT u.id, u.name, u.email, a.language_code, a.level,
+       below_agreement(g.decided, g.agreed) AS suspended
+FROM reviewer_approvals a
+JOIN users u ON u.id = a.user_id
+JOIN reviewer_agreement g ON g.user_id = a.user_id AND g.language_code = a.language_code
+ORDER BY a.language_code, u.name, u.id;
+
+-- name: UpsertApproval :one
+-- Approves the user with the email, or changes their level. No row when no
+-- user has the email.
+INSERT INTO reviewer_approvals (user_id, language_code, level, approved_by)
+SELECT u.id, @language_code, @level, @approved_by
+FROM users u WHERE lower(u.email) = lower(@email)
+ON CONFLICT (user_id, language_code) DO UPDATE SET level = EXCLUDED.level, approved_by = EXCLUDED.approved_by
+RETURNING user_id;
+
+-- name: DeleteApproval :execrows
+DELETE FROM reviewer_approvals WHERE user_id = $1 AND language_code = $2;

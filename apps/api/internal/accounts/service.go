@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -24,7 +25,7 @@ func NewService(db database.Beginner) *Service { return &Service{db: db} }
 // requireSenior admits the language's senior reviewers, and admins, so a
 // language whose seniors are all suspended can still recover.
 func requireSenior(ctx context.Context, language string) (Principal, error) {
-	return Require(ctx, func(p Principal) bool { return p.IsSenior(language) || p.Role == gen.RoleAdmin })
+	return Require(ctx, func(p Principal) bool { return p.IsSenior(language) || p.HasRole(gen.RoleAdmin) })
 }
 
 // Reviewers lists a language's reviewers with their agreement, suspended first.
@@ -58,6 +59,63 @@ func (s *Service) Retrain(ctx context.Context, userID, language string) error {
 		n, err := dbgen.New(tx).MarkRetrained(ctx, dbgen.MarkRetrainedParams{UserID: userID, LanguageCode: language})
 		if err != nil {
 			return fmt.Errorf("mark %s retrained: %w", userID, err)
+		}
+		if n == 0 {
+			return httpx.ErrNotFound
+		}
+		return nil
+	})
+}
+
+// Approvals lists every reviewer approval, for the admin (CON-2).
+func (s *Service) Approvals(ctx context.Context) ([]dbgen.ListApprovalsRow, error) {
+	me, err := RequireAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var rows []dbgen.ListApprovalsRow
+	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+		if rows, err = dbgen.New(tx).ListApprovals(ctx); err != nil {
+			return fmt.Errorf("list approvals: %w", err)
+		}
+		return nil
+	})
+	return rows, err
+}
+
+// Approve lets the user with the email review a language at a level, or
+// changes their level.
+func (s *Service) Approve(ctx context.Context, email, language string, level gen.ReviewerLevel) error {
+	me, err := RequireAdmin(ctx)
+	if err != nil {
+		return err
+	}
+	return database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+		_, err := dbgen.New(tx).UpsertApproval(ctx, dbgen.UpsertApprovalParams{
+			LanguageCode: language, Level: dbgen.ReviewerLevel(level), ApprovedBy: database.Text(me.ID), Email: email,
+		})
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return httpx.BadRequest("No user has signed up with " + email)
+		case database.Violates(err, database.ForeignKeyViolation):
+			return httpx.BadRequest("No language " + language)
+		case err != nil:
+			return fmt.Errorf("approve %s: %w", email, err)
+		}
+		return nil
+	})
+}
+
+// Revoke removes a user's approval for a language.
+func (s *Service) Revoke(ctx context.Context, userID, language string) error {
+	me, err := RequireAdmin(ctx)
+	if err != nil {
+		return err
+	}
+	return database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+		n, err := dbgen.New(tx).DeleteApproval(ctx, dbgen.DeleteApprovalParams{UserID: userID, LanguageCode: language})
+		if err != nil {
+			return fmt.Errorf("revoke %s for %s: %w", userID, language, err)
 		}
 		if n == 0 {
 			return httpx.ErrNotFound

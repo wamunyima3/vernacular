@@ -126,7 +126,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [ ] **P1-REV-05** Reviewer qualification test set and agreement-rate tracking (M) → DQ-3, DQ-7, US-24
   - [x] **P1-REV-05a** Agreement rates: each reviewer's share of decisions that match settled outcomes, shown to senior reviewers; below the threshold a reviewer loses approval until a senior marks them retrained (M)
   - [ ] **P1-REV-05b** Qualification: a short test set from verified items for new reviewers, confirmed by a senior reviewer (M). Needs verified items in the language
-- [ ] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
+- [x] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
 - [ ] **P1-REV-07** Public contributor credit page (S) → CON-5, US-19
 
 ### Public API (each task is a slice: contract → api → portal "Try it" → test)

@@ -604,6 +604,14 @@ type Phrase struct {
 	UpdatedAt    time.Time
 }
 
+type ProviderQuality struct {
+	Provider     string
+	LanguageCode string
+	Decided      int32
+	Accepted     int32
+	Corrected    int32
+}
+
 type Release struct {
 	ID          uuid.UUID
 	Name        string

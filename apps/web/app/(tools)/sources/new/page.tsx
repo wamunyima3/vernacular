@@ -1,17 +1,18 @@
+import { AdminOnly } from "@/components/admin-only"
+import { sourcesAdminNote } from "@/features/sources/admin-note"
 import type { Metadata } from "next"
 import { Suspense } from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { sessionWithAdmin } from "@/features/auth/admin"
 import { createSource } from "@/features/sources/actions"
-import { AdminOnly } from "@/features/sources/components/admin-only"
 import { SourceForm } from "@/features/sources/components/source-form"
 
 export const metadata: Metadata = { title: "Add source" }
 
 async function NewSource() {
   const { isAdmin } = await sessionWithAdmin("/sources/new")
-  if (!isAdmin) return <AdminOnly />
+  if (!isAdmin) return <AdminOnly>{sourcesAdminNote}</AdminOnly>
   return <SourceForm action={createSource} submitLabel="Add source" />
 }
 

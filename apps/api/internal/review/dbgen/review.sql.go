@@ -219,6 +219,37 @@ func (q *Queries) ListOwnReviews(ctx context.Context, arg ListOwnReviewsParams) 
 	return items, nil
 }
 
+const listProviderQuality = `-- name: ListProviderQuality :many
+SELECT provider, language_code, decided, accepted, corrected
+FROM provider_quality ORDER BY language_code, provider
+`
+
+func (q *Queries) ListProviderQuality(ctx context.Context) ([]ProviderQuality, error) {
+	rows, err := q.db.Query(ctx, listProviderQuality)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProviderQuality
+	for rows.Next() {
+		var i ProviderQuality
+		if err := rows.Scan(
+			&i.Provider,
+			&i.LanguageCode,
+			&i.Decided,
+			&i.Accepted,
+			&i.Corrected,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const nextReviewCard = `-- name: NextReviewCard :many
 WITH open AS (
     SELECT a.item_id, a.concept_id, a.priority, i.created_at

@@ -223,3 +223,18 @@ func checkTarget(ctx context.Context, its Items, me accounts.Principal, id uuid.
 	}
 	return t, nil
 }
+
+// ProviderQuality reports how reviewers judged each AI provider's
+// candidates, per language (AI-5). Admins only.
+func (s *Service) ProviderQuality(ctx context.Context) ([]dbgen.ProviderQuality, error) {
+	me, err := accounts.RequireAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var rows []dbgen.ProviderQuality
+	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+		rows, err = NewStore(tx).providerQuality(ctx)
+		return err
+	})
+	return rows, err
+}

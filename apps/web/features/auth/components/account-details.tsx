@@ -1,5 +1,8 @@
+import Link from "next/link"
+
 import { ErrorCard } from "@/components/error-card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiAs } from "@/lib/api"
 import { apiErrorMessage } from "@/lib/api-error"
@@ -33,9 +36,21 @@ export async function AccountDetails() {
           <dd className="text-pretty">
             {me.approvals.length === 0
               ? "Not approved to review yet. An admin approves reviewers per language."
-              : me.approvals.map((a) => `${a.language} (${a.level})`).join(", ")}
+              : me.approvals
+                  .map((a) => `${a.language} (${a.level}${a.suspended ? ", paused" : ""})`)
+                  .join(", ")}
           </dd>
         </dl>
+        {me.role === "admin" && (
+          <Button
+            variant="outline"
+            className="self-start"
+            nativeButton={false}
+            render={<Link href="/admin" />}
+          >
+            Reviewers and provider quality
+          </Button>
+        )}
       </CardContent>
     </Card>
   )

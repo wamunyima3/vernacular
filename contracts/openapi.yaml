@@ -170,6 +170,75 @@ paths:
           description: Undone; the items are back in the reviewer's queue
         default:
           $ref: "#/components/responses/Error"
+  /v1/approvals:
+    get:
+      operationId: listApprovals
+      summary: Every reviewer approval (admin)
+      tags: [accounts]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Approvals by language, then name
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApprovalList" }
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: approveReviewer
+      summary: Approve a user to review a language, or change their level (admin)
+      description: The user must have signed up. Approving again changes the level (CON-2).
+      tags: [accounts]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApprovalInput" }
+      responses:
+        "204":
+          description: Approved
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/approvals/{user_id}/{language}:
+    delete:
+      operationId: revokeApproval
+      summary: Remove a reviewer approval (admin)
+      tags: [accounts]
+      security:
+        - session: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: language
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "204":
+          description: Removed
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/provider-quality:
+    get:
+      operationId: getProviderQuality
+      summary: Acceptance and correction rates per AI provider and language (admin)
+      description: Reviews of items each machine source proposed (AI-5). Reviews a send-back set aside do not count.
+      tags: [review]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: One row per provider and language
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProviderQualityList" }
+        default:
+          $ref: "#/components/responses/Error"
   /v1/reviewers:
     get:
       operationId: listReviewers
@@ -464,6 +533,47 @@ components:
           description: |
             Agreement fell below the threshold, so the approval is paused until a senior
             reviewer marks the reviewer retrained (DQ-7)
+    UserApproval:
+      type: object
+      required: [user_id, name, email, language, level, suspended]
+      properties:
+        user_id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        level: { $ref: "#/components/schemas/ReviewerLevel" }
+        suspended: { type: boolean }
+    ApprovalList:
+      type: object
+      required: [approvals]
+      properties:
+        approvals:
+          type: array
+          items: { $ref: "#/components/schemas/UserApproval" }
+    ApprovalInput:
+      type: object
+      additionalProperties: false
+      required: [email, language, level]
+      properties:
+        email: { type: string, format: email }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        level: { $ref: "#/components/schemas/ReviewerLevel" }
+    ProviderQuality:
+      type: object
+      required: [provider, language, decided, accepted, corrected]
+      properties:
+        provider: { type: string, description: The machine source's name in the register }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        decided: { type: integer, description: Review decisions on its candidates }
+        accepted: { type: integer }
+        corrected: { type: integer }
+    ProviderQualityList:
+      type: object
+      required: [providers]
+      properties:
+        providers:
+          type: array
+          items: { $ref: "#/components/schemas/ProviderQuality" }
     Reviewer:
       type: object
       required: [user_id, name, level, decided, agreed, suspended]

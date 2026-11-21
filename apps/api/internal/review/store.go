@@ -124,3 +124,11 @@ func (s *Store) hasReviewed(ctx context.Context, itemID uuid.UUID, reviewerID st
 	}
 	return ok, nil
 }
+
+func (s *Store) providerQuality(ctx context.Context) ([]dbgen.ProviderQuality, error) {
+	rows, err := s.q.ListProviderQuality(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list provider quality: %w", err)
+	}
+	return rows, nil
+}

@@ -132,6 +132,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every reviewer approval (admin) */
+        get: operations["listApprovals"];
+        /**
+         * Approve a user to review a language, or change their level (admin)
+         * @description The user must have signed up. Approving again changes the level (CON-2).
+         */
+        put: operations["approveReviewer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals/{user_id}/{language}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a reviewer approval (admin) */
+        delete: operations["revokeApproval"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provider-quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Acceptance and correction rates per AI provider and language (admin)
+         * @description Reviews of items each machine source proposed (AI-5). Reviews a send-back set aside do not count.
+         */
+        get: operations["getProviderQuality"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reviewers": {
         parameters: {
             query?: never;
@@ -336,6 +394,36 @@ export interface components {
              *     reviewer marks the reviewer retrained (DQ-7)
              */
             suspended: boolean;
+        };
+        UserApproval: {
+            user_id: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            language: components["schemas"]["LanguageCode"];
+            level: components["schemas"]["ReviewerLevel"];
+            suspended: boolean;
+        };
+        ApprovalList: {
+            approvals: components["schemas"]["UserApproval"][];
+        };
+        ApprovalInput: {
+            /** Format: email */
+            email: string;
+            language: components["schemas"]["LanguageCode"];
+            level: components["schemas"]["ReviewerLevel"];
+        };
+        ProviderQuality: {
+            /** @description The machine source's name in the register */
+            provider: string;
+            language: components["schemas"]["LanguageCode"];
+            /** @description Review decisions on its candidates */
+            decided: number;
+            accepted: number;
+            corrected: number;
+        };
+        ProviderQualityList: {
+            providers: components["schemas"]["ProviderQuality"][];
         };
         Reviewer: {
             user_id: string;
@@ -774,6 +862,93 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approvals by language, then name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    approveReviewer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalInput"];
+            };
+        };
+        responses: {
+            /** @description Approved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+                language: components["schemas"]["LanguageCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getProviderQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One row per provider and language */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderQualityList"];
+                };
             };
             default: components["responses"]["Error"];
         };

@@ -68,3 +68,7 @@ ORDER BY item_id, created_at;
 -- name: HasReviewed :one
 -- Whether the reviewer ever reviewed the item, set aside or not.
 SELECT EXISTS (SELECT 1 FROM reviews WHERE item_id = $1 AND reviewer_id = $2);
+
+-- name: ListProviderQuality :many
+SELECT provider, language_code, decided, accepted, corrected
+FROM provider_quality ORDER BY language_code, provider;

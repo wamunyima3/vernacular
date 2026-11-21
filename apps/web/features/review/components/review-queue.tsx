@@ -1,3 +1,4 @@
+import type { Schemas } from "@vernacular/api-client"
 import Link from "next/link"
 
 import { ErrorCard } from "@/components/error-card"
@@ -54,22 +55,8 @@ async function Current({ params }: { params: Params }) {
     return <ErrorCard title="Your account could not be loaded" message={apiErrorMessage(meError)} />
 
   const approved = me.approvals.filter((a) => !a.suspended).map((a) => a.language)
-  if (approved.length === 0 && me.approvals.length > 0) {
-    return (
-      <NoticeCard title="Your review approval is paused">
-        Your agreement with settled outcomes fell below {agreementThreshold.percent}%. A senior
-        reviewer for your language resumes it after retraining.
-      </NoticeCard>
-    )
-  }
-  if (approved.length === 0) {
-    return (
-      <NoticeCard title="You are not a reviewer yet" actions={contribute}>
-        Reviewers are approved per language by an admin after a short test. Contributing words is
-        the way in.
-      </NoticeCard>
-    )
-  }
+  const notice = notReviewing(me.approvals)
+  if (notice) return notice
   const language =
     asked.language && approved.includes(asked.language) ? asked.language : approved[0]!
   const [{ data: card, error, response }, names] = await Promise.all([
@@ -96,6 +83,25 @@ async function Current({ params }: { params: Params }) {
       languageName={nameOf(language)}
       session={current}
     />
+  )
+}
+
+/** Why the user cannot review yet, if they cannot: no approval, or only paused ones. */
+function notReviewing(approvals: Schemas["Approval"][]) {
+  if (approvals.some((a) => !a.suspended)) return undefined
+  if (approvals.length > 0) {
+    return (
+      <NoticeCard title="Your review approval is paused">
+        Your agreement with settled outcomes fell below {agreementThreshold.percent}%. A senior
+        reviewer for your language resumes it after retraining.
+      </NoticeCard>
+    )
+  }
+  return (
+    <NoticeCard title="You are not a reviewer yet" actions={contribute}>
+      Reviewers are approved per language by an admin after a short test. Contributing words is the
+      way in.
+    </NoticeCard>
   )
 }
 
