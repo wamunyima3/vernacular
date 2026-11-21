@@ -18,3 +18,12 @@ func (t Trust) API() gen.Trust {
 		Reviews: gen.ReviewSummary{Accepts: t.Accepts, Corrections: t.Corrections},
 	}
 }
+
+// Minimum is the least-checked status a read returns: the caller's
+// min_status, or verified when none is given (ADR-0004, TRN-4).
+func Minimum(minStatus *gen.MinStatus) string {
+	if minStatus == nil {
+		return string(gen.MinStatusVerified)
+	}
+	return string(*minStatus)
+}

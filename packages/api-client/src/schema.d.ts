@@ -130,6 +130,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/phrases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A curated phrase pack in one language
+         * @description The phrases of a topic pack, such as greetings, numbers, dates, interface labels,
+         *     health or money, each with its English source and trust fields (PHR-1, US-08).
+         *     At most 1,000 phrases, in English order.
+         */
+        get: operations["getPhrasePack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -737,6 +759,24 @@ export interface components {
          * @enum {string}
          */
         MinStatus: "verified" | "reviewed" | "sourced" | "machine";
+        Phrase: {
+            /** Format: uuid */
+            id: string;
+            /** @example Mwashibukeni */
+            text: string;
+            /** @example Good morning */
+            source_en: string;
+            notes?: string;
+            /** Format: uuid */
+            concept_id?: string;
+            trust: components["schemas"]["Trust"];
+        };
+        PhrasePack: {
+            /** @example greetings */
+            pack: string;
+            language: components["schemas"]["LanguageCode"];
+            data: components["schemas"]["Phrase"][];
+        };
         /**
          * @description What the query matched (US-05): the headword (or, from English, the gloss), a
          *     spelling variant, the root of an inflected or prefixed form, or a similar spelling.
@@ -1171,6 +1211,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LookupResults"];
+                };
+            };
+            400: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getPhrasePack: {
+        parameters: {
+            query: {
+                /** @example greetings */
+                pack: string;
+                lang: components["schemas"]["LanguageCode"];
+                /**
+                 * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+                 *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+                 *     with no meaning at this level are left out, so a strict caller gets nothing rather
+                 *     than a guess.
+                 */
+                min_status?: components["parameters"]["MinStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack; empty when it has no phrases at that level */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhrasePack"];
                 };
             };
             400: components["responses"]["Error"];

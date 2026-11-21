@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
@@ -145,5 +146,5 @@ func (h *Handler) Lookup(ctx context.Context, req gen.LookupRequestObject) (gen.
 
 // filter reads the shared read-endpoint parameters.
 func filter(minStatus *gen.MinStatus, variety *string) Filter {
-	return Filter{MinStatus: string(httpx.Deref(minStatus)), Variety: httpx.Deref(variety)}
+	return Filter{MinStatus: items.Minimum(minStatus), Variety: httpx.Deref(variety)}
 }

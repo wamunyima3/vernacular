@@ -137,7 +137,8 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-API-04** `GET /v1/concepts/{id}` (S) → LEX-7, US-04
 - [x] **P1-API-05** `GET /v1/lookup` in both directions with English (M) → LEX-2, US-04
 - [x] **P1-API-06** `min_status` and `variety` filters, verified by default (S) → TRN-4, AI-6, LEX-6, US-06, US-07
-- [ ] **P1-API-07** `GET /v1/phrases` packs (M) → PHR-1, US-08
+- [x] **P1-API-07** `GET /v1/phrases` packs (M) → PHR-1, US-08
+- [ ] **P1-API-07b** English source list for the six packs (greetings, numbers, dates, interface labels, health, money), loaded as phrase concepts, so P1-AI-01 can generate phrase candidates and reviewers can check them (S) → PHR-1, AI-1
 - [ ] **P1-API-08** `POST /v1/detect` (evaluate existing language ID models first) (M) → TRN-1, US-09
 - [ ] **P1-API-09** Exact-match translation against verified phrases (S) → TRN-2, US-10
 - [ ] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers; a confirmed report is an input to `review.Status` (→ `disputed`) and shows on `/disputes` (M) → PRV-3, US-15

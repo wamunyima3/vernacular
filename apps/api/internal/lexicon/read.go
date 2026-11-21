@@ -48,13 +48,13 @@ type Entry struct {
 
 // Filter narrows what the read endpoints return (TRN-4, AI-6, LEX-6).
 type Filter struct {
-	MinStatus string // least-checked status to return; verified when empty (ADR-0004)
+	MinStatus string // least-checked status to return (items.Minimum)
 	Variety   string // only entries of this variety; any when empty
 }
 
 func (f Filter) min() dbgen.TrustStatus {
 	if f.MinStatus == "" {
-		return dbgen.TrustStatusVerified
+		return dbgen.TrustStatusVerified // the default, as items.Minimum
 	}
 	return dbgen.TrustStatus(f.MinStatus)
 }
