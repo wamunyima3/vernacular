@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { apiAs } from "@/lib/api"
 import { apiErrorMessage } from "@/lib/api-error"
 
+import { CreditConsent } from "../../credits/components/credit-consent"
 import { requireSession } from "../session"
 
 /** The signed-in user as the Go API sees them (GET /v1/me), proving the session reaches the API. */
@@ -41,6 +42,7 @@ export async function AccountDetails() {
                   .join(", ")}
           </dd>
         </dl>
+        <CreditConsent credited={me.credited} />
         {me.role === "admin" && (
           <Button
             variant="outline"

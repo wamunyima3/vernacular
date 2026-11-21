@@ -36,7 +36,7 @@ func (s *Store) Authenticate(ctx context.Context, token string) (Principal, erro
 	if err != nil {
 		return Principal{}, fmt.Errorf("get session user: %w", err)
 	}
-	p := Principal{ID: u.ID, Name: u.Name, Email: u.Email, Role: gen.Role(u.Role)}
+	p := Principal{ID: u.ID, Name: u.Name, Email: u.Email, Role: gen.Role(u.Role), Credited: u.Credited}
 	if err := json.Unmarshal(u.Approvals, &p.Approvals); err != nil {
 		return Principal{}, fmt.Errorf("decode approvals: %w", err)
 	}

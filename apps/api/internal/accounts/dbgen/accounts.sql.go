@@ -29,7 +29,7 @@ func (q *Queries) DeleteApproval(ctx context.Context, arg DeleteApprovalParams) 
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.name, u.email, u.role,
+SELECT u.id, u.name, u.email, u.role, (u.credit_consent_at IS NOT NULL)::boolean AS credited,
        coalesce(
            json_agg(json_build_object('language', a.language_code, 'level', a.level,
                                       'suspended', below_agreement(g.decided, g.agreed))
@@ -55,6 +55,7 @@ type GetSessionUserRow struct {
 	Name      string
 	Email     string
 	Role      string
+	Credited  bool
 	Approvals []byte
 }
 
@@ -68,6 +69,7 @@ func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionU
 		&i.Name,
 		&i.Email,
 		&i.Role,
+		&i.Credited,
 		&i.Approvals,
 	)
 	return i, err
@@ -182,6 +184,22 @@ func (q *Queries) MarkRetrained(ctx context.Context, arg MarkRetrainedParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const setCreditConsent = `-- name: SetCreditConsent :exec
+UPDATE users SET credit_consent_at = CASE WHEN $1::boolean THEN coalesce(credit_consent_at, now()) END
+WHERE id = $2
+`
+
+type SetCreditConsentParams struct {
+	Credited bool
+	ID       string
+}
+
+// Records when the user chose to be credited by name, or clears it (NFR-6).
+func (q *Queries) SetCreditConsent(ctx context.Context, arg SetCreditConsentParams) error {
+	_, err := q.db.Exec(ctx, setCreditConsent, arg.Credited, arg.ID)
+	return err
 }
 
 const setRole = `-- name: SetRole :execrows

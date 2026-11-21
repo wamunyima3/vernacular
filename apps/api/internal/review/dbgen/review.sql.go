@@ -143,6 +143,39 @@ func (q *Queries) ListCountedReviews(ctx context.Context, ids []uuid.UUID) ([]Li
 	return items, nil
 }
 
+const listCredits = `-- name: ListCredits :many
+SELECT name, words, reviews FROM credits
+WHERE language_code = $1
+ORDER BY words + reviews DESC, name, user_id
+LIMIT 500
+`
+
+type ListCreditsRow struct {
+	Name    string
+	Words   int32
+	Reviews int32
+}
+
+func (q *Queries) ListCredits(ctx context.Context, languageCode string) ([]ListCreditsRow, error) {
+	rows, err := q.db.Query(ctx, listCredits, languageCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCreditsRow
+	for rows.Next() {
+		var i ListCreditsRow
+		if err := rows.Scan(&i.Name, &i.Words, &i.Reviews); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDisputes = `-- name: ListDisputes :many
 SELECT i.id, i.language_code, max(r.created_at)::timestamptz AS disputed_since
 FROM items i

@@ -3,6 +3,7 @@ import "server-only"
 import { cacheLife } from "next/cache"
 
 import { api } from "@/lib/api"
+import { settle } from "@/lib/settle"
 
 import type { Language } from "./group-by-wave"
 
@@ -20,14 +21,8 @@ async function cachedLanguages(): Promise<Language[]> {
 
 /** Fetches the language list. Returns a result instead of throwing so the UI can show the error in place. */
 export async function getLanguages(): Promise<LanguagesResult> {
-  try {
-    return { ok: true, languages: await cachedLanguages() }
-  } catch (e) {
-    return {
-      ok: false,
-      message: e instanceof Error && e.message ? e.message : "The API could not be reached.",
-    }
-  }
+  const r = await settle(cachedLanguages)
+  return r.ok ? { ok: true, languages: r.value } : r
 }
 
 /** A language's English name, or its code when the list is unavailable. */

@@ -1,7 +1,7 @@
 -- name: GetSessionUser :one
 -- The user behind a live session token, with their review approvals, in one
 -- round trip. Banned users have no valid session.
-SELECT u.id, u.name, u.email, u.role,
+SELECT u.id, u.name, u.email, u.role, (u.credit_consent_at IS NOT NULL)::boolean AS credited,
        coalesce(
            json_agg(json_build_object('language', a.language_code, 'level', a.level,
                                       'suspended', below_agreement(g.decided, g.agreed))
@@ -56,3 +56,8 @@ RETURNING user_id;
 
 -- name: DeleteApproval :execrows
 DELETE FROM reviewer_approvals WHERE user_id = $1 AND language_code = $2;
+
+-- name: SetCreditConsent :exec
+-- Records when the user chose to be credited by name, or clears it (NFR-6).
+UPDATE users SET credit_consent_at = CASE WHEN @credited::boolean THEN coalesce(credit_consent_at, now()) END
+WHERE id = @id;

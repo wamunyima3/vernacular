@@ -72,3 +72,9 @@ SELECT EXISTS (SELECT 1 FROM reviews WHERE item_id = $1 AND reviewer_id = $2);
 -- name: ListProviderQuality :many
 SELECT provider, language_code, decided, accepted, corrected
 FROM provider_quality ORDER BY language_code, provider;
+
+-- name: ListCredits :many
+SELECT name, words, reviews FROM credits
+WHERE language_code = $1
+ORDER BY words + reviews DESC, name, user_id
+LIMIT 500;

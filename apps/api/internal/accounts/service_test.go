@@ -137,3 +137,18 @@ func TestApprovals(t *testing.T) {
 		t.Errorf("after revoke: %+v", got)
 	}
 }
+
+func TestSetCredit(t *testing.T) {
+	tx := dbtest.Tx(t)
+	agreementFixture(t, tx)
+	svc, store := accounts.NewService(tx), accounts.NewStore(tx)
+	me := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "u1"})
+	for _, want := range []bool{true, false} {
+		if err := svc.SetCredit(me, want); err != nil {
+			t.Fatal(err)
+		}
+		if p, _ := store.Authenticate(t.Context(), "live"); p.Credited != want {
+			t.Errorf("credited = %v, want %v", p.Credited, want)
+		}
+	}
+}

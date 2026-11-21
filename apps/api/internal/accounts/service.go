@@ -123,3 +123,17 @@ func (s *Service) Revoke(ctx context.Context, userID, language string) error {
 		return nil
 	})
 }
+
+// SetCredit records whether the signed-in user wants public credit by name.
+func (s *Service) SetCredit(ctx context.Context, credited bool) error {
+	me, err := Require(ctx, nil)
+	if err != nil {
+		return err
+	}
+	return database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
+		if err := dbgen.New(tx).SetCreditConsent(ctx, dbgen.SetCreditConsentParams{Credited: credited, ID: me.ID}); err != nil {
+			return fmt.Errorf("set credit consent: %w", err)
+		}
+		return nil
+	})
+}

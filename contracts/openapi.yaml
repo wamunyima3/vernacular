@@ -66,6 +66,31 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/me/credit:
+    put:
+      operationId: setCredit
+      summary: Choose whether to be credited by name
+      description: |
+        Consent to appear on the public contributors page (CON-5, NFR-6). When it was given
+        is recorded; turning it off removes the name at once.
+      tags: [accounts]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [credited]
+              properties:
+                credited: { type: boolean }
+      responses:
+        "204":
+          description: Saved
+        default:
+          $ref: "#/components/responses/Error"
   /v1/contributions:
     post:
       operationId: createContribution
@@ -122,6 +147,28 @@ paths:
               schema: { $ref: "#/components/schemas/ReviewCard" }
         "204":
           description: Nothing left to review in this language
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/credits:
+    get:
+      operationId: listCredits
+      summary: The volunteers behind a language's data
+      description: |
+        Everyone credited for accepted work in the language (CON-5): contributors for their
+        words that were verified, reviewers for decisions that matched a settled outcome.
+        Only people who chose to be credited, by display name (NFR-6).
+      tags: [review]
+      parameters:
+        - name: language
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "200":
+          description: Up to 500 people, most credited first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreditList" }
         default:
           $ref: "#/components/responses/Error"
   /v1/reviews:
@@ -533,6 +580,21 @@ components:
           description: |
             Agreement fell below the threshold, so the approval is paused until a senior
             reviewer marks the reviewer retrained (DQ-7)
+    Credit:
+      type: object
+      required: [name, words, reviews]
+      properties:
+        name: { type: string }
+        words: { type: integer, description: Their contributed words that are verified }
+        reviews:
+          { type: integer, description: Their review decisions that matched the settled outcome }
+    CreditList:
+      type: object
+      required: [credits]
+      properties:
+        credits:
+          type: array
+          items: { $ref: "#/components/schemas/Credit" }
     UserApproval:
       type: object
       required: [user_id, name, email, language, level, suspended]
@@ -598,7 +660,7 @@ components:
           items: { $ref: "#/components/schemas/Reviewer" }
     Me:
       type: object
-      required: [id, name, email, role, approvals]
+      required: [id, name, email, role, approvals, credited]
       properties:
         id:
           type: string
@@ -611,6 +673,9 @@ components:
         approvals:
           type: array
           items: { $ref: "#/components/schemas/Approval" }
+        credited:
+          type: boolean
+          description: The user chose to be credited by name on the public contributors page
     SourceKind:
       type: string
       description: "`licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output."

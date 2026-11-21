@@ -451,6 +451,14 @@ type Concept struct {
 	UpdatedAt  time.Time
 }
 
+type Credit struct {
+	UserID       string
+	Name         string
+	LanguageCode string
+	Words        int32
+	Reviews      int32
+}
+
 type Entry struct {
 	ID           uuid.UUID
 	LanguageCode string
@@ -629,17 +637,18 @@ type Source struct {
 }
 
 type User struct {
-	ID            string
-	Name          string
-	Email         string
-	EmailVerified bool
-	Image         pgtype.Text
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Role          string
-	Banned        pgtype.Bool
-	BanReason     pgtype.Text
-	BanExpires    pgtype.Timestamptz
+	ID              string
+	Name            string
+	Email           string
+	EmailVerified   bool
+	Image           pgtype.Text
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Role            string
+	Banned          pgtype.Bool
+	BanReason       pgtype.Text
+	BanExpires      pgtype.Timestamptz
+	CreditConsentAt pgtype.Timestamptz
 }
 
 type Variant struct {

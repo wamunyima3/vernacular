@@ -28,7 +28,7 @@ func (h *Handler) GetMe(ctx context.Context, _ gen.GetMeRequestObject) (gen.GetM
 		approvals[i] = gen.Approval{Language: a.Language, Level: a.Level, Suspended: a.Suspended}
 	}
 	return gen.GetMe200JSONResponse{
-		Id: p.ID, Name: p.Name, Email: openapi_types.Email(p.Email), Role: p.Role, Approvals: approvals,
+		Id: p.ID, Name: p.Name, Email: openapi_types.Email(p.Email), Role: p.Role, Approvals: approvals, Credited: p.Credited,
 	}, nil
 }
 
@@ -91,4 +91,12 @@ func (h *Handler) RevokeApproval(ctx context.Context, req gen.RevokeApprovalRequ
 		return nil, err
 	}
 	return gen.RevokeApproval204Response{}, nil
+}
+
+// SetCredit implements PUT /v1/me/credit.
+func (h *Handler) SetCredit(ctx context.Context, req gen.SetCreditRequestObject) (gen.SetCreditResponseObject, error) {
+	if err := h.svc.SetCredit(ctx, req.Body.Credited); err != nil {
+		return nil, err
+	}
+	return gen.SetCredit204Response{}, nil
 }

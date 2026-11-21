@@ -132,3 +132,33 @@ func TestProviderQuality(t *testing.T) {
 		t.Errorf("a reviewer reads provider quality: %v, want 403", err)
 	}
 }
+
+// TestCredits: r1 and r2 verify water; r2 and r3 verify r1's tree. Only r1
+// and r2 chose to be credited.
+func TestCredits(t *testing.T) {
+	tx := dbtest.Tx(t)
+	water, tree := fixture(t, tx)
+	svc := review.NewService(tx)
+	decide(t, svc, "r1", water, accept)
+	decide(t, svc, "r2", water, accept)
+	decide(t, svc, "r2", tree, accept)
+	decide(t, svc, "r3", tree, accept)
+	if _, err := tx.Exec(t.Context(), `UPDATE users SET credit_consent_at = now() WHERE id IN ('r1', 'r2')`); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := svc.Credits(t.Context(), "tst")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][2]int32{}
+	for _, r := range rows {
+		got[r.Name] = [2]int32{r.Words, r.Reviews}
+	}
+	// Third did not choose credit, so is left out.
+	for name, want := range map[string][2]int32{"Reviewer": {1, 1}, "Second": {0, 2}, "Third": {0, 0}} {
+		if got[name] != want {
+			t.Errorf("%s = %v, want %v words and reviews", name, got[name], want)
+		}
+	}
+}

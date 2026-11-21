@@ -132,3 +132,11 @@ func (s *Store) providerQuality(ctx context.Context) ([]dbgen.ProviderQuality, e
 	}
 	return rows, nil
 }
+
+func (s *Store) credits(ctx context.Context, language string) ([]dbgen.ListCreditsRow, error) {
+	rows, err := s.q.ListCredits(ctx, language)
+	if err != nil {
+		return nil, fmt.Errorf("list credits: %w", err)
+	}
+	return rows, nil
+}

@@ -61,6 +61,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose whether to be credited by name
+         * @description Consent to appear on the public contributors page (CON-5, NFR-6). When it was given
+         *     is recorded; turning it off removes the name at once.
+         */
+        put: operations["setCredit"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/contributions": {
         parameters: {
             query?: never;
@@ -98,6 +119,28 @@ export interface paths {
          *     items the reviewer wrote or has already reviewed. `204` when nothing is left.
          */
         get: operations["getNextReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The volunteers behind a language's data
+         * @description Everyone credited for accepted work in the language (CON-5): contributors for their
+         *     words that were verified, reviewers for decisions that matched a settled outcome.
+         *     Only people who chose to be credited, by display name (NFR-6).
+         */
+        get: operations["listCredits"];
         put?: never;
         post?: never;
         delete?: never;
@@ -395,6 +438,16 @@ export interface components {
              */
             suspended: boolean;
         };
+        Credit: {
+            name: string;
+            /** @description Their contributed words that are verified */
+            words: number;
+            /** @description Their review decisions that matched the settled outcome */
+            reviews: number;
+        };
+        CreditList: {
+            credits: components["schemas"]["Credit"][];
+        };
         UserApproval: {
             user_id: string;
             name: string;
@@ -447,6 +500,8 @@ export interface components {
             email: string;
             role: components["schemas"]["Role"];
             approvals: components["schemas"]["Approval"][];
+            /** @description The user chose to be credited by name on the public contributors page */
+            credited: boolean;
         };
         /**
          * @description `licensed`: a third party's data used under licence. `contributor`: our volunteers. `machine`: an AI provider's output.
@@ -763,6 +818,31 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    setCredit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    credited: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     createContribution: {
         parameters: {
             query?: never;
@@ -816,6 +896,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listCredits: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 500 people, most credited first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditList"];
+                };
             };
             default: components["responses"]["Error"];
         };

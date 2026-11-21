@@ -238,3 +238,15 @@ func (s *Service) ProviderQuality(ctx context.Context) ([]dbgen.ProviderQuality,
 	})
 	return rows, err
 }
+
+// Credits lists the volunteers credited for accepted work in a language
+// (CON-5), those who chose to be. Public.
+func (s *Service) Credits(ctx context.Context, language string) ([]dbgen.ListCreditsRow, error) {
+	var rows []dbgen.ListCreditsRow
+	err := database.InTx(ctx, s.db, "", func(tx pgx.Tx) error {
+		var err error
+		rows, err = NewStore(tx).credits(ctx, language)
+		return err
+	})
+	return rows, err
+}

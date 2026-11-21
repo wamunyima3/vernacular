@@ -29,6 +29,7 @@ type Principal struct {
 	Email     string
 	Role      gen.Role
 	Approvals []Approval
+	Credited  bool // chose public credit by name (NFR-6)
 }
 
 // HasRole reports whether the caller has any of the roles. Admins have every role.

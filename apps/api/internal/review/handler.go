@@ -123,3 +123,16 @@ func (h *Handler) GetProviderQuality(ctx context.Context, _ gen.GetProviderQuali
 	}
 	return gen.GetProviderQuality200JSONResponse{Providers: out}, nil
 }
+
+// ListCredits implements GET /v1/credits.
+func (h *Handler) ListCredits(ctx context.Context, req gen.ListCreditsRequestObject) (gen.ListCreditsResponseObject, error) {
+	rows, err := h.svc.Credits(ctx, req.Params.Language)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.Credit, len(rows))
+	for i, r := range rows {
+		out[i] = gen.Credit{Name: r.Name, Words: int(r.Words), Reviews: int(r.Reviews)}
+	}
+	return gen.ListCredits200JSONResponse{Credits: out}, nil
+}
