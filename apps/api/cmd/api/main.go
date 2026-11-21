@@ -53,16 +53,18 @@ func run() error {
 	}
 	defer func() { _ = bucket.Close() }()
 
+	lex := lexicon.NewStore(pool) // read-only here: search and counts
 	handler := server.New(
 		server.Options{Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL},
 		server.Deps{
 			DB:            pool,
 			Accounts:      accounts.NewStore(pool),
 			Reviewers:     accounts.NewService(pool),
-			Languages:     languages.NewService(languages.NewStore(pool), lexicon.NewStore(pool)),
+			Languages:     languages.NewService(languages.NewStore(pool), lex),
 			Sources:       sources.NewRegister(pool, bucket),
 			Contributions: contributions.NewService(pool),
 			Review:        review.NewService(pool),
+			Lexicon:       lex,
 		},
 	)
 

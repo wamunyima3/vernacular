@@ -298,6 +298,40 @@ func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSe
 	return items, nil
 }
 
+const listServableSenses = `-- name: ListServableSenses :many
+SELECT s.id, s.entry_id, s.gloss
+FROM senses s JOIN items i ON i.id = s.id
+WHERE s.entry_id = ANY($1::uuid[]) AND servable(i.status)
+ORDER BY s.entry_id, s.position, s.id
+`
+
+type ListServableSensesRow struct {
+	ID      uuid.UUID
+	EntryID uuid.UUID
+	Gloss   string
+}
+
+// The servable senses of entries, in order.
+func (q *Queries) ListServableSenses(ctx context.Context, entryIds []uuid.UUID) ([]ListServableSensesRow, error) {
+	rows, err := q.db.Query(ctx, listServableSenses, entryIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListServableSensesRow
+	for rows.Next() {
+		var i ListServableSensesRow
+		if err := rows.Scan(&i.ID, &i.EntryID, &i.Gloss); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockLanguage = `-- name: LockLanguage :exec
 SELECT pg_advisory_xact_lock(hashtext('lexicon:' || $1::text))
 `
@@ -307,6 +341,98 @@ SELECT pg_advisory_xact_lock(hashtext('lexicon:' || $1::text))
 func (q *Queries) LockLanguage(ctx context.Context, languageCode string) error {
 	_, err := q.db.Exec(ctx, lockLanguage, languageCode)
 	return err
+}
+
+const searchEntries = `-- name: SearchEntries :many
+WITH hits AS (
+    SELECT e.id, 'headword' AS matched, 1 AS rank, 1::real AS score
+    FROM entries e WHERE e.language_code = $2 AND e.headword_fold = $3::text
+    UNION ALL
+    SELECT e.id, 'variant', 2, 1 FROM entries e
+    WHERE e.language_code = $2 AND e.headword_fold = $4::text AND $4::text <> $3::text
+    UNION ALL
+    SELECT v.entry_id, 'variant', 2, 1 FROM variants v JOIN entries e ON e.id = v.entry_id
+    WHERE e.language_code = $2 AND v.fold = $3::text
+    UNION ALL
+    SELECT e.id, 'root', 3, 1 FROM entries e WHERE e.language_code = $2 AND e.stem = $5::text
+    UNION ALL
+    SELECT e.id, 'similar', 4, similarity(e.headword_fold, $3::text)
+    FROM entries e WHERE e.language_code = $2 AND e.headword_fold % $3::text
+), best AS (
+    SELECT DISTINCT ON (id) id, matched, rank, score FROM hits ORDER BY id, rank, score DESC
+)
+SELECT e.id, e.language_code, e.headword, e.part_of_speech, e.noun_class, e.plural, e.root,
+       e.variety, e.register, b.matched::text AS matched
+FROM best b
+JOIN entries e ON e.id = b.id
+JOIN items i ON i.id = e.id
+WHERE servable(i.status)
+  AND EXISTS (SELECT 1 FROM senses s JOIN items si ON si.id = s.id
+              WHERE s.entry_id = e.id AND servable(si.status))
+ORDER BY b.rank, b.score DESC, e.headword, e.id
+LIMIT $1
+`
+
+type SearchEntriesParams struct {
+	Lim      int32
+	Language string
+	Fold     string
+	Standard string
+	Stem     string
+}
+
+type SearchEntriesRow struct {
+	ID           uuid.UUID
+	LanguageCode string
+	Headword     string
+	PartOfSpeech NullPartOfSpeech
+	NounClass    pgtype.Text
+	Plural       pgtype.Text
+	Root         pgtype.Text
+	Variety      pgtype.Text
+	Register     Register
+	Matched      string
+}
+
+// Entry search (LEX-4, US-05). Each entry keeps its best match: the headword,
+// a spelling variant (stored, or the style guide's spelling of the query), the
+// search stem, or a similar spelling by trigram. Only servable entries with a
+// servable sense are returned.
+func (q *Queries) SearchEntries(ctx context.Context, arg SearchEntriesParams) ([]SearchEntriesRow, error) {
+	rows, err := q.db.Query(ctx, searchEntries,
+		arg.Lim,
+		arg.Language,
+		arg.Fold,
+		arg.Standard,
+		arg.Stem,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchEntriesRow
+	for rows.Next() {
+		var i SearchEntriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.LanguageCode,
+			&i.Headword,
+			&i.PartOfSpeech,
+			&i.NounClass,
+			&i.Plural,
+			&i.Root,
+			&i.Variety,
+			&i.Register,
+			&i.Matched,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setStem = `-- name: SetStem :exec

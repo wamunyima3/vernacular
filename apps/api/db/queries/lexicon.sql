@@ -73,3 +73,43 @@ JOIN senses s ON s.entry_id = e.id
 JOIN items i ON i.id = s.id
 WHERE servable(i.status)
 GROUP BY e.language_code;
+
+-- name: SearchEntries :many
+-- Entry search (LEX-4, US-05). Each entry keeps its best match: the headword,
+-- a spelling variant (stored, or the style guide's spelling of the query), the
+-- search stem, or a similar spelling by trigram. Only servable entries with a
+-- servable sense are returned.
+WITH hits AS (
+    SELECT e.id, 'headword' AS matched, 1 AS rank, 1::real AS score
+    FROM entries e WHERE e.language_code = @language AND e.headword_fold = @fold::text
+    UNION ALL
+    SELECT e.id, 'variant', 2, 1 FROM entries e
+    WHERE e.language_code = @language AND e.headword_fold = @standard::text AND @standard::text <> @fold::text
+    UNION ALL
+    SELECT v.entry_id, 'variant', 2, 1 FROM variants v JOIN entries e ON e.id = v.entry_id
+    WHERE e.language_code = @language AND v.fold = @fold::text
+    UNION ALL
+    SELECT e.id, 'root', 3, 1 FROM entries e WHERE e.language_code = @language AND e.stem = @stem::text
+    UNION ALL
+    SELECT e.id, 'similar', 4, similarity(e.headword_fold, @fold::text)
+    FROM entries e WHERE e.language_code = @language AND e.headword_fold % @fold::text
+), best AS (
+    SELECT DISTINCT ON (id) id, matched, rank, score FROM hits ORDER BY id, rank, score DESC
+)
+SELECT e.id, e.language_code, e.headword, e.part_of_speech, e.noun_class, e.plural, e.root,
+       e.variety, e.register, b.matched::text AS matched
+FROM best b
+JOIN entries e ON e.id = b.id
+JOIN items i ON i.id = e.id
+WHERE servable(i.status)
+  AND EXISTS (SELECT 1 FROM senses s JOIN items si ON si.id = s.id
+              WHERE s.entry_id = e.id AND servable(si.status))
+ORDER BY b.rank, b.score DESC, e.headword, e.id
+LIMIT @lim;
+
+-- name: ListServableSenses :many
+-- The servable senses of entries, in order.
+SELECT s.id, s.entry_id, s.gloss
+FROM senses s JOIN items i ON i.id = s.id
+WHERE s.entry_id = ANY(@entry_ids::uuid[]) AND servable(i.status)
+ORDER BY s.entry_id, s.position, s.id;

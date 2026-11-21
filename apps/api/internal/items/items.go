@@ -96,21 +96,40 @@ type Trust struct {
 
 // Trust reads an item's status, sources and review counts.
 func (s *Store) Trust(ctx context.Context, id uuid.UUID) (Trust, error) {
-	row, err := s.q.GetTrust(ctx, id)
+	ts, err := s.Trusts(ctx, []uuid.UUID{id})
 	if err != nil {
-		return Trust{}, fmt.Errorf("get trust of %s: %w", id, err)
+		return Trust{}, err
 	}
-	refs, err := s.q.ListTrustSources(ctx, id)
+	t, ok := ts[id]
+	if !ok {
+		return Trust{}, fmt.Errorf("get trust of %s: %w", id, pgx.ErrNoRows)
+	}
+	return t, nil
+}
+
+// Trusts reads the trust fields of many items in two queries; items that do
+// not exist are left out.
+func (s *Store) Trusts(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]Trust, error) {
+	rows, err := s.q.ListTrusts(ctx, ids)
 	if err != nil {
-		return Trust{}, fmt.Errorf("list sources of %s: %w", id, err)
+		return nil, fmt.Errorf("list trusts: %w", err)
 	}
-	t := Trust{Status: string(row.Status), Accepts: int(row.Accepts), Corrections: int(row.Corrections)}
+	refs, err := s.q.ListTrustSourcesOf(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list trust sources: %w", err)
+	}
+	out := make(map[uuid.UUID]Trust, len(rows))
+	for _, r := range rows {
+		out[r.ID] = Trust{Status: string(r.Status), Accepts: int(r.Accepts), Corrections: int(r.Corrections)}
+	}
 	for _, r := range refs {
+		t := out[r.ItemID]
 		t.Sources = append(t.Sources, SourceRef{
 			Name: r.Name, Licence: r.Licence, URL: r.Url.String, Reference: r.Reference, Model: r.Model.String,
 		})
+		out[r.ItemID] = t
 	}
-	return t, nil
+	return out, nil
 }
 
 // Locked is an item held for a review decision.

@@ -41,6 +41,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/entries/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search a language's dictionary entries
+         * @description Finds entries by headword, tolerating case, accents, spelling variants, missing
+         *     prefixes and small typing errors (LEX-4, NFR-7). Each hit says what matched:
+         *     the headword, a spelling variant, the root (an inflected or prefixed form) or a
+         *     similar spelling. Best matches first. Disputed items are never returned.
+         */
+        get: operations["searchEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -552,6 +575,50 @@ export interface components {
         };
         /** @enum {string} */
         PartOfSpeech: "noun" | "verb" | "adjective" | "adverb" | "pronoun" | "numeral" | "conjunction" | "preposition" | "interjection" | "phrase" | "ideophone";
+        /**
+         * @description Social register of a word (LEX-6)
+         * @enum {string}
+         */
+        Register: "neutral" | "formal" | "informal" | "town" | "respectful" | "vulgar" | "archaic";
+        SenseSummary: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description Short English meaning
+             * @example water
+             */
+            gloss: string;
+            trust: components["schemas"]["Trust"];
+        };
+        /** @description A dictionary entry with its meanings (LEX-1, LEX-3, LEX-6) */
+        EntrySummary: {
+            /** Format: uuid */
+            id: string;
+            language: components["schemas"]["LanguageCode"];
+            /** @example amenshi */
+            headword: string;
+            part_of_speech?: components["schemas"]["PartOfSpeech"];
+            /** @example 6 */
+            noun_class?: string;
+            plural?: string;
+            root?: string;
+            /** @description Variety code when not the standard language */
+            variety?: string;
+            register: components["schemas"]["Register"];
+            senses: components["schemas"]["SenseSummary"][];
+            trust: components["schemas"]["Trust"];
+        };
+        EntryHit: {
+            /**
+             * @description What the query matched (US-05)
+             * @enum {string}
+             */
+            match: "headword" | "variant" | "root" | "similar";
+            entry: components["schemas"]["EntrySummary"];
+        };
+        EntrySearchResults: {
+            data: components["schemas"]["EntryHit"][];
+        };
         ContributionInput: {
             /**
              * @description ISO 639-3 code of an active language
@@ -804,6 +871,33 @@ export interface operations {
                     "application/json": components["schemas"]["LanguageList"];
                 };
             };
+            default: components["responses"]["Error"];
+        };
+    };
+    searchEntries: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+                /** @example amenshi */
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntrySearchResults"];
+                };
+            };
+            400: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

@@ -132,7 +132,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 ### Public API (each task is a slice: contract → api → portal "Try it" → test)
 
 - [x] **P1-API-01** `GET /v1/languages` with live entry counts (S) → US-03
-- [ ] **P1-API-02** `GET /v1/entries/search` with variant and root matching (M) → LEX-1, LEX-4, US-03, US-05
+- [x] **P1-API-02** `GET /v1/entries/search` with variant and root matching (M) → LEX-1, LEX-4, US-03, US-05
 - [ ] **P1-API-03** `GET /v1/entries/{id}` (S) → LEX-1, LEX-3, LEX-5, US-16
 - [ ] **P1-API-04** `GET /v1/concepts/{id}` (S) → LEX-7, US-04
 - [ ] **P1-API-05** `GET /v1/lookup` in both directions with English (M) → LEX-2, US-04

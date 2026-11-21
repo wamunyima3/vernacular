@@ -7,21 +7,6 @@ INSERT INTO item_sources (item_id, source_id, reference, model) VALUES ($1, $2, 
 ON CONFLICT DO NOTHING;
 
 
--- name: GetTrust :one
--- The trust fields every returned item carries (PRV-1).
-SELECT i.status,
-       count(r.id) FILTER (WHERE r.decision = 'accept')::int  AS accepts,
-       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections
-FROM items i LEFT JOIN reviews r ON r.item_id = i.id
-WHERE i.id = $1
-GROUP BY i.id;
-
--- name: ListTrustSources :many
-SELECT s.name, s.licence, s.url, isrc.reference, isrc.model
-FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
-WHERE isrc.item_id = $1
-ORDER BY s.name, isrc.reference;
-
 -- name: LockItem :one
 -- Locks the item until the transaction ends, so concurrent reviews of it
 -- are decided one after another. NO KEY UPDATE, because only status changes:
@@ -39,3 +24,18 @@ FROM items i WHERE i.id = $1 FOR NO KEY UPDATE OF i;
 -- name: SetItemStatus :exec
 -- Only the review module's promotion function calls this (AGENTS.md rule 2).
 UPDATE items SET status = $2, updated_at = now() WHERE id = $1;
+
+-- name: ListTrusts :many
+-- The trust fields of many items at once (PRV-1).
+SELECT i.id, i.status,
+       count(r.id) FILTER (WHERE r.decision = 'accept')::int  AS accepts,
+       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections
+FROM items i LEFT JOIN reviews r ON r.item_id = i.id
+WHERE i.id = ANY(@ids::uuid[])
+GROUP BY i.id;
+
+-- name: ListTrustSourcesOf :many
+SELECT isrc.item_id, s.name, s.licence, s.url, isrc.reference, isrc.model
+FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
+WHERE isrc.item_id = ANY(@ids::uuid[])
+ORDER BY isrc.item_id, s.name, isrc.reference;

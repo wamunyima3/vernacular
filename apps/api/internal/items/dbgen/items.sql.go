@@ -122,6 +122,91 @@ func (q *Queries) ListTrustSources(ctx context.Context, itemID uuid.UUID) ([]Lis
 	return items, nil
 }
 
+const listTrustSourcesOf = `-- name: ListTrustSourcesOf :many
+SELECT isrc.item_id, s.name, s.licence, s.url, isrc.reference, isrc.model
+FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
+WHERE isrc.item_id = ANY($1::uuid[])
+ORDER BY isrc.item_id, s.name, isrc.reference
+`
+
+type ListTrustSourcesOfRow struct {
+	ItemID    uuid.UUID
+	Name      string
+	Licence   string
+	Url       pgtype.Text
+	Reference string
+	Model     pgtype.Text
+}
+
+func (q *Queries) ListTrustSourcesOf(ctx context.Context, ids []uuid.UUID) ([]ListTrustSourcesOfRow, error) {
+	rows, err := q.db.Query(ctx, listTrustSourcesOf, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTrustSourcesOfRow
+	for rows.Next() {
+		var i ListTrustSourcesOfRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.Name,
+			&i.Licence,
+			&i.Url,
+			&i.Reference,
+			&i.Model,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTrusts = `-- name: ListTrusts :many
+SELECT i.id, i.status,
+       count(r.id) FILTER (WHERE r.decision = 'accept')::int  AS accepts,
+       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections
+FROM items i LEFT JOIN reviews r ON r.item_id = i.id
+WHERE i.id = ANY($1::uuid[])
+GROUP BY i.id
+`
+
+type ListTrustsRow struct {
+	ID          uuid.UUID
+	Status      TrustStatus
+	Accepts     int32
+	Corrections int32
+}
+
+// The trust fields of many items at once (PRV-1).
+func (q *Queries) ListTrusts(ctx context.Context, ids []uuid.UUID) ([]ListTrustsRow, error) {
+	rows, err := q.db.Query(ctx, listTrusts, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTrustsRow
+	for rows.Next() {
+		var i ListTrustsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.Accepts,
+			&i.Corrections,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockItem = `-- name: LockItem :one
 SELECT i.kind, i.language_code, i.status, i.author_id, open_for_review(i.status) AS open,
        (SELECT (CASE WHEN bool_or(s.kind <> 'machine') THEN 'sourced' ELSE 'machine' END)::trust_status

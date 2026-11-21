@@ -20,6 +20,7 @@ tags:
   - name: sources
   - name: contributions
   - name: review
+  - name: lexicon
 paths:
   /healthz:
     get:
@@ -46,6 +47,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LanguageList" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/entries/search:
+    get:
+      operationId: searchEntries
+      summary: Search a language's dictionary entries
+      description: |
+        Finds entries by headword, tolerating case, accents, spelling variants, missing
+        prefixes and small typing errors (LEX-4, NFR-7). Each hit says what matched:
+        the headword, a spelling variant, the root (an inflected or prefixed form) or a
+        similar spelling. Best matches first. Disputed items are never returned.
+      tags: [lexicon]
+      parameters:
+        - name: language
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+          example: amenshi
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: Matching entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EntrySearchResults" }
+        "400":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/me:
@@ -761,6 +795,56 @@ components:
           phrase,
           ideophone,
         ]
+    Register:
+      type: string
+      description: Social register of a word (LEX-6)
+      enum: [neutral, formal, informal, town, respectful, vulgar, archaic]
+    SenseSummary:
+      type: object
+      required: [id, gloss, trust]
+      properties:
+        id: { type: string, format: uuid }
+        gloss:
+          type: string
+          description: Short English meaning
+          example: water
+        trust: { $ref: "#/components/schemas/Trust" }
+    EntrySummary:
+      type: object
+      description: A dictionary entry with its meanings (LEX-1, LEX-3, LEX-6)
+      required: [id, language, headword, register, senses, trust]
+      properties:
+        id: { type: string, format: uuid }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        headword: { type: string, example: amenshi }
+        part_of_speech: { $ref: "#/components/schemas/PartOfSpeech" }
+        noun_class: { type: string, example: "6" }
+        plural: { type: string }
+        root: { type: string }
+        variety:
+          type: string
+          description: Variety code when not the standard language
+        register: { $ref: "#/components/schemas/Register" }
+        senses:
+          type: array
+          items: { $ref: "#/components/schemas/SenseSummary" }
+        trust: { $ref: "#/components/schemas/Trust" }
+    EntryHit:
+      type: object
+      required: [match, entry]
+      properties:
+        match:
+          type: string
+          description: What the query matched (US-05)
+          enum: [headword, variant, root, similar]
+        entry: { $ref: "#/components/schemas/EntrySummary" }
+    EntrySearchResults:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/EntryHit" }
     ContributionInput:
       type: object
       additionalProperties: false
