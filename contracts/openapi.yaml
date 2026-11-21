@@ -170,6 +170,52 @@ paths:
           description: Undone; the items are back in the reviewer's queue
         default:
           $ref: "#/components/responses/Error"
+  /v1/disputes:
+    get:
+      operationId: listDisputes
+      summary: Disagreements waiting for a senior reviewer (senior reviewers)
+      description: |
+        Items reviewers disagree on, in the languages the caller is a senior reviewer for,
+        oldest first, with every decision that counts (CON-4). Resolve within 14 days (DQ-8).
+      tags: [review]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Up to 50 disputes, oldest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DisputeList" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/disputes/{sense_id}/resolution:
+    post:
+      operationId: resolveDispute
+      summary: Settle a dispute (senior reviewers)
+      description: |
+        `keep` verifies the item. `send_back` returns it to the review queue, where only
+        reviews made after this count. Seniors cannot settle disputes they reviewed.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: sense_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolutionInput" }
+      responses:
+        "200":
+          description: Settled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Resolution" }
+        default:
+          $ref: "#/components/responses/Error"
   /v1/sources:
     get:
       operationId: listSources
@@ -520,6 +566,55 @@ components:
           example: "6"
         plural:
           type: string
+    Dispute:
+      type: object
+      required: [language, gloss_en, candidate, disputed_since, reviews]
+      properties:
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        gloss_en: { type: string }
+        candidate: { $ref: "#/components/schemas/ReviewCandidate" }
+        disputed_since:
+          type: string
+          format: date-time
+          description: When the last counted review was made
+        reviews:
+          type: array
+          description: Oldest first. Reviewers stay anonymous.
+          items: { $ref: "#/components/schemas/DisputeReview" }
+    DisputeReview:
+      type: object
+      required: [decision, comment, created_at]
+      properties:
+        decision: { $ref: "#/components/schemas/ReviewDecision" }
+        comment: { type: string }
+        correction:
+          type: string
+          description: The word the reviewer wrote instead, for `correct` decisions
+        created_at: { type: string, format: date-time }
+    DisputeList:
+      type: object
+      required: [disputes]
+      properties:
+        disputes:
+          type: array
+          items: { $ref: "#/components/schemas/Dispute" }
+    ResolutionOutcome:
+      type: string
+      enum: [keep, send_back]
+    ResolutionInput:
+      type: object
+      additionalProperties: false
+      required: [outcome, note]
+      properties:
+        outcome: { $ref: "#/components/schemas/ResolutionOutcome" }
+        note: { type: string, minLength: 1, maxLength: 1000 }
+    Resolution:
+      type: object
+      required: [sense_id, outcome, status]
+      properties:
+        sense_id: { type: string, format: uuid }
+        outcome: { $ref: "#/components/schemas/ResolutionOutcome" }
+        status: { $ref: "#/components/schemas/TrustStatus" }
     ReviewCard:
       type: object
       required: [language, concept_id, gloss_en, priority, candidates]

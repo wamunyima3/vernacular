@@ -34,5 +34,37 @@ WHERE id = ANY(@ids::uuid[]) AND reviewer_id = @reviewer_id;
 -- name: DeleteReviews :exec
 DELETE FROM reviews WHERE id = ANY(@ids::uuid[]);
 
--- name: ListItemDecisions :many
-SELECT decision FROM reviews WHERE item_id = $1;
+
+-- name: CreateResolution :one
+INSERT INTO resolutions (item_id, senior_id, outcome, note) VALUES ($1, $2, $3, $4)
+RETURNING id;
+
+-- name: SetReviewsAside :exec
+UPDATE reviews SET set_aside_by = @resolution_id WHERE item_id = @item_id AND set_aside_by IS NULL;
+
+-- name: GetLatestResolution :one
+-- The resolution that counts for promotion, if any.
+SELECT outcome FROM resolutions WHERE item_id = $1 ORDER BY created_at DESC LIMIT 1;
+
+-- name: ListDisputes :many
+-- Disputed senses in the languages, oldest first. A dispute is as old as the
+-- last counted review, which is the one that made the reviewers disagree.
+SELECT i.id, i.language_code, max(r.created_at)::timestamptz AS disputed_since
+FROM items i
+JOIN reviews r ON r.item_id = i.id AND r.set_aside_by IS NULL
+WHERE i.status = 'disputed' AND i.kind = 'sense'
+  AND i.language_code = ANY(@languages::text[])
+GROUP BY i.id
+ORDER BY disputed_since, i.id
+LIMIT 50;
+
+-- name: ListCountedReviews :many
+-- The reviews of the items that count: those no send-back set aside.
+SELECT item_id, decision, comment, correction, created_at
+FROM reviews
+WHERE item_id = ANY(@ids::uuid[]) AND set_aside_by IS NULL
+ORDER BY item_id, created_at;
+
+-- name: HasReviewed :one
+-- Whether the reviewer ever reviewed the item, set aside or not.
+SELECT EXISTS (SELECT 1 FROM reviews WHERE item_id = $1 AND reviewer_id = $2);

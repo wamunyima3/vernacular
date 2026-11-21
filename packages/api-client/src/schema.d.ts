@@ -132,6 +132,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Disagreements waiting for a senior reviewer (senior reviewers)
+         * @description Items reviewers disagree on, in the languages the caller is a senior reviewer for,
+         *     oldest first, with every decision that counts (CON-4). Resolve within 14 days (DQ-8).
+         */
+        get: operations["listDisputes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{sense_id}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Settle a dispute (senior reviewers)
+         * @description `keep` verifies the item. `send_back` returns it to the review queue, where only
+         *     reviews made after this count. Seniors cannot settle disputes they reviewed.
+         */
+        post: operations["resolveDispute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources": {
         parameters: {
             query?: never;
@@ -347,6 +389,41 @@ export interface components {
             /** @example 6 */
             noun_class?: string;
             plural?: string;
+        };
+        Dispute: {
+            language: components["schemas"]["LanguageCode"];
+            gloss_en: string;
+            candidate: components["schemas"]["ReviewCandidate"];
+            /**
+             * Format: date-time
+             * @description When the last counted review was made
+             */
+            disputed_since: string;
+            /** @description Oldest first. Reviewers stay anonymous. */
+            reviews: components["schemas"]["DisputeReview"][];
+        };
+        DisputeReview: {
+            decision: components["schemas"]["ReviewDecision"];
+            comment: string;
+            /** @description The word the reviewer wrote instead, for `correct` decisions */
+            correction?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        DisputeList: {
+            disputes: components["schemas"]["Dispute"][];
+        };
+        /** @enum {string} */
+        ResolutionOutcome: "keep" | "send_back";
+        ResolutionInput: {
+            outcome: components["schemas"]["ResolutionOutcome"];
+            note: string;
+        };
+        Resolution: {
+            /** Format: uuid */
+            sense_id: string;
+            outcome: components["schemas"]["ResolutionOutcome"];
+            status: components["schemas"]["TrustStatus"];
         };
         ReviewCard: {
             language: components["schemas"]["LanguageCode"];
@@ -636,6 +713,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listDisputes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 50 disputes, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    resolveDispute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolutionInput"];
+            };
+        };
+        responses: {
+            /** @description Settled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Resolution"];
+                };
             };
             default: components["responses"]["Error"];
         };

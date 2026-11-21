@@ -32,3 +32,8 @@ export function wordClassInput(
   const nounClass = pos === "noun" ? text(`${prefix}noun_class`) : ""
   return { part_of_speech: pos, ...(nounClass && { noun_class: nounClass }) }
 }
+
+/** "noun · class 7/8", or "" when neither is known. */
+export function wordClassLabel(w: { part_of_speech?: string; noun_class?: string }): string {
+  return [w.part_of_speech, w.noun_class && `class ${w.noun_class}`].filter(Boolean).join(" · ")
+}

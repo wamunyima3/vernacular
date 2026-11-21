@@ -139,7 +139,7 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 			} else if err != nil {
 				return err
 			}
-			if err := promote(ctx, store, its, d.SenseID, locked[i].Origin); err != nil {
+			if _, err := promote(ctx, store, its, d.SenseID, locked[i].Origin); err != nil {
 				return err
 			}
 			out = append(out, r)
@@ -194,7 +194,7 @@ func (s *Service) Undo(ctx context.Context, ids []uuid.UUID) error {
 		}
 		// Recompute through the promotion rule, so a promoting accept can be undone.
 		for i, id := range targets {
-			if err := promote(ctx, store, its, id, locked[i].Origin); err != nil {
+			if _, err := promote(ctx, store, its, id, locked[i].Origin); err != nil {
 				return err
 			}
 		}

@@ -30,7 +30,8 @@ func fixture(t *testing.T, tx pgx.Tx) (water uuid.UUID, tree uuid.UUID) {
 	ctx := t.Context()
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO languages (code, name, own_name, wave, status) VALUES ('tst', 'Test', 'Test', 9, 'active');
-		INSERT INTO users (id, name, email, email_verified, role) VALUES ('r1', 'Reviewer', 'r1@test.invalid', true, 'contributor');`); err != nil {
+		INSERT INTO users (id, name, email, email_verified, role) VALUES ('r1', 'Reviewer', 'r1@test.invalid', true, 'contributor'),
+			('r2', 'Second', 'r2@test.invalid', true, 'contributor'), ('r3', 'Third', 'r3@test.invalid', true, 'contributor');`); err != nil {
 		t.Fatal(err)
 	}
 	source := func(name string) uuid.UUID {

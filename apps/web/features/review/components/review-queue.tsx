@@ -9,7 +9,7 @@ import { apiAs } from "@/lib/api"
 import { apiErrorMessage } from "@/lib/api-error"
 
 import { requireSession } from "../../auth/session"
-import { getLanguages } from "../../languages/get-languages"
+import { getLanguages, languageName } from "../../languages/get-languages"
 import { type Params, readLast, readSession, reviewUrl } from "../review-url"
 import { ReviewCard } from "./review-card"
 import { UndoToast } from "./undo-toast"
@@ -67,8 +67,7 @@ async function Current({ params }: { params: Params }) {
     language === asked.language && early ? early : next(language),
     languages,
   ])
-  const nameOf = (code: string) =>
-    (names.ok ? names.languages.find((l) => l.code === code)?.name : undefined) ?? code
+  const nameOf = (code: string) => languageName(names, code)
   const current = { language, skip: asked.skip, done: asked.done }
 
   if (response.status === 204) {

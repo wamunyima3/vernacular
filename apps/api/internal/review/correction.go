@@ -27,6 +27,20 @@ type replacement struct {
 	detail  []byte
 }
 
+// correctionDetail is what a `correct` review stores: the candidate it created.
+type correctionDetail struct {
+	SenseID uuid.UUID `json:"sense_id"`
+}
+
+// correctedTo reads the candidate a `correct` review created; Nil otherwise.
+func correctedTo(detail []byte) uuid.UUID {
+	var c correctionDetail
+	if detail == nil || json.Unmarshal(detail, &c) != nil {
+		return uuid.Nil
+	}
+	return c.SenseID
+}
+
 func isCorrection(d Decision) bool { return d.Decision == dbgen.ReviewDecisionCorrect }
 
 // replace adds the reviewer's word as their contribution to the meaning of
@@ -66,7 +80,7 @@ func replace(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisi
 	if err != nil {
 		return nil, err
 	}
-	detail, err := json.Marshal(map[string]uuid.UUID{"sense_id": added.SenseID})
+	detail, err := json.Marshal(correctionDetail{SenseID: added.SenseID})
 	if err != nil {
 		return nil, fmt.Errorf("encode correction: %w", err)
 	}

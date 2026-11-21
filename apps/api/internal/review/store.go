@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
@@ -62,11 +63,64 @@ func (s *Store) delete(ctx context.Context, ids []uuid.UUID) error {
 	return nil
 }
 
-// decisions lists every decision on an item.
-func (s *Store) decisions(ctx context.Context, itemID uuid.UUID) ([]dbgen.ReviewDecision, error) {
-	out, err := s.q.ListItemDecisions(ctx, itemID)
-	if err != nil {
-		return nil, fmt.Errorf("list decisions on %s: %w", itemID, err)
+// promotionInputs reads what the promotion rule needs besides origin: the
+// latest resolution, if any, and the decisions that count.
+func (s *Store) promotionInputs(ctx context.Context, itemID uuid.UUID) (dbgen.ResolutionOutcome, []dbgen.ReviewDecision, error) {
+	var resolution dbgen.ResolutionOutcome
+	latest, err := s.q.GetLatestResolution(ctx, itemID)
+	switch {
+	case err == nil:
+		resolution = latest
+	case !errors.Is(err, pgx.ErrNoRows):
+		return "", nil, fmt.Errorf("latest resolution of %s: %w", itemID, err)
 	}
-	return out, nil
+	reviews, err := s.counted(ctx, []uuid.UUID{itemID})
+	if err != nil {
+		return "", nil, err
+	}
+	decisions := make([]dbgen.ReviewDecision, len(reviews))
+	for i, r := range reviews {
+		decisions[i] = r.Decision
+	}
+	return resolution, decisions, nil
+}
+
+// counted lists the reviews of items that count, oldest first per item.
+func (s *Store) counted(ctx context.Context, ids []uuid.UUID) ([]dbgen.ListCountedReviewsRow, error) {
+	rows, err := s.q.ListCountedReviews(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list counted reviews: %w", err)
+	}
+	return rows, nil
+}
+
+func (s *Store) disputes(ctx context.Context, languages []string) ([]dbgen.ListDisputesRow, error) {
+	rows, err := s.q.ListDisputes(ctx, languages)
+	if err != nil {
+		return nil, fmt.Errorf("list disputes: %w", err)
+	}
+	return rows, nil
+}
+
+// resolve records a resolution; a send-back sets the item's reviews aside.
+func (s *Store) resolve(ctx context.Context, itemID uuid.UUID, seniorID string, outcome dbgen.ResolutionOutcome, note string) error {
+	id, err := s.q.CreateResolution(ctx, dbgen.CreateResolutionParams{ItemID: itemID, SeniorID: seniorID, Outcome: outcome, Note: note})
+	if err != nil {
+		return fmt.Errorf("resolve %s: %w", itemID, err)
+	}
+	if outcome == dbgen.ResolutionOutcomeSendBack {
+		err = s.q.SetReviewsAside(ctx, dbgen.SetReviewsAsideParams{ResolutionID: uuid.NullUUID{UUID: id, Valid: true}, ItemID: itemID})
+		if err != nil {
+			return fmt.Errorf("set reviews of %s aside: %w", itemID, err)
+		}
+	}
+	return nil
+}
+
+func (s *Store) hasReviewed(ctx context.Context, itemID uuid.UUID, reviewerID string) (bool, error) {
+	ok, err := s.q.HasReviewed(ctx, dbgen.HasReviewedParams{ItemID: itemID, ReviewerID: reviewerID})
+	if err != nil {
+		return false, fmt.Errorf("has %s reviewed %s: %w", reviewerID, itemID, err)
+	}
+	return ok, nil
 }

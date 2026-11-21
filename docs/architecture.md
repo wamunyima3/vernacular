@@ -104,7 +104,7 @@ Every item the API returns embeds one shared `Trust` schema ([ADR-0004](adr/0004
 | `machine`  | Model output                                   | only on request, always labelled |
 | `disputed` | Disagreement or an open report                 | never                            |
 
-Promotion is a single function, `review.Status` in `review/promotion.go`, and is the only code path that can set `verified`. It derives an item's status from its origin and its reviews, so recording and undoing a decision follow the same rule. It is covered by table tests for every transition, and a test fails if anything else changes `items.status`. Items two reviewers reject become `rejected`, a database-only status the API never returns ([ADR-0004](adr/0004-verification-levels.md) amendment).
+Promotion is a single function, `review.Status` in `review/promotion.go`, and is the only code path that can set `verified`. It derives an item's status from its origin, a senior reviewer's latest resolution and the reviews that count, so recording a decision, undoing one and settling a dispute all follow the same rule. It is covered by table tests for every transition, and a test fails if anything else changes `items.status`. Items two reviewers reject become `rejected`, a database-only status the API never returns ([ADR-0004](adr/0004-verification-levels.md) amendment).
 
 ```mermaid
 stateDiagram-v2

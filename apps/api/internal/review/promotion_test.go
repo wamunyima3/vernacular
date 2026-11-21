@@ -15,30 +15,38 @@ const (
 	accept  = dbgen.ReviewDecisionAccept
 	reject  = dbgen.ReviewDecisionReject
 	correct = dbgen.ReviewDecisionCorrect
+
+	keep     = dbgen.ResolutionOutcomeKeep
+	sendBack = dbgen.ResolutionOutcomeSendBack
 )
 
 func TestStatus(t *testing.T) {
 	tests := []struct {
-		name      string
-		origin    items.Status
-		decisions []dbgen.ReviewDecision
-		want      items.Status
+		name       string
+		origin     items.Status
+		resolution dbgen.ResolutionOutcome
+		decisions  []dbgen.ReviewDecision
+		want       items.Status
 	}{
-		{"unreviewed machine", items.StatusMachine, nil, items.StatusMachine},
-		{"unreviewed sourced", items.StatusSourced, nil, items.StatusSourced},
-		{"one accept", items.StatusMachine, []dbgen.ReviewDecision{accept}, items.StatusReviewed},
-		{"two accepts", items.StatusMachine, []dbgen.ReviewDecision{accept, accept}, items.StatusVerified},
-		{"three accepts", items.StatusSourced, []dbgen.ReviewDecision{accept, accept, accept}, items.StatusVerified},
-		{"one reject waits for another opinion", items.StatusSourced, []dbgen.ReviewDecision{reject}, items.StatusSourced},
-		{"two rejects", items.StatusMachine, []dbgen.ReviewDecision{reject, reject}, items.StatusRejected},
-		{"a correction counts as a reject", items.StatusMachine, []dbgen.ReviewDecision{reject, correct}, items.StatusRejected},
-		{"accept then reject", items.StatusMachine, []dbgen.ReviewDecision{accept, reject}, items.StatusDisputed},
-		{"two accepts and a reject", items.StatusSourced, []dbgen.ReviewDecision{accept, accept, reject}, items.StatusDisputed},
-		{"accept and correction", items.StatusSourced, []dbgen.ReviewDecision{correct, accept}, items.StatusDisputed},
+		{"unreviewed machine", items.StatusMachine, "", nil, items.StatusMachine},
+		{"unreviewed sourced", items.StatusSourced, "", nil, items.StatusSourced},
+		{"one accept", items.StatusMachine, "", []dbgen.ReviewDecision{accept}, items.StatusReviewed},
+		{"two accepts", items.StatusMachine, "", []dbgen.ReviewDecision{accept, accept}, items.StatusVerified},
+		{"three accepts", items.StatusSourced, "", []dbgen.ReviewDecision{accept, accept, accept}, items.StatusVerified},
+		{"one reject waits for another opinion", items.StatusSourced, "", []dbgen.ReviewDecision{reject}, items.StatusSourced},
+		{"two rejects", items.StatusMachine, "", []dbgen.ReviewDecision{reject, reject}, items.StatusRejected},
+		{"a correction counts as a reject", items.StatusMachine, "", []dbgen.ReviewDecision{reject, correct}, items.StatusRejected},
+		{"accept then reject", items.StatusMachine, "", []dbgen.ReviewDecision{accept, reject}, items.StatusDisputed},
+		{"two accepts and a reject", items.StatusSourced, "", []dbgen.ReviewDecision{accept, accept, reject}, items.StatusDisputed},
+		{"accept and correction", items.StatusSourced, "", []dbgen.ReviewDecision{correct, accept}, items.StatusDisputed},
+		{"kept by a senior", items.StatusMachine, keep, []dbgen.ReviewDecision{accept, reject}, items.StatusVerified},
+		{"kept, then a reviewer undoes", items.StatusMachine, keep, []dbgen.ReviewDecision{reject}, items.StatusVerified},
+		{"sent back, nothing since", items.StatusSourced, sendBack, nil, items.StatusSourced},
+		{"sent back, one accept since", items.StatusMachine, sendBack, []dbgen.ReviewDecision{accept}, items.StatusReviewed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := review.Status(tt.origin, tt.decisions); got != tt.want {
+			if got := review.Status(tt.origin, tt.resolution, tt.decisions); got != tt.want {
 				t.Errorf("Status(%s, %v) = %s, want %s", tt.origin, tt.decisions, got, tt.want)
 			}
 		})
@@ -50,10 +58,6 @@ func TestStatus(t *testing.T) {
 func TestPromotion(t *testing.T) {
 	tx := dbtest.Tx(t)
 	water, _ := fixture(t, tx)
-	if _, err := tx.Exec(t.Context(), `INSERT INTO users (id, name, email, email_verified, role)
-		VALUES ('r2', 'Second', 'r2@test.invalid', true, 'contributor'), ('r3', 'Third', 'r3@test.invalid', true, 'contributor')`); err != nil {
-		t.Fatal(err)
-	}
 	svc := review.NewService(tx)
 	status := func() items.Status {
 		item, _, err := items.NewStore(tx).Lock(t.Context(), water)

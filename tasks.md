@@ -119,10 +119,10 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
   - [x] **P1-REV-02a** api: `GET /v1/review/next` gives one concept with every pending candidate, no provider names, quick confirms first; `POST /v1/reviews` records accepts and rejects. Only approved languages, never the reviewer's own or already-reviewed items. Decisions only; promotion is P1-REV-03 (M)
   - [x] **P1-REV-02b** web: `(tools)/review`, one card per screen, fixed action bar, reject reasons, skip, empty state (M)
   - [x] **P1-REV-02c** Undo a decision for 5 seconds (S)
-- [ ] **P1-REV-03** Promotion and corrections → DQ-2, PRV-2, US-22
+- [x] **P1-REV-03** Promotion and corrections → DQ-2, PRV-2, US-22
   - [x] **P1-REV-03a** One promotion function: two independent accepts make an item `verified`, one makes it `reviewed`, disagreement makes it `disputed`, two rejects make it `rejected` (new status, never returned). Decide and undo both recompute through it, so a promoting accept can be undone (M)
   - [x] **P1-REV-03b** "Write my own": a reviewer's correction becomes a new candidate for others to review; the candidates it replaces keep their history (M)
-- [ ] **P1-REV-04** Disputes slice for senior reviewers; reports and senior resolutions become inputs to `review.Status`, so an undo cannot overwrite them (M) → CON-4, DQ-8, US-23
+- [x] **P1-REV-04** Disputes slice for senior reviewers; reports and senior resolutions become inputs to `review.Status`, so an undo cannot overwrite them (M). Reports join with P1-API-10 → CON-4, DQ-8, US-23
 - [ ] **P1-REV-05** Reviewer qualification test set and agreement-rate tracking (M) → DQ-3, DQ-7, US-24
 - [ ] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
 - [ ] **P1-REV-07** Public contributor credit page (S) → CON-5, US-19
@@ -138,7 +138,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [ ] **P1-API-07** `GET /v1/phrases` packs (M) → PHR-1, US-08
 - [ ] **P1-API-08** `POST /v1/detect` (evaluate existing language ID models first) (M) → TRN-1, US-09
 - [ ] **P1-API-09** Exact-match translation against verified phrases (S) → TRN-2, US-10
-- [ ] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers (M) → PRV-3, US-15
+- [ ] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers; a confirmed report is an input to `review.Status` (→ `disputed`) and shows on `/disputes` (M) → PRV-3, US-15
 - [ ] **P1-API-11** API keys slice: create and revoke keys in the portal; keys hashed at rest (M) → DEV-1, NFR-5, US-01
 - [ ] **P1-API-12** Rate limiting per key and per IP, with rate-limit headers; derive client IP only from trusted proxy headers, not chi RealIP (S) → DEV-3, NFR-5, US-13
 - [ ] **P1-API-13** Compression, `ETag` tied to the release, cache headers (S) → NFR-3, US-11

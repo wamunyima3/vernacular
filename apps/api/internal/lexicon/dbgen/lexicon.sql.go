@@ -214,8 +214,9 @@ func (q *Queries) ListHeadwords(ctx context.Context, languageCode string) ([]Lis
 }
 
 const listSenseCards = `-- name: ListSenseCards :many
-SELECT s.id, s.concept_id, e.headword, e.part_of_speech, e.noun_class, e.plural
+SELECT s.id, s.concept_id, c.gloss_en, e.headword, e.part_of_speech, e.noun_class, e.plural
 FROM senses s JOIN entries e ON e.id = s.entry_id
+LEFT JOIN concepts c ON c.id = s.concept_id
 WHERE s.id = ANY($1::uuid[])
 ORDER BY array_position($1::uuid[], s.id)
 `
@@ -223,6 +224,7 @@ ORDER BY array_position($1::uuid[], s.id)
 type ListSenseCardsRow struct {
 	ID           uuid.UUID
 	ConceptID    uuid.NullUUID
+	GlossEn      pgtype.Text
 	Headword     string
 	PartOfSpeech NullPartOfSpeech
 	NounClass    pgtype.Text
@@ -241,6 +243,7 @@ func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSe
 		if err := rows.Scan(
 			&i.ID,
 			&i.ConceptID,
+			&i.GlossEn,
 			&i.Headword,
 			&i.PartOfSpeech,
 			&i.NounClass,

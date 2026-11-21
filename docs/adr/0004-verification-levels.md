@@ -33,3 +33,5 @@ The promotion function derives an item's status from its origin and its reviews,
 | two or more accepts, no rejects              | `verified`                                                        |
 | two or more rejects, no accepts              | `rejected`                                                        |
 | accepts and rejects                          | `disputed`, for a senior reviewer (P1-REV-04)                     |
+
+A senior reviewer's latest resolution comes first. `keep` makes the item `verified` whatever its reviews say, so a later undo cannot reopen it. `send_back` sets the item's reviews aside (`reviews.set_aside_by`): they stay for history and still stop their reviewers reviewing it again, but only reviews made afterwards count, so the item returns to its origin status and the queue.

@@ -66,10 +66,6 @@ func corrections(ids []uuid.UUID) []review.Decision {
 func TestCorrection(t *testing.T) {
 	tx := dbtest.Tx(t)
 	fixture(t, tx)
-	if _, err := tx.Exec(t.Context(), `INSERT INTO users (id, name, email, email_verified, role)
-		VALUES ('r2', 'Second', 'r2@test.invalid', true, 'contributor'), ('r3', 'Third', 'r3@test.invalid', true, 'contributor')`); err != nil {
-		t.Fatal(err)
-	}
 	svc := review.NewService(tx)
 	stone := stoneCard(t, tx)
 

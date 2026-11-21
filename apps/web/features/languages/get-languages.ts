@@ -29,3 +29,8 @@ export async function getLanguages(): Promise<LanguagesResult> {
     }
   }
 }
+
+/** A language's English name, or its code when the list is unavailable. */
+export function languageName(result: LanguagesResult, code: string): string {
+  return (result.ok ? result.languages.find((l) => l.code === code)?.name : undefined) ?? code
+}

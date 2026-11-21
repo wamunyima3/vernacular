@@ -237,6 +237,7 @@ func PartsOfSpeech() []string {
 type SenseCard struct {
 	ID                                        uuid.UUID
 	ConceptID                                 uuid.NullUUID
+	GlossEn                                   string // the concept's, if any
 	Headword, PartOfSpeech, NounClass, Plural string
 }
 
@@ -249,7 +250,7 @@ func (s *Store) SenseCards(ctx context.Context, ids []uuid.UUID) ([]SenseCard, e
 	out := make([]SenseCard, len(rows))
 	for i, r := range rows {
 		out[i] = SenseCard{
-			ID: r.ID, ConceptID: r.ConceptID, Headword: r.Headword, PartOfSpeech: string(r.PartOfSpeech.PartOfSpeech),
+			ID: r.ID, ConceptID: r.ConceptID, GlossEn: r.GlossEn.String, Headword: r.Headword, PartOfSpeech: string(r.PartOfSpeech.PartOfSpeech),
 			NounClass: r.NounClass.String, Plural: r.Plural.String,
 		}
 	}

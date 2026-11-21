@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
+import { wordClassLabel } from "@/lib/word-class"
 
 import { decide } from "../actions"
 import { rejectReasons } from "../decision-input"
@@ -83,11 +84,9 @@ export function ReviewCard({
                   <RadioGroupItem id={c.sense_id} value={c.sense_id} />
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate text-lg font-medium">{c.headword}</span>
-                    {(c.part_of_speech || c.noun_class) && (
+                    {wordClassLabel(c) && (
                       <span className="text-sm font-normal text-muted-foreground">
-                        {[c.part_of_speech, c.noun_class && `class ${c.noun_class}`]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        {wordClassLabel(c)}
                       </span>
                     )}
                   </div>

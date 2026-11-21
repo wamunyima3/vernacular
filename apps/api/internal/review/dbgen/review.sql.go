@@ -12,6 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
+const createResolution = `-- name: CreateResolution :one
+INSERT INTO resolutions (item_id, senior_id, outcome, note) VALUES ($1, $2, $3, $4)
+RETURNING id
+`
+
+type CreateResolutionParams struct {
+	ItemID   uuid.UUID
+	SeniorID string
+	Outcome  ResolutionOutcome
+	Note     string
+}
+
+func (q *Queries) CreateResolution(ctx context.Context, arg CreateResolutionParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createResolution,
+		arg.ItemID,
+		arg.SeniorID,
+		arg.Outcome,
+		arg.Note,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createReview = `-- name: CreateReview :one
 INSERT INTO reviews (item_id, reviewer_id, decision, comment, correction)
 VALUES ($1, $2, $3, $4, $5)
@@ -48,23 +72,109 @@ func (q *Queries) DeleteReviews(ctx context.Context, ids []uuid.UUID) error {
 	return err
 }
 
-const listItemDecisions = `-- name: ListItemDecisions :many
-SELECT decision FROM reviews WHERE item_id = $1
+const getLatestResolution = `-- name: GetLatestResolution :one
+SELECT outcome FROM resolutions WHERE item_id = $1 ORDER BY created_at DESC LIMIT 1
 `
 
-func (q *Queries) ListItemDecisions(ctx context.Context, itemID uuid.UUID) ([]ReviewDecision, error) {
-	rows, err := q.db.Query(ctx, listItemDecisions, itemID)
+// The resolution that counts for promotion, if any.
+func (q *Queries) GetLatestResolution(ctx context.Context, itemID uuid.UUID) (ResolutionOutcome, error) {
+	row := q.db.QueryRow(ctx, getLatestResolution, itemID)
+	var outcome ResolutionOutcome
+	err := row.Scan(&outcome)
+	return outcome, err
+}
+
+const hasReviewed = `-- name: HasReviewed :one
+SELECT EXISTS (SELECT 1 FROM reviews WHERE item_id = $1 AND reviewer_id = $2)
+`
+
+type HasReviewedParams struct {
+	ItemID     uuid.UUID
+	ReviewerID string
+}
+
+// Whether the reviewer ever reviewed the item, set aside or not.
+func (q *Queries) HasReviewed(ctx context.Context, arg HasReviewedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasReviewed, arg.ItemID, arg.ReviewerID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const listCountedReviews = `-- name: ListCountedReviews :many
+SELECT item_id, decision, comment, correction, created_at
+FROM reviews
+WHERE item_id = ANY($1::uuid[]) AND set_aside_by IS NULL
+ORDER BY item_id, created_at
+`
+
+type ListCountedReviewsRow struct {
+	ItemID     uuid.UUID
+	Decision   ReviewDecision
+	Comment    string
+	Correction []byte
+	CreatedAt  time.Time
+}
+
+// The reviews of the items that count: those no send-back set aside.
+func (q *Queries) ListCountedReviews(ctx context.Context, ids []uuid.UUID) ([]ListCountedReviewsRow, error) {
+	rows, err := q.db.Query(ctx, listCountedReviews, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ReviewDecision
+	var items []ListCountedReviewsRow
 	for rows.Next() {
-		var decision ReviewDecision
-		if err := rows.Scan(&decision); err != nil {
+		var i ListCountedReviewsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.Decision,
+			&i.Comment,
+			&i.Correction,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, decision)
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDisputes = `-- name: ListDisputes :many
+SELECT i.id, i.language_code, max(r.created_at)::timestamptz AS disputed_since
+FROM items i
+JOIN reviews r ON r.item_id = i.id AND r.set_aside_by IS NULL
+WHERE i.status = 'disputed' AND i.kind = 'sense'
+  AND i.language_code = ANY($1::text[])
+GROUP BY i.id
+ORDER BY disputed_since, i.id
+LIMIT 50
+`
+
+type ListDisputesRow struct {
+	ID            uuid.UUID
+	LanguageCode  string
+	DisputedSince time.Time
+}
+
+// Disputed senses in the languages, oldest first. A dispute is as old as the
+// last counted review, which is the one that made the reviewers disagree.
+func (q *Queries) ListDisputes(ctx context.Context, languages []string) ([]ListDisputesRow, error) {
+	rows, err := q.db.Query(ctx, listDisputes, languages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDisputesRow
+	for rows.Next() {
+		var i ListDisputesRow
+		if err := rows.Scan(&i.ID, &i.LanguageCode, &i.DisputedSince); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -163,4 +273,18 @@ func (q *Queries) NextReviewCard(ctx context.Context, arg NextReviewCardParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const setReviewsAside = `-- name: SetReviewsAside :exec
+UPDATE reviews SET set_aside_by = $1 WHERE item_id = $2 AND set_aside_by IS NULL
+`
+
+type SetReviewsAsideParams struct {
+	ResolutionID uuid.NullUUID
+	ItemID       uuid.UUID
+}
+
+func (q *Queries) SetReviewsAside(ctx context.Context, arg SetReviewsAsideParams) error {
+	_, err := q.db.Exec(ctx, setReviewsAside, arg.ResolutionID, arg.ItemID)
+	return err
 }

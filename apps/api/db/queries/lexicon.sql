@@ -56,7 +56,8 @@ SELECT pg_advisory_xact_lock(hashtext('lexicon:' || @language_code::text));
 INSERT INTO examples (id, sense_id, text, translation_en) VALUES ($1, $2, $3, $4);
 
 -- name: ListSenseCards :many
-SELECT s.id, s.concept_id, e.headword, e.part_of_speech, e.noun_class, e.plural
+SELECT s.id, s.concept_id, c.gloss_en, e.headword, e.part_of_speech, e.noun_class, e.plural
 FROM senses s JOIN entries e ON e.id = s.entry_id
+LEFT JOIN concepts c ON c.id = s.concept_id
 WHERE s.id = ANY(@ids::uuid[])
 ORDER BY array_position(@ids::uuid[], s.id);

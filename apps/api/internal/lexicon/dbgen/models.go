@@ -192,6 +192,55 @@ func AllRegisterValues() []Register {
 	}
 }
 
+type ResolutionOutcome string
+
+const (
+	ResolutionOutcomeKeep     ResolutionOutcome = "keep"
+	ResolutionOutcomeSendBack ResolutionOutcome = "send_back"
+)
+
+func (e *ResolutionOutcome) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ResolutionOutcome(s)
+	case string:
+		*e = ResolutionOutcome(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ResolutionOutcome: %T", src)
+	}
+	return nil
+}
+
+type NullResolutionOutcome struct {
+	ResolutionOutcome ResolutionOutcome
+	Valid             bool // Valid is true if ResolutionOutcome is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullResolutionOutcome) Scan(value interface{}) error {
+	if value == nil {
+		ns.ResolutionOutcome, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ResolutionOutcome.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullResolutionOutcome) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ResolutionOutcome), nil
+}
+
+func AllResolutionOutcomeValues() []ResolutionOutcome {
+	return []ResolutionOutcome{
+		ResolutionOutcomeKeep,
+		ResolutionOutcomeSendBack,
+	}
+}
+
 type ReviewDecision string
 
 const (
@@ -571,6 +620,16 @@ type ReleaseItem struct {
 	Snapshot  []byte
 }
 
+type Resolution struct {
+	ID        uuid.UUID
+	ItemID    uuid.UUID
+	SeniorID  string
+	Outcome   ResolutionOutcome
+	Note      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Review struct {
 	ID         uuid.UUID
 	ItemID     uuid.UUID
@@ -580,6 +639,7 @@ type Review struct {
 	Comment    string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SetAsideBy uuid.NullUUID
 }
 
 type ReviewAgreement struct {
