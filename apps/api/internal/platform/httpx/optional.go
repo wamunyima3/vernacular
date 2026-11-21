@@ -17,3 +17,11 @@ func Deref[T any](p *T) T {
 	}
 	return *p
 }
+
+// DerefOr returns the value of an optional request field, or def when absent.
+func DerefOr[T any](p *T, def T) T {
+	if p == nil {
+		return def
+	}
+	return *p
+}

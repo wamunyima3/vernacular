@@ -107,6 +107,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Translate a word between English and Zambian languages
+         * @description From English (`from=eng`), finds concepts whose English gloss matches the query and
+         *     returns their entries in the `to` languages (LEX-2, US-04). From a Zambian language,
+         *     searches its entries as `/v1/entries/search` does and returns the English meaning of
+         *     each, grouped by concept. Each result says what matched; best matches first.
+         */
+        get: operations["lookup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -709,12 +732,28 @@ export interface components {
             /** @description Entries expressing the concept, by language then headword; at most 200 */
             entries: components["schemas"]["EntrySummary"][];
         };
+        /**
+         * @description What the query matched (US-05): the headword (or, from English, the gloss), a
+         *     spelling variant, the root of an inflected or prefixed form, or a similar spelling.
+         * @enum {string}
+         */
+        Match: "headword" | "variant" | "root" | "similar";
+        LookupHit: {
+            match: components["schemas"]["Match"];
+            concept: {
+                /** Format: uuid */
+                id: string;
+                /** @example water */
+                gloss_en: string;
+            };
+            /** @description Entries expressing the concept, each with only those senses */
+            entries: components["schemas"]["EntrySummary"][];
+        };
+        LookupResults: {
+            data: components["schemas"]["LookupHit"][];
+        };
         EntryHit: {
-            /**
-             * @description What the query matched (US-05)
-             * @enum {string}
-             */
-            match: "headword" | "variant" | "root" | "similar";
+            match: components["schemas"]["Match"];
             entry: components["schemas"]["EntrySummary"];
         };
         EntrySearchResults: {
@@ -1047,6 +1086,44 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    lookup: {
+        parameters: {
+            query: {
+                /** @example water */
+                q: string;
+                /** @example eng */
+                from: components["schemas"]["LanguageCode"];
+                /**
+                 * @description Target languages, comma-separated. From English, defaults to every language;
+                 *     from a Zambian language, only `eng` is accepted.
+                 * @example [
+                 *       "bem",
+                 *       "nya"
+                 *     ]
+                 */
+                to?: components["schemas"]["LanguageCode"][];
+                /** @description Most concepts to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching concepts with their entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupResults"];
+                };
+            };
+            400: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

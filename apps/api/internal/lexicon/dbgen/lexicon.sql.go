@@ -141,6 +141,46 @@ func (q *Queries) CreateSense(ctx context.Context, arg CreateSenseParams) error 
 	return err
 }
 
+const findConcepts = `-- name: FindConcepts :many
+SELECT id, gloss_en, fold(gloss_en) = $1::text AS exact
+FROM concepts
+WHERE fold(gloss_en) = $1::text OR fold(gloss_en) % $1::text
+ORDER BY exact DESC, similarity(fold(gloss_en), $1::text) DESC, gloss_en, id
+LIMIT $2
+`
+
+type FindConceptsParams struct {
+	Fold string
+	Lim  int32
+}
+
+type FindConceptsRow struct {
+	ID      uuid.UUID
+	GlossEn string
+	Exact   bool
+}
+
+// Concepts by English gloss (LEX-2): exact first, then similar by trigram.
+func (q *Queries) FindConcepts(ctx context.Context, arg FindConceptsParams) ([]FindConceptsRow, error) {
+	rows, err := q.db.Query(ctx, findConcepts, arg.Fold, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindConceptsRow
+	for rows.Next() {
+		var i FindConceptsRow
+		if err := rows.Scan(&i.ID, &i.GlossEn, &i.Exact); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findEntry = `-- name: FindEntry :one
 SELECT id FROM entries
 WHERE language_code = $1 AND headword = $2 AND part_of_speech IS NOT DISTINCT FROM $3
@@ -201,24 +241,35 @@ func (q *Queries) GetConcept(ctx context.Context, id uuid.UUID) (GetConceptRow, 
 }
 
 const listConceptEntries = `-- name: ListConceptEntries :many
-SELECT DISTINCT e.id, e.language_code, e.headword
-FROM senses s
-JOIN items i ON i.id = s.id
-JOIN entries e ON e.id = s.entry_id
-WHERE s.concept_id = $1 AND servable(i.status)
-ORDER BY e.language_code, e.headword, e.id
-LIMIT 200
+WITH found AS (
+    SELECT DISTINCT s.concept_id, e.id, e.language_code, e.headword
+    FROM senses s
+    JOIN items i ON i.id = s.id
+    JOIN entries e ON e.id = s.entry_id
+    WHERE s.concept_id = ANY($1::uuid[]) AND servable(i.status)
+      AND (coalesce(cardinality($2::text[]), 0) = 0 OR e.language_code = ANY($2::text[]))
+), ranked AS (
+    SELECT concept_id, id, language_code, headword, row_number() OVER (PARTITION BY concept_id ORDER BY language_code, headword, id) AS n
+    FROM found
+)
+SELECT concept_id, id FROM ranked WHERE n <= 200
+ORDER BY language_code, headword, id
 `
 
-type ListConceptEntriesRow struct {
-	ID           uuid.UUID
-	LanguageCode string
-	Headword     string
+type ListConceptEntriesParams struct {
+	ConceptIds []uuid.UUID
+	Languages  []string
 }
 
-// Entries with a servable sense expressing the concept (LEX-7).
-func (q *Queries) ListConceptEntries(ctx context.Context, conceptID uuid.NullUUID) ([]ListConceptEntriesRow, error) {
-	rows, err := q.db.Query(ctx, listConceptEntries, conceptID)
+type ListConceptEntriesRow struct {
+	ConceptID uuid.NullUUID
+	ID        uuid.UUID
+}
+
+// Entries with a servable sense expressing one of the concepts (LEX-7), in
+// the given languages or, when none are given, in all. At most 200 per concept.
+func (q *Queries) ListConceptEntries(ctx context.Context, arg ListConceptEntriesParams) ([]ListConceptEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listConceptEntries, arg.ConceptIds, arg.Languages)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +277,36 @@ func (q *Queries) ListConceptEntries(ctx context.Context, conceptID uuid.NullUUI
 	var items []ListConceptEntriesRow
 	for rows.Next() {
 		var i ListConceptEntriesRow
-		if err := rows.Scan(&i.ID, &i.LanguageCode, &i.Headword); err != nil {
+		if err := rows.Scan(&i.ConceptID, &i.ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listConcepts = `-- name: ListConcepts :many
+SELECT id, gloss_en FROM concepts WHERE id = ANY($1::uuid[])
+`
+
+type ListConceptsRow struct {
+	ID      uuid.UUID
+	GlossEn string
+}
+
+func (q *Queries) ListConcepts(ctx context.Context, ids []uuid.UUID) ([]ListConceptsRow, error) {
+	rows, err := q.db.Query(ctx, listConcepts, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListConceptsRow
+	for rows.Next() {
+		var i ListConceptsRow
+		if err := rows.Scan(&i.ID, &i.GlossEn); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

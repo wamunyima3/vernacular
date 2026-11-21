@@ -130,11 +130,29 @@ ORDER BY x.sense_id, x.created_at, x.id;
 SELECT id, gloss_en, definition, domain, core FROM concepts WHERE id = $1;
 
 -- name: ListConceptEntries :many
--- Entries with a servable sense expressing the concept (LEX-7).
-SELECT DISTINCT e.id, e.language_code, e.headword
-FROM senses s
-JOIN items i ON i.id = s.id
-JOIN entries e ON e.id = s.entry_id
-WHERE s.concept_id = $1 AND servable(i.status)
-ORDER BY e.language_code, e.headword, e.id
-LIMIT 200;
+-- Entries with a servable sense expressing one of the concepts (LEX-7), in
+-- the given languages or, when none are given, in all. At most 200 per concept.
+WITH found AS (
+    SELECT DISTINCT s.concept_id, e.id, e.language_code, e.headword
+    FROM senses s
+    JOIN items i ON i.id = s.id
+    JOIN entries e ON e.id = s.entry_id
+    WHERE s.concept_id = ANY(@concept_ids::uuid[]) AND servable(i.status)
+      AND (coalesce(cardinality(@languages::text[]), 0) = 0 OR e.language_code = ANY(@languages::text[]))
+), ranked AS (
+    SELECT *, row_number() OVER (PARTITION BY concept_id ORDER BY language_code, headword, id) AS n
+    FROM found
+)
+SELECT concept_id, id FROM ranked WHERE n <= 200
+ORDER BY language_code, headword, id;
+
+-- name: FindConcepts :many
+-- Concepts by English gloss (LEX-2): exact first, then similar by trigram.
+SELECT id, gloss_en, fold(gloss_en) = @fold::text AS exact
+FROM concepts
+WHERE fold(gloss_en) = @fold::text OR fold(gloss_en) % @fold::text
+ORDER BY exact DESC, similarity(fold(gloss_en), @fold::text) DESC, gloss_en, id
+LIMIT @lim;
+
+-- name: ListConcepts :many
+SELECT id, gloss_en FROM concepts WHERE id = ANY(@ids::uuid[]);

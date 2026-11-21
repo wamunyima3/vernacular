@@ -135,7 +135,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-API-02** `GET /v1/entries/search` with variant and root matching (M) → LEX-1, LEX-4, US-03, US-05
 - [x] **P1-API-03** `GET /v1/entries/{id}` (S) → LEX-1, LEX-3, LEX-5, US-16
 - [x] **P1-API-04** `GET /v1/concepts/{id}` (S) → LEX-7, US-04
-- [ ] **P1-API-05** `GET /v1/lookup` in both directions with English (M) → LEX-2, US-04
+- [x] **P1-API-05** `GET /v1/lookup` in both directions with English (M) → LEX-2, US-04
 - [ ] **P1-API-06** `min_status` and `variety` filters, verified by default (S) → TRN-4, AI-6, LEX-6, US-06, US-07
 - [ ] **P1-API-07** `GET /v1/phrases` packs (M) → PHR-1, US-08
 - [ ] **P1-API-08** `POST /v1/detect` (evaluate existing language ID models first) (M) → TRN-1, US-09

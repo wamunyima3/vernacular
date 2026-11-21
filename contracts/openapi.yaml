@@ -123,6 +123,53 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/lookup:
+    get:
+      operationId: lookup
+      summary: Translate a word between English and Zambian languages
+      description: |
+        From English (`from=eng`), finds concepts whose English gloss matches the query and
+        returns their entries in the `to` languages (LEX-2, US-04). From a Zambian language,
+        searches its entries as `/v1/entries/search` does and returns the English meaning of
+        each, grouped by concept. Each result says what matched; best matches first.
+      tags: [lexicon]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+          example: water
+        - name: from
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+          example: eng
+        - name: to
+          in: query
+          description: |
+            Target languages, comma-separated. From English, defaults to every language;
+            from a Zambian language, only `eng` is accepted.
+          style: form
+          explode: false
+          schema:
+            type: array
+            maxItems: 20
+            items: { $ref: "#/components/schemas/LanguageCode" }
+          example: [bem, nya]
+        - name: limit
+          in: query
+          description: Most concepts to return
+          schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        "200":
+          description: Matching concepts with their entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LookupResults" }
+        "400":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/me:
     get:
       operationId: getMe
@@ -937,14 +984,39 @@ components:
           type: array
           description: Entries expressing the concept, by language then headword; at most 200
           items: { $ref: "#/components/schemas/EntrySummary" }
+    Match:
+      type: string
+      description: |
+        What the query matched (US-05): the headword (or, from English, the gloss), a
+        spelling variant, the root of an inflected or prefixed form, or a similar spelling.
+      enum: [headword, variant, root, similar]
+    LookupHit:
+      type: object
+      required: [match, concept, entries]
+      properties:
+        match: { $ref: "#/components/schemas/Match" }
+        concept:
+          type: object
+          required: [id, gloss_en]
+          properties:
+            id: { type: string, format: uuid }
+            gloss_en: { type: string, example: water }
+        entries:
+          type: array
+          description: Entries expressing the concept, each with only those senses
+          items: { $ref: "#/components/schemas/EntrySummary" }
+    LookupResults:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/LookupHit" }
     EntryHit:
       type: object
       required: [match, entry]
       properties:
-        match:
-          type: string
-          description: What the query matched (US-05)
-          enum: [headword, variant, root, similar]
+        match: { $ref: "#/components/schemas/Match" }
         entry: { $ref: "#/components/schemas/EntrySummary" }
     EntrySearchResults:
       type: object

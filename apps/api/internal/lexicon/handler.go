@@ -2,6 +2,7 @@ package lexicon
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -14,6 +15,8 @@ type Reader interface {
 	Search(ctx context.Context, language, query string, limit int) ([]Hit, error)
 	Get(ctx context.Context, id uuid.UUID) (Entry, bool, error)
 	ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntries, bool, error)
+	FromEnglish(ctx context.Context, query string, languages []string, limit int) ([]LookupHit, error)
+	ToEnglish(ctx context.Context, language, query string, limit int) ([]LookupHit, error)
 }
 
 // Handler implements the lexicon read operations of the generated strict server.
@@ -28,17 +31,13 @@ func NewHandler(svc Reader) *Handler {
 
 // SearchEntries implements GET /v1/entries/search.
 func (h *Handler) SearchEntries(ctx context.Context, req gen.SearchEntriesRequestObject) (gen.SearchEntriesResponseObject, error) {
-	limit := 20
-	if req.Params.Limit != nil {
-		limit = *req.Params.Limit
-	}
-	hits, err := h.svc.Search(ctx, req.Params.Language, req.Params.Q, limit)
+	hits, err := h.svc.Search(ctx, req.Params.Language, req.Params.Q, httpx.DerefOr(req.Params.Limit, 20))
 	if err != nil {
 		return nil, err
 	}
 	data := make([]gen.EntryHit, len(hits))
 	for i, hit := range hits {
-		data[i] = gen.EntryHit{Match: gen.EntryHitMatch(hit.Match), Entry: entrySummary(hit.Entry)}
+		data[i] = gen.EntryHit{Match: gen.Match(hit.Match), Entry: entrySummary(hit.Entry)}
 	}
 	return gen.SearchEntries200JSONResponse{Data: data}, nil
 }
@@ -109,4 +108,37 @@ func (h *Handler) GetConcept(ctx context.Context, req gen.GetConceptRequestObjec
 	return gen.GetConcept200JSONResponse{
 		Id: c.ID, GlossEn: c.GlossEn, Definition: httpx.Optional(c.Definition), Domain: c.Domain, Core: c.Core, Entries: entries,
 	}, nil
+}
+
+// english is the code lookups translate to and from.
+const english = "eng"
+
+// Lookup implements GET /v1/lookup.
+func (h *Handler) Lookup(ctx context.Context, req gen.LookupRequestObject) (gen.LookupResponseObject, error) {
+	p := req.Params
+	to := httpx.Deref(p.To)
+	limit := httpx.DerefOr(p.Limit, 5)
+	var hits []LookupHit
+	var err error
+	switch {
+	case p.From == english:
+		hits, err = h.svc.FromEnglish(ctx, p.Q, to, limit)
+	case len(to) > 0 && !slices.Equal(to, []string{english}):
+		return nil, httpx.BadRequest("From a Zambian language, lookups translate only to eng.")
+	default:
+		hits, err = h.svc.ToEnglish(ctx, p.From, p.Q, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	data := make([]gen.LookupHit, len(hits))
+	for i, hit := range hits {
+		entries := make([]gen.EntrySummary, len(hit.Entries))
+		for j, e := range hit.Entries {
+			entries[j] = entrySummary(e)
+		}
+		data[i] = gen.LookupHit{Match: gen.Match(hit.Match), Entries: entries}
+		data[i].Concept.Id, data[i].Concept.GlossEn = hit.ConceptID, hit.GlossEn
+	}
+	return gen.Lookup200JSONResponse{Data: data}, nil
 }

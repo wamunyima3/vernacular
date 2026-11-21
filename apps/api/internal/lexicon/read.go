@@ -45,6 +45,12 @@ type Entry struct {
 	Trust                                               items.Trust
 }
 
+// What a query matched (US-05); the search query names them too.
+const (
+	MatchHeadword = "headword"
+	MatchSimilar  = "similar"
+)
+
 // Hit is an entry found by search and what the query matched (US-05).
 type Hit struct {
 	Match string // headword, variant, root or similar
@@ -187,9 +193,19 @@ func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntrie
 	if err != nil {
 		return ConceptEntries{}, false, err
 	}
-	rows, err := s.q.ListConceptEntries(ctx, uuid.NullUUID{UUID: id, Valid: true})
+	byConcept, err := s.conceptEntries(ctx, []uuid.UUID{id}, nil)
 	if err != nil {
-		return ConceptEntries{}, false, fmt.Errorf("list concept entries: %w", err)
+		return ConceptEntries{}, false, err
+	}
+	return ConceptEntries{Concept: c, Entries: byConcept[id]}, true, nil
+}
+
+// conceptEntries reads, per concept, the servable entries expressing it in
+// the languages (all when none), each keeping only that concept's senses.
+func (s *Store) conceptEntries(ctx context.Context, conceptIDs []uuid.UUID, languages []string) (map[uuid.UUID][]Entry, error) {
+	rows, err := s.q.ListConceptEntries(ctx, dbgen.ListConceptEntriesParams{ConceptIds: conceptIDs, Languages: languages})
+	if err != nil {
+		return nil, fmt.Errorf("list concept entries: %w", err)
 	}
 	ids := make([]uuid.UUID, len(rows))
 	for i, r := range rows {
@@ -197,15 +213,20 @@ func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntrie
 	}
 	entries, err := s.entries(ctx, ids)
 	if err != nil {
-		return ConceptEntries{}, false, err
+		return nil, err
 	}
-	out := ConceptEntries{Concept: c}
-	for _, eid := range ids {
-		e := entries[eid]
-		e.Senses = slices.DeleteFunc(e.Senses, func(sn Sense) bool { return sn.ConceptID.UUID != id })
-		if len(e.Senses) > 0 {
-			out.Entries = append(out.Entries, e)
+	out := make(map[uuid.UUID][]Entry, len(conceptIDs))
+	for _, r := range rows {
+		if e, ok := onlyConcept(entries[r.ID], r.ConceptID.UUID); ok {
+			out[r.ConceptID.UUID] = append(out[r.ConceptID.UUID], e)
 		}
 	}
-	return out, true, nil
+	return out, nil
+}
+
+// onlyConcept is the entry with only its senses linked to the concept; false
+// when it has none.
+func onlyConcept(e Entry, concept uuid.UUID) (Entry, bool) {
+	e.Senses = slices.DeleteFunc(slices.Clone(e.Senses), func(sn Sense) bool { return sn.ConceptID.UUID != concept })
+	return e, len(e.Senses) > 0
 }
