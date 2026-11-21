@@ -12,6 +12,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
+	"github.com/wamunyima3/vernacular/apps/api/internal/detect"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/health"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
@@ -32,6 +33,7 @@ type (
 	reviewOps    = review.Handler
 	lexiconOps   = lexicon.Handler
 	phrasesOps   = phrases.Handler
+	detectOps    = detect.Handler
 )
 
 // api satisfies gen.StrictServerInterface by embedding one handler per module.
@@ -45,6 +47,7 @@ type api struct {
 	*reviewOps
 	*lexiconOps
 	*phrasesOps
+	*detectOps
 }
 
 var _ gen.StrictServerInterface = api{}
@@ -67,6 +70,7 @@ type Deps struct {
 	Review        *review.Service
 	Lexicon       lexicon.Reader
 	Phrases       phrases.Reader
+	Detector      *detect.Model
 }
 
 // New returns the full HTTP handler for the API.
@@ -84,6 +88,7 @@ func New(opts Options, deps Deps) http.Handler {
 		reviewOps:    review.NewHandler(deps.Review),
 		lexiconOps:   lexicon.NewHandler(deps.Lexicon),
 		phrasesOps:   phrases.NewHandler(deps.Phrases),
+		detectOps:    detect.NewHandler(deps.Detector),
 	}, nil, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  errs.RequestError,
 		ResponseErrorHandlerFunc: errs.ResponseError,

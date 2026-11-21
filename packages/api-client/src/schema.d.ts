@@ -152,6 +152,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/detect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detect the language of a text
+         * @description Ranks the supported languages, and English, by how likely the text is written in
+         *     each, with confidences between 0 and 1 that sum to 1 (TRN-1, US-09). Short texts
+         *     and closely related languages give close scores, so check the margin. Empty when
+         *     the text has no letters. Languages without enough data yet are not detected
+         *     (ADR-0010).
+         */
+        post: operations["detectLanguage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -777,6 +801,21 @@ export interface components {
             language: components["schemas"]["LanguageCode"];
             data: components["schemas"]["Phrase"][];
         };
+        Detection: {
+            data: components["schemas"]["LanguageScore"][];
+        };
+        LanguageScore: {
+            /**
+             * @description ISO 639-3 code; `eng` for English
+             * @example bem
+             */
+            language: string;
+            /**
+             * Format: double
+             * @example 0.93
+             */
+            confidence: number;
+        };
         /**
          * @description What the query matched (US-05): the headword (or, from English, the gloss), a
          *     spelling variant, the root of an inflected or prefixed form, or a similar spelling.
@@ -1244,6 +1283,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PhrasePack"];
+                };
+            };
+            400: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    detectLanguage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example Natotela sana */
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Languages, most likely first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detection"];
                 };
             };
             400: components["responses"]["Error"];

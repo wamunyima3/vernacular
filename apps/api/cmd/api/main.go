@@ -13,6 +13,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
+	"github.com/wamunyima3/vernacular/apps/api/internal/detect"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
@@ -55,6 +56,11 @@ func run() error {
 	defer func() { _ = bucket.Close() }()
 
 	lex := lexicon.NewStore(pool) // read-only here: search and counts
+	detector, err := detect.Load(ctx, pool)
+	if err != nil {
+		return err
+	}
+	log.Info("language detector trained", "languages", detector.Languages())
 	handler := server.New(
 		server.Options{Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL},
 		server.Deps{
@@ -67,6 +73,7 @@ func run() error {
 			Review:        review.NewService(pool),
 			Lexicon:       lex,
 			Phrases:       phrases.NewStore(pool),
+			Detector:      detector,
 		},
 	)
 

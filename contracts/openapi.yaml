@@ -22,6 +22,7 @@ tags:
   - name: review
   - name: lexicon
   - name: phrases
+  - name: detect
 paths:
   /healthz:
     get:
@@ -204,6 +205,37 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PhrasePack" }
+        "400":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/detect:
+    post:
+      operationId: detectLanguage
+      summary: Detect the language of a text
+      description: |
+        Ranks the supported languages, and English, by how likely the text is written in
+        each, with confidences between 0 and 1 that sum to 1 (TRN-1, US-09). Short texts
+        and closely related languages give close scores, so check the margin. Empty when
+        the text has no letters. Languages without enough data yet are not detected
+        (ADR-0010).
+      tags: [detect]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 2000, example: Natotela sana }
+      responses:
+        "200":
+          description: Languages, most likely first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Detection" }
         "400":
           $ref: "#/components/responses/Error"
         default:
@@ -1059,6 +1091,23 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/Phrase" }
+    Detection:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 5
+          items: { $ref: "#/components/schemas/LanguageScore" }
+    LanguageScore:
+      type: object
+      required: [language, confidence]
+      properties:
+        language:
+          type: string
+          description: ISO 639-3 code; `eng` for English
+          example: bem
+        confidence: { type: number, format: double, minimum: 0, maximum: 1, example: 0.93 }
     Match:
       type: string
       description: |
