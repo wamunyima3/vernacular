@@ -61,6 +61,102 @@ func (q *Queries) ListPack(ctx context.Context, arg ListPackParams) ([]ListPackR
 	return items, nil
 }
 
+const matchEnglish = `-- name: MatchEnglish :many
+SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
+FROM phrases p JOIN items i ON i.id = p.id
+WHERE p.language_code = $1 AND p.source_en_fold = fold($2::text) AND i.status = 'verified'
+ORDER BY p.pack, p.id
+LIMIT 10
+`
+
+type MatchEnglishParams struct {
+	Language string
+	Text     string
+}
+
+type MatchEnglishRow struct {
+	ID        uuid.UUID
+	Text      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.NullUUID
+}
+
+// Verified phrases whose English source equals the text once folded (TRN-2).
+func (q *Queries) MatchEnglish(ctx context.Context, arg MatchEnglishParams) ([]MatchEnglishRow, error) {
+	rows, err := q.db.Query(ctx, matchEnglish, arg.Language, arg.Text)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MatchEnglishRow
+	for rows.Next() {
+		var i MatchEnglishRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Text,
+			&i.SourceEn,
+			&i.Notes,
+			&i.ConceptID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const matchText = `-- name: MatchText :many
+SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
+FROM phrases p JOIN items i ON i.id = p.id
+WHERE p.language_code = $1 AND p.text_fold = fold($2::text) AND i.status = 'verified'
+ORDER BY p.pack, p.id
+LIMIT 10
+`
+
+type MatchTextParams struct {
+	Language string
+	Text     string
+}
+
+type MatchTextRow struct {
+	ID        uuid.UUID
+	Text      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.NullUUID
+}
+
+// Verified phrases whose own text equals the text once folded (TRN-2).
+func (q *Queries) MatchText(ctx context.Context, arg MatchTextParams) ([]MatchTextRow, error) {
+	rows, err := q.db.Query(ctx, matchText, arg.Language, arg.Text)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MatchTextRow
+	for rows.Next() {
+		var i MatchTextRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Text,
+			&i.SourceEn,
+			&i.Notes,
+			&i.ConceptID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertListLine = `-- name: UpsertListLine :one
 INSERT INTO phrase_list (pack, source_en, notes, concept_id)
 VALUES ($1, $2, $3, $4)

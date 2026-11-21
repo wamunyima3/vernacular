@@ -176,6 +176,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/translate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate a short text between English and a Zambian language
+         * @description Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
+         *     Each match has `method: verified_phrase`. No match returns an empty list, never a
+         *     guess; labelled machine translation comes in a later phase (TRN-3).
+         */
+        post: operations["translate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -795,6 +817,19 @@ export interface components {
             concept_id?: string;
             trust: components["schemas"]["Trust"];
         };
+        TranslationResults: {
+            data: components["schemas"]["Translation"][];
+        };
+        Translation: {
+            /**
+             * @description How the translation was found. Only verified phrases so far.
+             * @enum {string}
+             */
+            method: "verified_phrase";
+            /** @example Mwashibukeni */
+            translation: string;
+            phrase: components["schemas"]["Phrase"];
+        };
         PhrasePack: {
             /** @example greetings */
             pack: string;
@@ -1312,6 +1347,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Detection"];
+                };
+            };
+            400: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    translate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example Good morning */
+                    text: string;
+                    from: components["schemas"]["LanguageCode"];
+                    to: components["schemas"]["LanguageCode"];
+                };
+            };
+        };
+        responses: {
+            /** @description Matches, possibly none */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationResults"];
                 };
             };
             400: components["responses"]["Error"];

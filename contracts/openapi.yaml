@@ -240,6 +240,37 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/translate:
+    post:
+      operationId: translate
+      summary: Translate a short text between English and a Zambian language
+      description: |
+        Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
+        Each match has `method: verified_phrase`. No match returns an empty list, never a
+        guess; labelled machine translation comes in a later phase (TRN-3).
+      tags: [phrases]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text, from, to]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 500, example: Good morning }
+                from: { $ref: "#/components/schemas/LanguageCode" }
+                to: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "200":
+          description: Matches, possibly none
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TranslationResults" }
+        "400":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/me:
     get:
       operationId: getMe
@@ -1082,6 +1113,24 @@ components:
         notes: { type: string }
         concept_id: { type: string, format: uuid }
         trust: { $ref: "#/components/schemas/Trust" }
+    TranslationResults:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Translation"
+    Translation:
+      type: object
+      required: [method, translation, phrase]
+      properties:
+        method:
+          type: string
+          description: How the translation was found. Only verified phrases so far.
+          enum: [verified_phrase]
+        translation: { type: string, example: Mwashibukeni }
+        phrase: { $ref: "#/components/schemas/Phrase" }
     PhrasePack:
       type: object
       required: [pack, language, data]

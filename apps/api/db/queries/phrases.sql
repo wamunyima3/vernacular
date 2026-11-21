@@ -15,3 +15,19 @@ VALUES (@pack, @source_en, @notes, @concept_id)
 ON CONFLICT (pack, source_en) DO UPDATE SET notes = excluded.notes, updated_at = now()
 WHERE phrase_list.notes <> excluded.notes
 RETURNING (xmax = 0) AS inserted;
+
+-- name: MatchEnglish :many
+-- Verified phrases whose English source equals the text once folded (TRN-2).
+SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
+FROM phrases p JOIN items i ON i.id = p.id
+WHERE p.language_code = @language AND p.source_en_fold = fold(@text::text) AND i.status = 'verified'
+ORDER BY p.pack, p.id
+LIMIT 10;
+
+-- name: MatchText :many
+-- Verified phrases whose own text equals the text once folded (TRN-2).
+SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
+FROM phrases p JOIN items i ON i.id = p.id
+WHERE p.language_code = @language AND p.text_fold = fold(@text::text) AND i.status = 'verified'
+ORDER BY p.pack, p.id
+LIMIT 10;

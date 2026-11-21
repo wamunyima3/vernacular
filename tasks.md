@@ -140,7 +140,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-API-07** `GET /v1/phrases` packs (M) → PHR-1, US-08
 - [x] **P1-API-07b** English source list for the six packs (greetings, numbers, dates, interface labels, health, money), loaded as phrase concepts, so P1-AI-01 can generate phrase candidates and reviewers can check them (S) → PHR-1, AI-1
 - [x] **P1-API-08** `POST /v1/detect` (evaluate existing language ID models first) (M) → TRN-1, US-09
-- [ ] **P1-API-09** Exact-match translation against verified phrases (S) → TRN-2, US-10
+- [x] **P1-API-09** Exact-match translation against verified phrases (S) → TRN-2, US-10
 - [ ] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers; a confirmed report is an input to `review.Status` (→ `disputed`) and shows on `/disputes` (M) → PRV-3, US-15
 - [ ] **P1-API-11** API keys slice: create and revoke keys in the portal; keys hashed at rest (M) → DEV-1, NFR-5, US-01
 - [ ] **P1-API-12** Rate limiting per key and per IP, with rate-limit headers; derive client IP only from trusted proxy headers, not chi RealIP (S) → DEV-3, NFR-5, US-13

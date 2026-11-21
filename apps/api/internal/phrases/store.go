@@ -37,6 +37,32 @@ func (s *Store) Pack(ctx context.Context, language, pack, minStatus string) ([]P
 	if err != nil {
 		return nil, fmt.Errorf("list pack %s/%s: %w", language, pack, err)
 	}
+	return s.withTrust(ctx, rows)
+}
+
+// Match finds verified phrases in a language whose text, or English source
+// when fromEnglish, equals the text once folded (TRN-2).
+func (s *Store) Match(ctx context.Context, language, text string, fromEnglish bool) ([]Phrase, error) {
+	// Two queries rather than one with a CASE, so each uses its exact-match index.
+	var rows []dbgen.ListPackRow
+	if fromEnglish {
+		en, err := s.q.MatchEnglish(ctx, dbgen.MatchEnglishParams{Language: language, Text: text})
+		if err != nil {
+			return nil, fmt.Errorf("match phrases: %w", err)
+		}
+		rows = convert(en)
+	} else {
+		own, err := s.q.MatchText(ctx, dbgen.MatchTextParams{Language: language, Text: text})
+		if err != nil {
+			return nil, fmt.Errorf("match phrases: %w", err)
+		}
+		rows = convert(own)
+	}
+	return s.withTrust(ctx, rows)
+}
+
+// withTrust adds the trust fields to phrase rows.
+func (s *Store) withTrust(ctx context.Context, rows []dbgen.ListPackRow) ([]Phrase, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}
@@ -50,4 +76,19 @@ func (s *Store) Pack(ctx context.Context, language, pack, minStatus string) ([]P
 		out[i] = Phrase{ID: r.ID, Text: r.Text, SourceEn: r.SourceEn, Notes: r.Notes, ConceptID: r.ConceptID, Trust: trusts[r.ID]}
 	}
 	return out, nil
+}
+
+// convert turns rows of queries selecting the pack's columns into pack rows.
+func convert[T ~struct {
+	ID        uuid.UUID
+	Text      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.NullUUID
+}](rows []T) []dbgen.ListPackRow {
+	out := make([]dbgen.ListPackRow, len(rows))
+	for i, r := range rows {
+		out[i] = dbgen.ListPackRow(r)
+	}
+	return out
 }
