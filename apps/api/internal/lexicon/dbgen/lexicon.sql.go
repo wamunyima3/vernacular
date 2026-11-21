@@ -31,6 +31,45 @@ func (q *Queries) AddVariant(ctx context.Context, arg AddVariantParams) (int64, 
 	return result.RowsAffected(), nil
 }
 
+const countEntries = `-- name: CountEntries :many
+SELECT e.language_code,
+       count(DISTINCT e.id) FILTER (WHERE i.status = 'verified')::int AS verified,
+       count(DISTINCT e.id)::int AS total
+FROM entries e
+JOIN senses s ON s.entry_id = e.id
+JOIN items i ON i.id = s.id
+WHERE servable(i.status)
+GROUP BY e.language_code
+`
+
+type CountEntriesRow struct {
+	LanguageCode string
+	Verified     int32
+	Total        int32
+}
+
+// Per language: entries with a verified sense, and entries with any sense that
+// can be served (US-03, P1-API-01).
+func (q *Queries) CountEntries(ctx context.Context) ([]CountEntriesRow, error) {
+	rows, err := q.db.Query(ctx, countEntries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountEntriesRow
+	for rows.Next() {
+		var i CountEntriesRow
+		if err := rows.Scan(&i.LanguageCode, &i.Verified, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createEntry = `-- name: CreateEntry :exec
 INSERT INTO entries (id, language_code, headword, part_of_speech, stem, noun_class, plural)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

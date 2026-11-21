@@ -61,3 +61,15 @@ FROM senses s JOIN entries e ON e.id = s.entry_id
 LEFT JOIN concepts c ON c.id = s.concept_id
 WHERE s.id = ANY(@ids::uuid[])
 ORDER BY array_position(@ids::uuid[], s.id);
+
+-- name: CountEntries :many
+-- Per language: entries with a verified sense, and entries with any sense that
+-- can be served (US-03, P1-API-01).
+SELECT e.language_code,
+       count(DISTINCT e.id) FILTER (WHERE i.status = 'verified')::int AS verified,
+       count(DISTINCT e.id)::int AS total
+FROM entries e
+JOIN senses s ON s.entry_id = e.id
+JOIN items i ON i.id = s.id
+WHERE servable(i.status)
+GROUP BY e.language_code;

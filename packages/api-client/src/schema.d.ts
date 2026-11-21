@@ -418,6 +418,17 @@ export interface components {
             wave: number;
             /** @enum {string} */
             status: "active" | "planned";
+            entries: components["schemas"]["EntryCounts"];
+        };
+        /**
+         * @description Live counts of entries. An entry counts as verified when one of its senses is, and
+         *     towards the total when it has a sense that can be served (not disputed).
+         */
+        EntryCounts: {
+            /** @example 1204 */
+            verified: number;
+            /** @example 2845 */
+            total: number;
         };
         LanguageList: {
             data: components["schemas"]["Language"][];

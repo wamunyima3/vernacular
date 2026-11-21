@@ -536,7 +536,7 @@ components:
       example: bem
     Language:
       type: object
-      required: [code, name, own_name, wave, status]
+      required: [code, name, own_name, wave, status, entries]
       properties:
         code: { $ref: "#/components/schemas/LanguageCode" }
         name:
@@ -555,6 +555,16 @@ components:
         status:
           type: string
           enum: [active, planned]
+        entries: { $ref: "#/components/schemas/EntryCounts" }
+    EntryCounts:
+      type: object
+      description: |
+        Live counts of entries. An entry counts as verified when one of its senses is, and
+        towards the total when it has a sense that can be served (not disputed).
+      required: [verified, total]
+      properties:
+        verified: { type: integer, example: 1204 }
+        total: { type: integer, example: 2845 }
     LanguageList:
       type: object
       required: [data]

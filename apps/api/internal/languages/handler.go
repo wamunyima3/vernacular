@@ -35,6 +35,7 @@ func (h *Handler) ListLanguages(ctx context.Context, _ gen.ListLanguagesRequestO
 			OwnName: l.OwnName,
 			Wave:    l.Wave,
 			Status:  gen.LanguageStatus(l.Status),
+			Entries: gen.EntryCounts{Verified: l.Entries.Verified, Total: l.Entries.Total},
 		}
 	}
 	return gen.ListLanguages200JSONResponse{Data: data}, nil

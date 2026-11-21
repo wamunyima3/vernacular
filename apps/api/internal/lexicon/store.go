@@ -256,3 +256,19 @@ func (s *Store) SenseCards(ctx context.Context, ids []uuid.UUID) ([]SenseCard, e
 	}
 	return out, nil
 }
+
+// EntryCount is how many entries a language has, verified and in all.
+type EntryCount struct{ Verified, Total int }
+
+// CountEntries counts each language's entries; languages without any are left out.
+func (s *Store) CountEntries(ctx context.Context) (map[string]EntryCount, error) {
+	rows, err := s.q.CountEntries(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count entries: %w", err)
+	}
+	out := make(map[string]EntryCount, len(rows))
+	for _, r := range rows {
+		out[r.LanguageCode] = EntryCount{Verified: int(r.Verified), Total: int(r.Total)}
+	}
+	return out, nil
+}
