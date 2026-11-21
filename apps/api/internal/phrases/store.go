@@ -9,6 +9,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/phrases/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 )
 
 // Phrase is one phrase of a pack, with its trust fields (PRV-1).
@@ -39,10 +40,7 @@ func (s *Store) Pack(ctx context.Context, language, pack, minStatus string) ([]P
 	if len(rows) == 0 {
 		return nil, nil
 	}
-	ids := make([]uuid.UUID, len(rows))
-	for i, r := range rows {
-		ids[i] = r.ID
-	}
+	ids := database.IDs(rows, func(r dbgen.ListPackRow) uuid.UUID { return r.ID })
 	trusts, err := s.items.Trusts(ctx, ids)
 	if err != nil {
 		return nil, err

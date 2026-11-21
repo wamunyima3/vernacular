@@ -526,6 +526,16 @@ type Phrase struct {
 	UpdatedAt    time.Time
 }
 
+type PhraseList struct {
+	ID        uuid.UUID
+	Pack      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type ProviderQuality struct {
 	Provider     string
 	LanguageCode string

@@ -57,9 +57,10 @@ restem: ## Recompute search stems after changing a stemmer
 	cd $(API_DIR) && go run ./cmd/ingest -restem
 
 .PHONY: seed
-seed: ## Import our core concept lists and every open source we hold a licence for
+seed: ## Import our core concept lists, the phrase list and every open source we hold a licence for
 	cd $(API_DIR) && go run ./cmd/ingest -all
 	for f in data/concepts/*.csv; do (cd $(API_DIR) && go run ./cmd/ingest -concepts ../../$$f) || exit 1; done
+	cd $(API_DIR) && go run ./cmd/ingest -phrases ../../data/phrases/en.csv
 
 .PHONY: admin
 admin: ## Give a signed-up user a role, e.g. make admin EMAIL=you@example.org [ROLE=admin]

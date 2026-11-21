@@ -12,6 +12,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/textnorm"
 )
 
@@ -88,10 +89,7 @@ func (s *Store) Search(ctx context.Context, language, query string, limit int, f
 	if err != nil {
 		return nil, fmt.Errorf("search entries: %w", err)
 	}
-	ids := make([]uuid.UUID, len(rows))
-	for i, r := range rows {
-		ids[i] = r.ID
-	}
+	ids := database.IDs(rows, func(r dbgen.SearchEntriesRow) uuid.UUID { return r.ID })
 	entries, err := s.entries(ctx, ids, f)
 	if err != nil {
 		return nil, err
@@ -170,18 +168,12 @@ func (s *Store) entries(ctx context.Context, ids []uuid.UUID, f Filter) (map[uui
 
 // withExamples fills in the senses' servable examples with their trust.
 func (s *Store) withExamples(ctx context.Context, senses []Sense, f Filter) error {
-	ids := make([]uuid.UUID, len(senses))
-	for i, sn := range senses {
-		ids[i] = sn.ID
-	}
+	ids := database.IDs(senses, func(sn Sense) uuid.UUID { return sn.ID })
 	rows, err := s.q.ListExamples(ctx, dbgen.ListExamplesParams{SenseIds: ids, MinStatus: f.min()})
 	if err != nil || len(rows) == 0 {
 		return err
 	}
-	exIDs := make([]uuid.UUID, len(rows))
-	for i, r := range rows {
-		exIDs[i] = r.ID
-	}
+	exIDs := database.IDs(rows, func(r dbgen.ListExamplesRow) uuid.UUID { return r.ID })
 	trusts, err := s.items.Trusts(ctx, exIDs)
 	if err != nil {
 		return err
@@ -228,10 +220,7 @@ func (s *Store) conceptEntries(ctx context.Context, conceptIDs []uuid.UUID, lang
 	if err != nil {
 		return nil, fmt.Errorf("list concept entries: %w", err)
 	}
-	ids := make([]uuid.UUID, len(rows))
-	for i, r := range rows {
-		ids[i] = r.ID
-	}
+	ids := database.IDs(rows, func(r dbgen.ListConceptEntriesRow) uuid.UUID { return r.ID })
 	entries, err := s.entries(ctx, ids, f)
 	if err != nil {
 		return nil, err

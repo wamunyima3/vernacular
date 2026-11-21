@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/textnorm"
 )
 
@@ -32,10 +33,7 @@ func (s *Store) FromEnglish(ctx context.Context, query string, languages []strin
 	if err != nil {
 		return nil, fmt.Errorf("find concepts: %w", err)
 	}
-	ids := make([]uuid.UUID, len(concepts))
-	for i, c := range concepts {
-		ids[i] = c.ID
-	}
+	ids := database.IDs(concepts, func(c dbgen.FindConceptsRow) uuid.UUID { return c.ID })
 	byConcept, err := s.conceptEntries(ctx, ids, languages, f)
 	if err != nil {
 		return nil, err
@@ -75,10 +73,7 @@ func (s *Store) ToEnglish(ctx context.Context, language, query string, limit int
 	if len(hits) == 0 {
 		return nil, nil
 	}
-	ids := make([]uuid.UUID, len(hits))
-	for i, h := range hits {
-		ids[i] = h.ConceptID
-	}
+	ids := database.IDs(hits, func(h LookupHit) uuid.UUID { return h.ConceptID })
 	concepts, err := s.q.ListConcepts(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("list concepts: %w", err)

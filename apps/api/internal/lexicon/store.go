@@ -186,15 +186,31 @@ const DomainGeneral = "general"
 // AddCoreConcept adds an English concept to the core list (LEX-7) under a
 // domain such as "health". It reports whether the concept is new.
 func (s *Store) AddCoreConcept(ctx context.Context, glossEn, domain string) (bool, error) {
-	glossEn, domain = textnorm.Gloss(glossEn), strings.ToLower(textnorm.Squash(domain))
-	if glossEn == "" || domain == "" {
-		return false, fmt.Errorf("%w: gloss and domain are required", ErrInvalid)
+	domain = strings.ToLower(textnorm.Squash(domain))
+	if domain == "" {
+		return false, fmt.Errorf("%w: domain is required", ErrInvalid)
 	}
-	row, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: glossEn, Core: true, Domain: domain})
+	row, err := s.upsertConcept(ctx, glossEn, true, domain)
+	return row.Inserted, err
+}
+
+// ConceptFor finds or creates the general concept for an English gloss,
+// without adding it to the core list, and returns its ID.
+func (s *Store) ConceptFor(ctx context.Context, glossEn string) (uuid.UUID, error) {
+	row, err := s.upsertConcept(ctx, glossEn, false, DomainGeneral)
+	return row.ID, err
+}
+
+func (s *Store) upsertConcept(ctx context.Context, glossEn string, core bool, domain string) (dbgen.UpsertConceptRow, error) {
+	glossEn = textnorm.Gloss(glossEn)
+	if glossEn == "" {
+		return dbgen.UpsertConceptRow{}, fmt.Errorf("%w: gloss is required", ErrInvalid)
+	}
+	row, err := s.q.UpsertConcept(ctx, dbgen.UpsertConceptParams{GlossEn: glossEn, Core: core, Domain: domain})
 	if err != nil {
-		return false, fmt.Errorf("upsert concept %q: %w", glossEn, err)
+		return dbgen.UpsertConceptRow{}, fmt.Errorf("upsert concept %q: %w", glossEn, err)
 	}
-	return row.Inserted, nil
+	return row, nil
 }
 
 // Concept is an English meaning that entries in every language point to.

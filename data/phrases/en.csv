@@ -1,0 +1,114 @@
+pack,source_en,notes
+greetings,Good morning,
+greetings,Good afternoon,
+greetings,Good evening,
+greetings,Hello,
+greetings,How are you?,
+greetings,I am fine,
+greetings,And you?,
+greetings,Welcome,
+greetings,Thank you,
+greetings,Thank you very much,
+greetings,You are welcome,
+greetings,Please,
+greetings,Excuse me,
+greetings,Sorry,
+greetings,Goodbye,
+greetings,Go well,said to someone leaving
+greetings,Stay well,said by someone leaving
+greetings,See you tomorrow,
+greetings,What is your name?,
+greetings,My name is …,the name follows
+numbers,one,
+numbers,two,
+numbers,three,
+numbers,four,
+numbers,five,
+numbers,six,
+numbers,seven,
+numbers,eight,
+numbers,nine,
+numbers,ten,
+numbers,eleven,
+numbers,twenty,
+numbers,fifty,
+numbers,one hundred,
+numbers,one thousand,
+numbers,first,
+numbers,second,
+numbers,half,
+dates,today,
+dates,tomorrow,
+dates,yesterday,
+dates,Monday,
+dates,Tuesday,
+dates,Wednesday,
+dates,Thursday,
+dates,Friday,
+dates,Saturday,
+dates,Sunday,
+dates,January,
+dates,February,
+dates,March,
+dates,April,
+dates,May,
+dates,June,
+dates,July,
+dates,August,
+dates,September,
+dates,October,
+dates,November,
+dates,December,
+dates,week,
+dates,month,
+dates,year,
+dates,date of birth,
+interface,Sign in,button
+interface,Sign out,button
+interface,Sign up,button
+interface,Submit,button
+interface,Cancel,button
+interface,Save,button
+interface,Next,button
+interface,Back,button
+interface,Search,button or field label
+interface,Name,field label
+interface,Phone number,field label
+interface,Address,field label
+interface,Password,field label
+interface,Language,field label
+interface,Help,link
+interface,Settings,menu item
+interface,Yes,
+interface,No,
+interface,Something went wrong. Please try again.,error message
+interface,Loading…,status message
+health,I am sick,
+health,Where is the clinic?,
+health,I need a doctor,
+health,Where does it hurt?,
+health,headache,
+health,fever,
+health,cough,
+health,diarrhoea,
+health,Take this medicine twice a day,
+health,before eating,
+health,after eating,
+health,Wash your hands,
+health,pregnant,
+health,vaccination,
+health,Come back in one week,
+money,How much is it?,
+money,It is too expensive,
+money,price,
+money,change,coins or notes given back
+money,kwacha,the currency
+money,ngwee,a hundredth of a kwacha
+money,pay,
+money,balance,money left in an account
+money,receipt,
+money,loan,
+money,savings,
+money,mobile money,
+money,Send money,button or instruction
+money,Withdraw money,button or instruction

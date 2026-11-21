@@ -3,6 +3,7 @@
 //	ingest -feed gatitos-en-bem [-file local.jsonl]   a registered source, as `sourced` data
 //	ingest -all                                        every feed in sources.Feeds
 //	ingest -concepts data/concepts/x.csv               one of our own core concept lists
+//	ingest -phrases data/phrases/en.csv                the phrase packs' English source list
 //	ingest -restem                                     recompute search stems after a stemmer change
 package main
 
@@ -23,6 +24,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
@@ -38,6 +40,7 @@ func run(ctx context.Context) error {
 	name := flag.String("feed", "", "feed to import: "+feedNames())
 	file := flag.String("file", "", "read this local copy instead of downloading (checksum still verified)")
 	concepts := flag.String("concepts", "", "CSV of core concepts (domain,gloss_en) to import instead of a feed")
+	phraseList := flag.String("phrases", "", "CSV of the phrase packs' English source list (pack,source_en,notes) to import instead of a feed")
 	all := flag.Bool("all", false, "import every feed")
 	restem := flag.Bool("restem", false, "recompute search stems for every active language")
 	flag.Parse()
@@ -53,6 +56,8 @@ func run(ctx context.Context) error {
 		return restemActive(ctx, pool)
 	case *concepts != "":
 		return importConcepts(ctx, pool, *concepts)
+	case *phraseList != "":
+		return importPhrases(ctx, pool, *phraseList)
 	case *all:
 		for _, feed := range sources.Feeds {
 			if err := importFeed(ctx, pool, feed, ""); err != nil {
@@ -109,16 +114,26 @@ func restemActive(ctx context.Context, db database.Beginner) error {
 }
 
 func importConcepts(ctx context.Context, db database.Beginner, path string) error {
+	return importCSV(path, "new core concepts", func(f io.Reader) (int, error) { return sources.ImportConcepts(ctx, db, f) })
+}
+
+func importPhrases(ctx context.Context, db database.Beginner, path string) error {
+	return importCSV(path, "new phrase list lines", func(f io.Reader) (int, error) { return phrases.ImportList(ctx, db, f) })
+}
+
+// importCSV runs one of our own list importers on a file and reports how
+// many rows were new.
+func importCSV(path, what string, run func(io.Reader) (int, error)) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = f.Close() }()
-	added, err := sources.ImportConcepts(ctx, db, f)
+	added, err := run(f)
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
-	fmt.Printf("%s: %d new core concepts\n", path, added)
+	fmt.Printf("%s: %d %s\n", path, added, what)
 	return nil
 }
 

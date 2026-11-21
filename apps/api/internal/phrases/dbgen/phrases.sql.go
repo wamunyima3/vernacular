@@ -60,3 +60,32 @@ func (q *Queries) ListPack(ctx context.Context, arg ListPackParams) ([]ListPackR
 	}
 	return items, nil
 }
+
+const upsertListLine = `-- name: UpsertListLine :one
+INSERT INTO phrase_list (pack, source_en, notes, concept_id)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (pack, source_en) DO UPDATE SET notes = excluded.notes, updated_at = now()
+WHERE phrase_list.notes <> excluded.notes
+RETURNING (xmax = 0) AS inserted
+`
+
+type UpsertListLineParams struct {
+	Pack      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.UUID
+}
+
+// Adds or updates a line of the English source list; unchanged lines are not
+// written, so re-runs add no audit rows. Reports whether the line is new.
+func (q *Queries) UpsertListLine(ctx context.Context, arg UpsertListLineParams) (bool, error) {
+	row := q.db.QueryRow(ctx, upsertListLine,
+		arg.Pack,
+		arg.SourceEn,
+		arg.Notes,
+		arg.ConceptID,
+	)
+	var inserted bool
+	err := row.Scan(&inserted)
+	return inserted, err
+}
