@@ -176,7 +176,7 @@ func (q *Queries) FindSense(ctx context.Context, arg FindSenseParams) (uuid.UUID
 }
 
 const getConcept = `-- name: GetConcept :one
-SELECT id, gloss_en, definition, domain FROM concepts WHERE id = $1
+SELECT id, gloss_en, definition, domain, core FROM concepts WHERE id = $1
 `
 
 type GetConceptRow struct {
@@ -184,6 +184,7 @@ type GetConceptRow struct {
 	GlossEn    string
 	Definition string
 	Domain     string
+	Core       bool
 }
 
 func (q *Queries) GetConcept(ctx context.Context, id uuid.UUID) (GetConceptRow, error) {
@@ -194,8 +195,46 @@ func (q *Queries) GetConcept(ctx context.Context, id uuid.UUID) (GetConceptRow, 
 		&i.GlossEn,
 		&i.Definition,
 		&i.Domain,
+		&i.Core,
 	)
 	return i, err
+}
+
+const listConceptEntries = `-- name: ListConceptEntries :many
+SELECT DISTINCT e.id, e.language_code, e.headword
+FROM senses s
+JOIN items i ON i.id = s.id
+JOIN entries e ON e.id = s.entry_id
+WHERE s.concept_id = $1 AND servable(i.status)
+ORDER BY e.language_code, e.headword, e.id
+LIMIT 200
+`
+
+type ListConceptEntriesRow struct {
+	ID           uuid.UUID
+	LanguageCode string
+	Headword     string
+}
+
+// Entries with a servable sense expressing the concept (LEX-7).
+func (q *Queries) ListConceptEntries(ctx context.Context, conceptID uuid.NullUUID) ([]ListConceptEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listConceptEntries, conceptID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListConceptEntriesRow
+	for rows.Next() {
+		var i ListConceptEntriesRow
+		if err := rows.Scan(&i.ID, &i.LanguageCode, &i.Headword); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCoreConcepts = `-- name: ListCoreConcepts :many

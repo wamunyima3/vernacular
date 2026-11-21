@@ -2,10 +2,12 @@ package lexicon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon/dbgen"
@@ -167,4 +169,43 @@ func (s *Store) withExamples(ctx context.Context, senses []Sense) error {
 		senses[i].Examples = bySense[senses[i].ID]
 	}
 	return nil
+}
+
+// ConceptEntries is a concept with the servable entries that express it in
+// any language (LEX-7). Each entry lists only the senses linked to the concept.
+type ConceptEntries struct {
+	Concept
+	Entries []Entry
+}
+
+// ConceptEntries reads a concept across all languages. False when there is none.
+func (s *Store) ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntries, bool, error) {
+	c, err := s.Concept(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ConceptEntries{}, false, nil
+	}
+	if err != nil {
+		return ConceptEntries{}, false, err
+	}
+	rows, err := s.q.ListConceptEntries(ctx, uuid.NullUUID{UUID: id, Valid: true})
+	if err != nil {
+		return ConceptEntries{}, false, fmt.Errorf("list concept entries: %w", err)
+	}
+	ids := make([]uuid.UUID, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	entries, err := s.entries(ctx, ids)
+	if err != nil {
+		return ConceptEntries{}, false, err
+	}
+	out := ConceptEntries{Concept: c}
+	for _, eid := range ids {
+		e := entries[eid]
+		e.Senses = slices.DeleteFunc(e.Senses, func(sn Sense) bool { return sn.ConceptID.UUID != id })
+		if len(e.Senses) > 0 {
+			out.Entries = append(out.Entries, e)
+		}
+	}
+	return out, true, nil
 }

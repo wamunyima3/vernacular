@@ -203,6 +203,7 @@ type Concept struct {
 	GlossEn    string
 	Definition string
 	Domain     string
+	Core       bool // part of the core list (LEX-7)
 }
 
 // Concept returns one concept.
@@ -211,7 +212,7 @@ func (s *Store) Concept(ctx context.Context, id uuid.UUID) (Concept, error) {
 	if err != nil {
 		return Concept{}, fmt.Errorf("get concept %s: %w", id, err)
 	}
-	return Concept{ID: c.ID, GlossEn: c.GlossEn, Definition: c.Definition, Domain: c.Domain}, nil
+	return Concept{ID: c.ID, GlossEn: c.GlossEn, Definition: c.Definition, Domain: c.Domain, Core: c.Core}, nil
 }
 
 // CoreConcepts lists the IDs of the core list (LEX-7).

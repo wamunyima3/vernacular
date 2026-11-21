@@ -103,6 +103,26 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/concepts/{id}:
+    get:
+      operationId: getConcept
+      summary: A meaning across all languages
+      description: |
+        The language-independent concept, and every servable entry in any language with a
+        sense that expresses it (LEX-7, US-04). Each entry lists only those senses.
+      tags: [lexicon]
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The concept
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Concept" }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/me:
     get:
       operationId: getMe
@@ -902,6 +922,21 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Sense" }
         trust: { $ref: "#/components/schemas/Trust" }
+    Concept:
+      type: object
+      required: [id, gloss_en, domain, core, entries]
+      properties:
+        id: { type: string, format: uuid }
+        gloss_en: { type: string, example: water }
+        definition: { type: string }
+        domain: { type: string, example: general }
+        core:
+          type: boolean
+          description: Part of the core vocabulary list (LEX-7)
+        entries:
+          type: array
+          description: Entries expressing the concept, by language then headword; at most 200
+          items: { $ref: "#/components/schemas/EntrySummary" }
     EntryHit:
       type: object
       required: [match, entry]

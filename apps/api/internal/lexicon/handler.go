@@ -13,6 +13,7 @@ import (
 type Reader interface {
 	Search(ctx context.Context, language, query string, limit int) ([]Hit, error)
 	Get(ctx context.Context, id uuid.UUID) (Entry, bool, error)
+	ConceptEntries(ctx context.Context, id uuid.UUID) (ConceptEntries, bool, error)
 }
 
 // Handler implements the lexicon read operations of the generated strict server.
@@ -90,4 +91,22 @@ func sense(s Sense) gen.Sense {
 		out.ConceptId = &s.ConceptID.UUID
 	}
 	return out
+}
+
+// GetConcept implements GET /v1/concepts/{id}.
+func (h *Handler) GetConcept(ctx context.Context, req gen.GetConceptRequestObject) (gen.GetConceptResponseObject, error) {
+	c, ok, err := h.svc.ConceptEntries(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, httpx.ErrNotFound
+	}
+	entries := make([]gen.EntrySummary, len(c.Entries))
+	for i, e := range c.Entries {
+		entries[i] = entrySummary(e)
+	}
+	return gen.GetConcept200JSONResponse{
+		Id: c.ID, GlossEn: c.GlossEn, Definition: httpx.Optional(c.Definition), Domain: c.Domain, Core: c.Core, Entries: entries,
+	}, nil
 }

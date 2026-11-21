@@ -86,6 +86,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/concepts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A meaning across all languages
+         * @description The language-independent concept, and every servable entry in any language with a
+         *     sense that expresses it (LEX-7, US-04). Each entry lists only those senses.
+         */
+        get: operations["getConcept"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -675,6 +696,19 @@ export interface components {
             senses: components["schemas"]["Sense"][];
             trust: components["schemas"]["Trust"];
         };
+        Concept: {
+            /** Format: uuid */
+            id: string;
+            /** @example water */
+            gloss_en: string;
+            definition?: string;
+            /** @example general */
+            domain: string;
+            /** @description Part of the core vocabulary list (LEX-7) */
+            core: boolean;
+            /** @description Entries expressing the concept, by language then headword; at most 200 */
+            entries: components["schemas"]["EntrySummary"][];
+        };
         EntryHit: {
             /**
              * @description What the query matched (US-05)
@@ -986,6 +1020,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Entry"];
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The concept */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Concept"];
                 };
             };
             404: components["responses"]["Error"];

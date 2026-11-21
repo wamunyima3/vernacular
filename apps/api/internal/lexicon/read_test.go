@@ -1,6 +1,7 @@
 package lexicon_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -113,5 +114,38 @@ func TestGet(t *testing.T) {
 	}
 	if _, ok, err := lex.Get(ctx, disputed); ok || err != nil {
 		t.Errorf("disputed-only entry: Get = %v, %v; want not found", ok, err)
+	}
+}
+
+// TestConceptEntries: a Nyanja word with the same meaning shares icipazzo's
+// concept, so the concept lists both.
+func TestConceptEntries(t *testing.T) {
+	lex, tx := searchFixture(t)
+	ctx := t.Context()
+	claude, err := sources.Lookup(ctx, tx, "Claude")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lex.Add(ctx, lexicon.Proposal{Language: "nya", Headword: "zzcinthu", GlossEn: "zz ichipazzo", Origin: items.Machine(claude, "m", "n")}); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := lex.Search(ctx, "bem", "icipazzo", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := find(hits, "icipazzo").Entry.Senses[0].ConceptID.UUID
+	c, ok, err := lex.ConceptEntries(ctx, id)
+	if err != nil || !ok {
+		t.Fatalf("ConceptEntries = %v, %v", ok, err)
+	}
+	var got []string
+	for _, e := range c.Entries {
+		got = append(got, e.Language+":"+e.Headword)
+	}
+	if c.GlossEn != "zz ichipazzo" || !slices.Equal(got, []string{"bem:icipazzo", "nya:zzcinthu"}) {
+		t.Errorf("concept %q entries = %v", c.GlossEn, got)
+	}
+	if _, ok, err := lex.ConceptEntries(ctx, uuid.New()); ok || err != nil {
+		t.Errorf("unknown concept: %v, %v; want not found", ok, err)
 	}
 }

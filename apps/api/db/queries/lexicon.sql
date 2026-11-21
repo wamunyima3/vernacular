@@ -41,9 +41,6 @@ SELECT id, headword, stem FROM entries WHERE language_code = $1;
 -- name: SetStem :exec
 UPDATE entries SET stem = $2 WHERE id = $1;
 
--- name: GetConcept :one
-SELECT id, gloss_en, definition, domain FROM concepts WHERE id = $1;
-
 -- name: ListCoreConcepts :many
 SELECT id FROM concepts WHERE core ORDER BY gloss_en;
 
@@ -128,3 +125,16 @@ SELECT x.id, x.sense_id, x.text, x.translation_en
 FROM examples x JOIN items i ON i.id = x.id
 WHERE x.sense_id = ANY(@sense_ids::uuid[]) AND servable(i.status)
 ORDER BY x.sense_id, x.created_at, x.id;
+
+-- name: GetConcept :one
+SELECT id, gloss_en, definition, domain, core FROM concepts WHERE id = $1;
+
+-- name: ListConceptEntries :many
+-- Entries with a servable sense expressing the concept (LEX-7).
+SELECT DISTINCT e.id, e.language_code, e.headword
+FROM senses s
+JOIN items i ON i.id = s.id
+JOIN entries e ON e.id = s.entry_id
+WHERE s.concept_id = $1 AND servable(i.status)
+ORDER BY e.language_code, e.headword, e.id
+LIMIT 200;
