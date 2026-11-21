@@ -82,6 +82,27 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/entries/{id}:
+    get:
+      operationId: getEntry
+      summary: A full dictionary entry
+      description: |
+        The entry with its spelling variants, and each servable sense with its definition,
+        concept and example sentences (LEX-1, LEX-3, LEX-5, US-16). Every item carries its
+        trust fields. A disputed entry is not found.
+      tags: [lexicon]
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The entry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entry" }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/me:
     get:
       operationId: getMe
@@ -454,7 +475,7 @@ paths:
           $ref: "#/components/responses/Error"
   /v1/sources/{id}:
     parameters:
-      - $ref: "#/components/parameters/SourceId"
+      - $ref: "#/components/parameters/Id"
     get:
       operationId: getSource
       summary: One source
@@ -500,7 +521,7 @@ paths:
           $ref: "#/components/responses/Error"
   /v1/sources/{id}/permission:
     parameters:
-      - $ref: "#/components/parameters/SourceId"
+      - $ref: "#/components/parameters/Id"
     put:
       operationId: uploadPermission
       summary: Upload the signed permission document (admin)
@@ -539,7 +560,7 @@ paths:
           $ref: "#/components/responses/Error"
 components:
   parameters:
-    SourceId:
+    Id:
       name: id
       in: path
       required: true
@@ -828,6 +849,58 @@ components:
         senses:
           type: array
           items: { $ref: "#/components/schemas/SenseSummary" }
+        trust: { $ref: "#/components/schemas/Trust" }
+    Variant:
+      type: object
+      required: [spelling]
+      properties:
+        spelling: { type: string, example: ichibemba }
+        note:
+          type: string
+          description: Where the spelling is used, or where it was seen
+    Example:
+      type: object
+      required: [id, text, translation_en, trust]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string }
+        translation_en: { type: string }
+        trust: { $ref: "#/components/schemas/Trust" }
+    Sense:
+      type: object
+      required: [id, gloss, examples, trust]
+      properties:
+        id: { type: string, format: uuid }
+        gloss: { type: string, example: water }
+        definition: { type: string }
+        concept_id:
+          type: string
+          format: uuid
+          description: The language-independent meaning this sense expresses (LEX-7)
+        examples:
+          type: array
+          items: { $ref: "#/components/schemas/Example" }
+        trust: { $ref: "#/components/schemas/Trust" }
+    Entry:
+      type: object
+      description: A full dictionary entry (US-16)
+      required: [id, language, headword, register, variants, senses, trust]
+      properties:
+        id: { type: string, format: uuid }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        headword: { type: string, example: amenshi }
+        part_of_speech: { $ref: "#/components/schemas/PartOfSpeech" }
+        noun_class: { type: string, example: "6" }
+        plural: { type: string }
+        root: { type: string }
+        variety: { type: string }
+        register: { $ref: "#/components/schemas/Register" }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/Variant" }
+        senses:
+          type: array
+          items: { $ref: "#/components/schemas/Sense" }
         trust: { $ref: "#/components/schemas/Trust" }
     EntryHit:
       type: object

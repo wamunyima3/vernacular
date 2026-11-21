@@ -62,7 +62,7 @@ type Deps struct {
 	Sources       *sources.Register
 	Contributions *contributions.Service
 	Review        *review.Service
-	Lexicon       lexicon.Searcher
+	Lexicon       lexicon.Reader
 }
 
 // New returns the full HTTP handler for the API.

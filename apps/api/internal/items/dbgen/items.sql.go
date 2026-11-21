@@ -36,29 +36,6 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (uuid.UU
 	return id, err
 }
 
-const getTrust = `-- name: GetTrust :one
-SELECT i.status,
-       count(r.id) FILTER (WHERE r.decision = 'accept')::int  AS accepts,
-       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections
-FROM items i LEFT JOIN reviews r ON r.item_id = i.id
-WHERE i.id = $1
-GROUP BY i.id
-`
-
-type GetTrustRow struct {
-	Status      TrustStatus
-	Accepts     int32
-	Corrections int32
-}
-
-// The trust fields every returned item carries (PRV-1).
-func (q *Queries) GetTrust(ctx context.Context, id uuid.UUID) (GetTrustRow, error) {
-	row := q.db.QueryRow(ctx, getTrust, id)
-	var i GetTrustRow
-	err := row.Scan(&i.Status, &i.Accepts, &i.Corrections)
-	return i, err
-}
-
 const linkSource = `-- name: LinkSource :exec
 INSERT INTO item_sources (item_id, source_id, reference, model) VALUES ($1, $2, $3, $4)
 ON CONFLICT DO NOTHING
@@ -79,47 +56,6 @@ func (q *Queries) LinkSource(ctx context.Context, arg LinkSourceParams) error {
 		arg.Model,
 	)
 	return err
-}
-
-const listTrustSources = `-- name: ListTrustSources :many
-SELECT s.name, s.licence, s.url, isrc.reference, isrc.model
-FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
-WHERE isrc.item_id = $1
-ORDER BY s.name, isrc.reference
-`
-
-type ListTrustSourcesRow struct {
-	Name      string
-	Licence   string
-	Url       pgtype.Text
-	Reference string
-	Model     pgtype.Text
-}
-
-func (q *Queries) ListTrustSources(ctx context.Context, itemID uuid.UUID) ([]ListTrustSourcesRow, error) {
-	rows, err := q.db.Query(ctx, listTrustSources, itemID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTrustSourcesRow
-	for rows.Next() {
-		var i ListTrustSourcesRow
-		if err := rows.Scan(
-			&i.Name,
-			&i.Licence,
-			&i.Url,
-			&i.Reference,
-			&i.Model,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listTrustSourcesOf = `-- name: ListTrustSourcesOf :many

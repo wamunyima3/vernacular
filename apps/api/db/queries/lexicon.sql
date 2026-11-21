@@ -96,8 +96,7 @@ WITH hits AS (
 ), best AS (
     SELECT DISTINCT ON (id) id, matched, rank, score FROM hits ORDER BY id, rank, score DESC
 )
-SELECT e.id, e.language_code, e.headword, e.part_of_speech, e.noun_class, e.plural, e.root,
-       e.variety, e.register, b.matched::text AS matched
+SELECT e.id, b.matched::text AS matched
 FROM best b
 JOIN entries e ON e.id = b.id
 JOIN items i ON i.id = e.id
@@ -109,7 +108,23 @@ LIMIT @lim;
 
 -- name: ListServableSenses :many
 -- The servable senses of entries, in order.
-SELECT s.id, s.entry_id, s.gloss
+SELECT s.id, s.entry_id, s.gloss, s.definition, s.concept_id
 FROM senses s JOIN items i ON i.id = s.id
 WHERE s.entry_id = ANY(@entry_ids::uuid[]) AND servable(i.status)
 ORDER BY s.entry_id, s.position, s.id;
+
+-- name: ListEntries :many
+-- Servable entries by ID (US-16); the caller keeps its own order.
+SELECT e.id, e.language_code, e.headword, e.part_of_speech, e.noun_class, e.plural, e.root,
+       e.variety, e.register
+FROM entries e JOIN items i ON i.id = e.id
+WHERE e.id = ANY(@ids::uuid[]) AND servable(i.status);
+
+-- name: ListVariants :many
+SELECT spelling, note FROM variants WHERE entry_id = $1 ORDER BY spelling;
+
+-- name: ListServableExamples :many
+SELECT x.id, x.sense_id, x.text, x.translation_en
+FROM examples x JOIN items i ON i.id = x.id
+WHERE x.sense_id = ANY(@sense_ids::uuid[]) AND servable(i.status)
+ORDER BY x.sense_id, x.created_at, x.id;

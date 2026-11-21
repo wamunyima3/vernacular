@@ -3,6 +3,9 @@ package lexicon_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
@@ -12,7 +15,7 @@ import (
 // TestSearch uses made-up Bemba words, so the stemmer and style-guide
 // spelling apply without colliding with real entries.
 func TestSearch(t *testing.T) {
-	lex := searchFixture(t)
+	lex, _ := searchFixture(t)
 	ctx := t.Context()
 	tests := []struct{ query, headword, match string }{
 		{"UMUKÁZZO", "umukazzo", "headword"},
@@ -48,7 +51,7 @@ func find(hits []lexicon.Hit, headword string) *lexicon.Hit {
 	return nil
 }
 
-func searchFixture(t *testing.T) *lexicon.Store {
+func searchFixture(t *testing.T) (*lexicon.Store, pgx.Tx) {
 	t.Helper()
 	tx := dbtest.Tx(t)
 	ctx := t.Context()
@@ -73,5 +76,42 @@ func searchFixture(t *testing.T) *lexicon.Store {
 		}
 	}
 
-	return lex
+	return lex, tx
+}
+
+// TestGet reads a full entry: its stored variant, and its sense's example.
+// An entry with only a disputed sense is not found.
+func TestGet(t *testing.T) {
+	lex, tx := searchFixture(t)
+	ctx := t.Context()
+	hits, err := lex.Search(ctx, "bem", "icipazzo", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hit := find(hits, "icipazzo")
+	if hit == nil {
+		t.Fatal("icipazzo not found")
+	}
+	if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO items (kind, language_code, status) VALUES ('example', 'bem', 'machine') RETURNING id)
+		INSERT INTO examples (id, sense_id, text, translation_en) SELECT id, $1, 'zz text', 'zz translation' FROM i`, hit.Entry.Senses[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	e, ok, err := lex.Get(ctx, hit.Entry.ID)
+	if err != nil || !ok {
+		t.Fatalf("Get = %v, %v", ok, err)
+	}
+	if len(e.Variants) != 1 || e.Variants[0].Spelling != "ichipazzo" {
+		t.Errorf("variants = %+v, want ichipazzo", e.Variants)
+	}
+	if s := e.Senses[0]; !s.ConceptID.Valid || len(s.Examples) != 1 || s.Examples[0].TranslationEn != "zz translation" || s.Examples[0].Trust.Status != "machine" {
+		t.Errorf("sense = %+v, want a concept and the example", s)
+	}
+
+	var disputed uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT id FROM entries WHERE language_code = 'bem' AND headword = 'umupazzo'`).Scan(&disputed); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := lex.Get(ctx, disputed); ok || err != nil {
+		t.Errorf("disputed-only entry: Get = %v, %v; want not found", ok, err)
+	}
 }

@@ -64,6 +64,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A full dictionary entry
+         * @description The entry with its spelling variants, and each servable sense with its definition,
+         *     concept and example sentences (LEX-1, LEX-3, LEX-5, US-16). Every item carries its
+         *     trust fields. A disputed entry is not found.
+         */
+        get: operations["getEntry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -366,7 +388,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };
@@ -390,7 +412,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };
@@ -606,6 +628,51 @@ export interface components {
             variety?: string;
             register: components["schemas"]["Register"];
             senses: components["schemas"]["SenseSummary"][];
+            trust: components["schemas"]["Trust"];
+        };
+        Variant: {
+            /** @example ichibemba */
+            spelling: string;
+            /** @description Where the spelling is used, or where it was seen */
+            note?: string;
+        };
+        Example: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+            translation_en: string;
+            trust: components["schemas"]["Trust"];
+        };
+        Sense: {
+            /** Format: uuid */
+            id: string;
+            /** @example water */
+            gloss: string;
+            definition?: string;
+            /**
+             * Format: uuid
+             * @description The language-independent meaning this sense expresses (LEX-7)
+             */
+            concept_id?: string;
+            examples: components["schemas"]["Example"][];
+            trust: components["schemas"]["Trust"];
+        };
+        /** @description A full dictionary entry (US-16) */
+        Entry: {
+            /** Format: uuid */
+            id: string;
+            language: components["schemas"]["LanguageCode"];
+            /** @example amenshi */
+            headword: string;
+            part_of_speech?: components["schemas"]["PartOfSpeech"];
+            /** @example 6 */
+            noun_class?: string;
+            plural?: string;
+            root?: string;
+            variety?: string;
+            register: components["schemas"]["Register"];
+            variants: components["schemas"]["Variant"][];
+            senses: components["schemas"]["Sense"][];
             trust: components["schemas"]["Trust"];
         };
         EntryHit: {
@@ -824,7 +891,7 @@ export interface components {
         };
     };
     parameters: {
-        SourceId: string;
+        Id: string;
     };
     requestBodies: never;
     headers: never;
@@ -898,6 +965,30 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            404: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -1310,7 +1401,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };
@@ -1333,7 +1424,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };
@@ -1360,7 +1451,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };
@@ -1381,7 +1472,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };
@@ -1404,7 +1495,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["SourceId"];
+                id: components["parameters"]["Id"];
             };
             cookie?: never;
         };

@@ -222,6 +222,56 @@ func (q *Queries) ListCoreConcepts(ctx context.Context) ([]uuid.UUID, error) {
 	return items, nil
 }
 
+const listEntries = `-- name: ListEntries :many
+SELECT e.id, e.language_code, e.headword, e.part_of_speech, e.noun_class, e.plural, e.root,
+       e.variety, e.register
+FROM entries e JOIN items i ON i.id = e.id
+WHERE e.id = ANY($1::uuid[]) AND servable(i.status)
+`
+
+type ListEntriesRow struct {
+	ID           uuid.UUID
+	LanguageCode string
+	Headword     string
+	PartOfSpeech NullPartOfSpeech
+	NounClass    pgtype.Text
+	Plural       pgtype.Text
+	Root         pgtype.Text
+	Variety      pgtype.Text
+	Register     Register
+}
+
+// Servable entries by ID (US-16); the caller keeps its own order.
+func (q *Queries) ListEntries(ctx context.Context, ids []uuid.UUID) ([]ListEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listEntries, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEntriesRow
+	for rows.Next() {
+		var i ListEntriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.LanguageCode,
+			&i.Headword,
+			&i.PartOfSpeech,
+			&i.NounClass,
+			&i.Plural,
+			&i.Root,
+			&i.Variety,
+			&i.Register,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHeadwords = `-- name: ListHeadwords :many
 SELECT id, headword, stem FROM entries WHERE language_code = $1
 `
@@ -298,17 +348,58 @@ func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSe
 	return items, nil
 }
 
+const listServableExamples = `-- name: ListServableExamples :many
+SELECT x.id, x.sense_id, x.text, x.translation_en
+FROM examples x JOIN items i ON i.id = x.id
+WHERE x.sense_id = ANY($1::uuid[]) AND servable(i.status)
+ORDER BY x.sense_id, x.created_at, x.id
+`
+
+type ListServableExamplesRow struct {
+	ID            uuid.UUID
+	SenseID       uuid.UUID
+	Text          string
+	TranslationEn string
+}
+
+func (q *Queries) ListServableExamples(ctx context.Context, senseIds []uuid.UUID) ([]ListServableExamplesRow, error) {
+	rows, err := q.db.Query(ctx, listServableExamples, senseIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListServableExamplesRow
+	for rows.Next() {
+		var i ListServableExamplesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenseID,
+			&i.Text,
+			&i.TranslationEn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listServableSenses = `-- name: ListServableSenses :many
-SELECT s.id, s.entry_id, s.gloss
+SELECT s.id, s.entry_id, s.gloss, s.definition, s.concept_id
 FROM senses s JOIN items i ON i.id = s.id
 WHERE s.entry_id = ANY($1::uuid[]) AND servable(i.status)
 ORDER BY s.entry_id, s.position, s.id
 `
 
 type ListServableSensesRow struct {
-	ID      uuid.UUID
-	EntryID uuid.UUID
-	Gloss   string
+	ID         uuid.UUID
+	EntryID    uuid.UUID
+	Gloss      string
+	Definition string
+	ConceptID  uuid.NullUUID
 }
 
 // The servable senses of entries, in order.
@@ -321,7 +412,42 @@ func (q *Queries) ListServableSenses(ctx context.Context, entryIds []uuid.UUID) 
 	var items []ListServableSensesRow
 	for rows.Next() {
 		var i ListServableSensesRow
-		if err := rows.Scan(&i.ID, &i.EntryID, &i.Gloss); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.EntryID,
+			&i.Gloss,
+			&i.Definition,
+			&i.ConceptID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVariants = `-- name: ListVariants :many
+SELECT spelling, note FROM variants WHERE entry_id = $1 ORDER BY spelling
+`
+
+type ListVariantsRow struct {
+	Spelling string
+	Note     string
+}
+
+func (q *Queries) ListVariants(ctx context.Context, entryID uuid.UUID) ([]ListVariantsRow, error) {
+	rows, err := q.db.Query(ctx, listVariants, entryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVariantsRow
+	for rows.Next() {
+		var i ListVariantsRow
+		if err := rows.Scan(&i.Spelling, &i.Note); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -361,8 +487,7 @@ WITH hits AS (
 ), best AS (
     SELECT DISTINCT ON (id) id, matched, rank, score FROM hits ORDER BY id, rank, score DESC
 )
-SELECT e.id, e.language_code, e.headword, e.part_of_speech, e.noun_class, e.plural, e.root,
-       e.variety, e.register, b.matched::text AS matched
+SELECT e.id, b.matched::text AS matched
 FROM best b
 JOIN entries e ON e.id = b.id
 JOIN items i ON i.id = e.id
@@ -382,16 +507,8 @@ type SearchEntriesParams struct {
 }
 
 type SearchEntriesRow struct {
-	ID           uuid.UUID
-	LanguageCode string
-	Headword     string
-	PartOfSpeech NullPartOfSpeech
-	NounClass    pgtype.Text
-	Plural       pgtype.Text
-	Root         pgtype.Text
-	Variety      pgtype.Text
-	Register     Register
-	Matched      string
+	ID      uuid.UUID
+	Matched string
 }
 
 // Entry search (LEX-4, US-05). Each entry keeps its best match: the headword,
@@ -413,18 +530,7 @@ func (q *Queries) SearchEntries(ctx context.Context, arg SearchEntriesParams) ([
 	var items []SearchEntriesRow
 	for rows.Next() {
 		var i SearchEntriesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.LanguageCode,
-			&i.Headword,
-			&i.PartOfSpeech,
-			&i.NounClass,
-			&i.Plural,
-			&i.Root,
-			&i.Variety,
-			&i.Register,
-			&i.Matched,
-		); err != nil {
+		if err := rows.Scan(&i.ID, &i.Matched); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -8,6 +8,7 @@ const lang = (code: string, wave: number): Language => ({
   own_name: code,
   wave,
   status: wave === 1 ? "active" : "planned",
+  entries: { verified: 0, total: 0 },
 })
 
 describe("groupByWave", () => {
