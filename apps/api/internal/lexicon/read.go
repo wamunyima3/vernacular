@@ -54,7 +54,7 @@ type Filter struct {
 
 func (f Filter) min() dbgen.TrustStatus {
 	if f.MinStatus == "" {
-		return dbgen.TrustStatusVerified // the default, as items.Minimum
+		return dbgen.TrustStatus(items.Minimum(nil))
 	}
 	return dbgen.TrustStatus(f.MinStatus)
 }

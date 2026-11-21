@@ -1,5 +1,7 @@
 package httpx
 
+import "github.com/google/uuid"
+
 // Optional returns nil for an empty string, so optional response fields are
 // left out of the JSON instead of sent empty.
 func Optional[T ~string](s T) *T {
@@ -24,4 +26,12 @@ func DerefOr[T any](p *T, def T) T {
 		return def
 	}
 	return *p
+}
+
+// OptionalUUID returns a nullable ID as an optional response field.
+func OptionalUUID(id uuid.NullUUID) *uuid.UUID {
+	if !id.Valid {
+		return nil
+	}
+	return &id.UUID
 }

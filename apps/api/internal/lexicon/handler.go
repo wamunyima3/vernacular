@@ -86,11 +86,10 @@ func sense(s Sense) gen.Sense {
 	for i, x := range s.Examples {
 		examples[i] = gen.Example{Id: x.ID, Text: x.Text, TranslationEn: x.TranslationEn, Trust: x.Trust.API()}
 	}
-	out := gen.Sense{Id: s.ID, Gloss: s.Gloss, Definition: httpx.Optional(s.Definition), Examples: examples, Trust: s.Trust.API()}
-	if s.ConceptID.Valid {
-		out.ConceptId = &s.ConceptID.UUID
+	return gen.Sense{
+		Id: s.ID, Gloss: s.Gloss, Definition: httpx.Optional(s.Definition), ConceptId: httpx.OptionalUUID(s.ConceptID),
+		Examples: examples, Trust: s.Trust.API(),
 	}
-	return out
 }
 
 // GetConcept implements GET /v1/concepts/{id}.
