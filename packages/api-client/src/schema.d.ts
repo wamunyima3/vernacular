@@ -1167,6 +1167,10 @@ export interface components {
             revoked_at?: string;
             /** Format: date-time */
             created_at: string;
+            /** @description Calls with the key today */
+            calls_today: number;
+            /** @description Calls with the key in the last 30 days */
+            calls_30d: number;
         };
         KeyList: {
             data: components["schemas"]["Key"][];
@@ -1323,6 +1327,8 @@ export interface components {
         KeyUsage: {
             /** Format: uuid */
             key_id: string;
+            name: string;
+            prefix: string;
             /** @description Calls a key may make per minute; 0 means unlimited */
             limit_per_minute: number;
             days: components["schemas"]["KeyUsageDay"][];

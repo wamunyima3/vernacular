@@ -46,11 +46,15 @@ func TestKeyUsage(t *testing.T) {
 
 	svc := accounts.NewService(tx)
 	owner := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "u1", Role: gen.RoleDeveloper})
-	days, err := svc.KeyUsage(owner, key, 30)
-	if err != nil || len(days) != 1 {
-		t.Fatalf("usage = %+v, %v; want one day", days, err)
+	u, err := svc.KeyUsage(owner, key, 30)
+	if err != nil || len(u.Days) != 1 || u.Name != "app" {
+		t.Fatalf("usage = %+v, %v; want key app with one day", u, err)
 	}
-	if d := days[0]; d.Calls != 4 || d.Errors != 1 || d.Limited != 1 {
+	keys, err := svc.Keys(owner)
+	if err != nil || len(keys) != 1 || keys[0].CallsToday != 4 || keys[0].Calls30d != 4 {
+		t.Errorf("keys = %+v, %v; want 4 calls today and in 30 days", keys, err)
+	}
+	if d := u.Days[0]; d.Calls != 4 || d.Errors != 1 || d.Limited != 1 {
 		t.Errorf("today = %+v, want 4 calls, 1 error, 1 limited", d)
 	}
 	other := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "u2", Role: gen.RoleDeveloper})

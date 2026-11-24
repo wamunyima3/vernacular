@@ -105,6 +105,7 @@ func key(k dbgen.ListKeysRow) gen.Key {
 	return gen.Key{
 		Id: k.ID, Name: k.Name, Prefix: k.Prefix, CreatedAt: k.CreatedAt,
 		LastUsedAt: httpx.OptionalTime(k.LastUsedAt), RevokedAt: httpx.OptionalTime(k.RevokedAt),
+		CallsToday: int(k.CallsToday), Calls30d: int(k.Calls30d),
 	}
 }
 
@@ -194,15 +195,15 @@ func (h *Handler) GetKeyUsage(ctx context.Context, req gen.GetKeyUsageRequestObj
 	if req.Params.Days != nil {
 		days = *req.Params.Days
 	}
-	rows, err := h.svc.KeyUsage(ctx, req.Id, days)
+	k, err := h.svc.KeyUsage(ctx, req.Id, days)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]gen.KeyUsageDay, len(rows))
-	for i, r := range rows {
+	out := make([]gen.KeyUsageDay, len(k.Days))
+	for i, r := range k.Days {
 		out[i] = gen.KeyUsageDay{
 			Day: openapi_types.Date{Time: r.Day.Time}, Calls: int(r.Calls), Errors: int(r.Errors), Limited: int(r.Limited),
 		}
 	}
-	return gen.GetKeyUsage200JSONResponse{KeyId: req.Id, LimitPerMinute: h.perMinute, Days: out}, nil
+	return gen.GetKeyUsage200JSONResponse{KeyId: req.Id, Name: k.Name, Prefix: k.Prefix, LimitPerMinute: h.perMinute, Days: out}, nil
 }

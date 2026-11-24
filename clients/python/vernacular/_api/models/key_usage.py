@@ -19,17 +19,25 @@ class KeyUsage:
     """
     Attributes:
         key_id (UUID):
+        name (str):
+        prefix (str):
         limit_per_minute (int): Calls a key may make per minute; 0 means unlimited
         days (list['KeyUsageDay']):
     """
 
     key_id: UUID
+    name: str
+    prefix: str
     limit_per_minute: int
     days: list["KeyUsageDay"]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         key_id = str(self.key_id)
+
+        name = self.name
+
+        prefix = self.prefix
 
         limit_per_minute = self.limit_per_minute
 
@@ -43,6 +51,8 @@ class KeyUsage:
         field_dict.update(
             {
                 "key_id": key_id,
+                "name": name,
+                "prefix": prefix,
                 "limit_per_minute": limit_per_minute,
                 "days": days,
             }
@@ -57,6 +67,10 @@ class KeyUsage:
         d = dict(src_dict)
         key_id = UUID(d.pop("key_id"))
 
+        name = d.pop("name")
+
+        prefix = d.pop("prefix")
+
         limit_per_minute = d.pop("limit_per_minute")
 
         days = []
@@ -68,6 +82,8 @@ class KeyUsage:
 
         key_usage = cls(
             key_id=key_id,
+            name=name,
+            prefix=prefix,
             limit_per_minute=limit_per_minute,
             days=days,
         )

@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -120,26 +121,33 @@ func (u *Usage) Run(ctx context.Context, every time.Duration, log *slog.Logger) 
 	}
 }
 
+// KeyUsage is one key's name and prefix and its daily counts.
+type KeyUsage struct {
+	Name, Prefix string
+	Days         []dbgen.KeyUsageRow // newest first; days without calls are left out
+}
+
 // KeyUsage is the signed-in user's daily counts for one of their keys over
-// the last days days, newest first. Days without calls are left out.
-func (s *Service) KeyUsage(ctx context.Context, keyID uuid.UUID, days int) ([]dbgen.KeyUsageRow, error) {
+// the last days days.
+func (s *Service) KeyUsage(ctx context.Context, keyID uuid.UUID, days int) (KeyUsage, error) {
 	me, err := Require(ctx, nil)
 	if err != nil {
-		return nil, err
+		return KeyUsage{}, err
 	}
 	since := time.Now().UTC().AddDate(0, 0, 1-days)
-	var rows []dbgen.KeyUsageRow
+	var out KeyUsage
 	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
 		q := dbgen.New(tx)
-		owns, err := q.OwnsKey(ctx, dbgen.OwnsKeyParams{ID: keyID, UserID: me.ID})
+		k, err := q.OwnKey(ctx, dbgen.OwnKeyParams{ID: keyID, UserID: me.ID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return httpx.ErrNotFound
+		}
 		if err != nil {
 			return err
 		}
-		if !owns {
-			return httpx.ErrNotFound
-		}
-		rows, err = q.KeyUsage(ctx, dbgen.KeyUsageParams{KeyID: keyID, Since: pgtype.Date{Time: since, Valid: true}})
+		out.Name, out.Prefix = k.Name, k.Prefix
+		out.Days, err = q.KeyUsage(ctx, dbgen.KeyUsageParams{KeyID: keyID, Since: pgtype.Date{Time: since, Valid: true}})
 		return err
 	})
-	return rows, err
+	return out, err
 }

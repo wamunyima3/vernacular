@@ -23,6 +23,8 @@ class Key:
         name (str):
         prefix (str): The key's first characters, to tell keys apart Example: vk_3fA9.
         created_at (datetime.datetime):
+        calls_today (int): Calls with the key today
+        calls_30d (int): Calls with the key in the last 30 days
         last_used_at (Union[Unset, datetime.datetime]): To the hour
         revoked_at (Union[Unset, datetime.datetime]):
     """
@@ -31,6 +33,8 @@ class Key:
     name: str
     prefix: str
     created_at: datetime.datetime
+    calls_today: int
+    calls_30d: int
     last_used_at: Union[Unset, datetime.datetime] = UNSET
     revoked_at: Union[Unset, datetime.datetime] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -43,6 +47,10 @@ class Key:
         prefix = self.prefix
 
         created_at = self.created_at.isoformat()
+
+        calls_today = self.calls_today
+
+        calls_30d = self.calls_30d
 
         last_used_at: Union[Unset, str] = UNSET
         if not isinstance(self.last_used_at, Unset):
@@ -60,6 +68,8 @@ class Key:
                 "name": name,
                 "prefix": prefix,
                 "created_at": created_at,
+                "calls_today": calls_today,
+                "calls_30d": calls_30d,
             }
         )
         if last_used_at is not UNSET:
@@ -80,6 +90,10 @@ class Key:
 
         created_at = isoparse(d.pop("created_at"))
 
+        calls_today = d.pop("calls_today")
+
+        calls_30d = d.pop("calls_30d")
+
         _last_used_at = d.pop("last_used_at", UNSET)
         last_used_at: Union[Unset, datetime.datetime]
         if isinstance(_last_used_at, Unset):
@@ -99,6 +113,8 @@ class Key:
             name=name,
             prefix=prefix,
             created_at=created_at,
+            calls_today=calls_today,
+            calls_30d=calls_30d,
             last_used_at=last_used_at,
             revoked_at=revoked_at,
         )

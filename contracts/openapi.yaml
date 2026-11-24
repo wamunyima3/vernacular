@@ -1723,7 +1723,7 @@ components:
           items: { $ref: "#/components/schemas/Report" }
     Key:
       type: object
-      required: [id, name, prefix, created_at]
+      required: [id, name, prefix, created_at, calls_today, calls_30d]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -1737,6 +1737,9 @@ components:
           description: To the hour
         revoked_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+        calls_today: { type: integer, description: Calls with the key today, UTC }
+        calls_30d:
+          { type: integer, description: Calls with the key in the last 30 days, today included }
     KeyList:
       type: object
       required: [data]
@@ -1939,9 +1942,11 @@ components:
         answered_at: { type: string, format: date-time }
     KeyUsage:
       type: object
-      required: [key_id, limit_per_minute, days]
+      required: [key_id, name, prefix, limit_per_minute, days]
       properties:
         key_id: { type: string, format: uuid }
+        name: { type: string }
+        prefix: { type: string }
         limit_per_minute:
           type: integer
           description: Calls a key may make per minute; 0 means unlimited

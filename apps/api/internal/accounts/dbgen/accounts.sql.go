@@ -227,7 +227,7 @@ type KeyUsageRow struct {
 	Limited int32
 }
 
-// A key's days with calls since a day, newest first. Check ownership with OwnsKey.
+// A key's days with calls since a day, newest first. Check ownership with OwnKey.
 func (q *Queries) KeyUsage(ctx context.Context, arg KeyUsageParams) ([]KeyUsageRow, error) {
 	rows, err := q.db.Query(ctx, keyUsage, arg.KeyID, arg.Since)
 	if err != nil {
@@ -324,9 +324,14 @@ func (q *Queries) ListApprovals(ctx context.Context) ([]ListApprovalsRow, error)
 }
 
 const listKeys = `-- name: ListKeys :many
-SELECT id, name, prefix, last_used_at, revoked_at, created_at
-FROM api_keys WHERE user_id = $1
-ORDER BY revoked_at IS NOT NULL, created_at DESC
+SELECT k.id, k.name, k.prefix, k.last_used_at, k.revoked_at, k.created_at,
+    coalesce(sum(u.calls) FILTER (WHERE u.day = (now() AT TIME ZONE 'UTC')::date), 0)::int AS calls_today,
+    coalesce(sum(u.calls), 0)::int AS calls_30d
+FROM api_keys k
+LEFT JOIN key_usage u ON u.key_id = k.id AND u.day > (now() AT TIME ZONE 'UTC')::date - 30
+WHERE k.user_id = $1
+GROUP BY k.id
+ORDER BY k.revoked_at IS NOT NULL, k.created_at DESC
 LIMIT 50
 `
 
@@ -337,8 +342,11 @@ type ListKeysRow struct {
 	LastUsedAt pgtype.Timestamptz
 	RevokedAt  pgtype.Timestamptz
 	CreatedAt  time.Time
+	CallsToday int32
+	Calls30d   int32
 }
 
+// With each key's calls today and in the last 30 days, UTC.
 func (q *Queries) ListKeys(ctx context.Context, userID string) ([]ListKeysRow, error) {
 	rows, err := q.db.Query(ctx, listKeys, userID)
 	if err != nil {
@@ -355,6 +363,8 @@ func (q *Queries) ListKeys(ctx context.Context, userID string) ([]ListKeysRow, e
 			&i.LastUsedAt,
 			&i.RevokedAt,
 			&i.CreatedAt,
+			&i.CallsToday,
+			&i.Calls30d,
 		); err != nil {
 			return nil, err
 		}
@@ -462,20 +472,25 @@ func (q *Queries) MarkRetrained(ctx context.Context, arg MarkRetrainedParams) (i
 	return result.RowsAffected(), nil
 }
 
-const ownsKey = `-- name: OwnsKey :one
-SELECT EXISTS (SELECT 1 FROM api_keys WHERE id = $1 AND user_id = $2)
+const ownKey = `-- name: OwnKey :one
+SELECT name, prefix FROM api_keys WHERE id = $1 AND user_id = $2
 `
 
-type OwnsKeyParams struct {
+type OwnKeyParams struct {
 	ID     uuid.UUID
 	UserID string
 }
 
-func (q *Queries) OwnsKey(ctx context.Context, arg OwnsKeyParams) (bool, error) {
-	row := q.db.QueryRow(ctx, ownsKey, arg.ID, arg.UserID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+type OwnKeyRow struct {
+	Name   string
+	Prefix string
+}
+
+func (q *Queries) OwnKey(ctx context.Context, arg OwnKeyParams) (OwnKeyRow, error) {
+	row := q.db.QueryRow(ctx, ownKey, arg.ID, arg.UserID)
+	var i OwnKeyRow
+	err := row.Scan(&i.Name, &i.Prefix)
+	return i, err
 }
 
 const pendingQualifications = `-- name: PendingQualifications :many

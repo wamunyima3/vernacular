@@ -70,9 +70,15 @@ WHERE (SELECT count(*) FROM api_keys WHERE user_id = @user_id AND revoked_at IS 
 RETURNING id, created_at;
 
 -- name: ListKeys :many
-SELECT id, name, prefix, last_used_at, revoked_at, created_at
-FROM api_keys WHERE user_id = $1
-ORDER BY revoked_at IS NOT NULL, created_at DESC
+-- With each key's calls today and in the last 30 days, UTC.
+SELECT k.id, k.name, k.prefix, k.last_used_at, k.revoked_at, k.created_at,
+    coalesce(sum(u.calls) FILTER (WHERE u.day = (now() AT TIME ZONE 'UTC')::date), 0)::int AS calls_today,
+    coalesce(sum(u.calls), 0)::int AS calls_30d
+FROM api_keys k
+LEFT JOIN key_usage u ON u.key_id = k.id AND u.day > (now() AT TIME ZONE 'UTC')::date - 30
+WHERE k.user_id = $1
+GROUP BY k.id
+ORDER BY k.revoked_at IS NOT NULL, k.created_at DESC
 LIMIT 50;
 
 -- name: RevokeKey :execrows
@@ -150,10 +156,10 @@ ON CONFLICT (key_id, day) DO UPDATE SET
     limited = key_usage.limited + EXCLUDED.limited;
 
 -- name: KeyUsage :many
--- A key's days with calls since a day, newest first. Check ownership with OwnsKey.
+-- A key's days with calls since a day, newest first. Check ownership with OwnKey.
 SELECT day, calls, errors, limited FROM key_usage
 WHERE key_id = @key_id AND day >= @since::date
 ORDER BY day DESC;
 
--- name: OwnsKey :one
-SELECT EXISTS (SELECT 1 FROM api_keys WHERE id = @id AND user_id = @user_id);
+-- name: OwnKey :one
+SELECT name, prefix FROM api_keys WHERE id = @id AND user_id = @user_id;
