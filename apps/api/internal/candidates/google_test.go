@@ -48,3 +48,14 @@ func TestGoogleGenerate(t *testing.T) {
 		t.Error("Lozi is not offered by Google Translate; want an error")
 	}
 }
+
+func TestGooglePhrase(t *testing.T) {
+	var target string
+	got, err := fakeGoogle(t, &target).Phrase(context.Background(), PhraseRequest{Language: "bem", SourceEn: "Good morning"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target != "bem" || got.Model != "google-translate-nmt" || len(got.Candidates) != 1 || got.Candidates[0].Text != "menshi & ifyakulya" {
+		t.Errorf("Phrase = %+v (target %q)", got, target)
+	}
+}

@@ -11,6 +11,109 @@ import (
 	"github.com/google/uuid"
 )
 
+const findPhrase = `-- name: FindPhrase :one
+SELECT id FROM phrases
+WHERE language_code = $1 AND pack = $2 AND source_en_fold = fold($3::text) AND text_fold = fold($4::text)
+LIMIT 1
+`
+
+type FindPhraseParams struct {
+	Language string
+	Pack     string
+	SourceEn string
+	Text     string
+}
+
+// The phrase already proposed for this line with this text, folded.
+func (q *Queries) FindPhrase(ctx context.Context, arg FindPhraseParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, findPhrase,
+		arg.Language,
+		arg.Pack,
+		arg.SourceEn,
+		arg.Text,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getListLine = `-- name: GetListLine :one
+SELECT id, pack, source_en, notes, concept_id FROM phrase_list WHERE id = $1
+`
+
+type GetListLineRow struct {
+	ID        uuid.UUID
+	Pack      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.UUID
+}
+
+func (q *Queries) GetListLine(ctx context.Context, id uuid.UUID) (GetListLineRow, error) {
+	row := q.db.QueryRow(ctx, getListLine, id)
+	var i GetListLineRow
+	err := row.Scan(
+		&i.ID,
+		&i.Pack,
+		&i.SourceEn,
+		&i.Notes,
+		&i.ConceptID,
+	)
+	return i, err
+}
+
+const insertPhrase = `-- name: InsertPhrase :exec
+INSERT INTO phrases (id, language_code, concept_id, pack, text, source_en, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertPhraseParams struct {
+	ID        uuid.UUID
+	Language  string
+	ConceptID uuid.NullUUID
+	Pack      string
+	Text      string
+	SourceEn  string
+	Notes     string
+}
+
+func (q *Queries) InsertPhrase(ctx context.Context, arg InsertPhraseParams) error {
+	_, err := q.db.Exec(ctx, insertPhrase,
+		arg.ID,
+		arg.Language,
+		arg.ConceptID,
+		arg.Pack,
+		arg.Text,
+		arg.SourceEn,
+		arg.Notes,
+	)
+	return err
+}
+
+const listLineIDs = `-- name: ListLineIDs :many
+SELECT id FROM phrase_list ORDER BY pack, source_en
+`
+
+func (q *Queries) ListLineIDs(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listLineIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPack = `-- name: ListPack :many
 SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
 FROM phrases p JOIN items i ON i.id = p.id
@@ -59,6 +162,17 @@ func (q *Queries) ListPack(ctx context.Context, arg ListPackParams) ([]ListPackR
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockPhrases = `-- name: LockPhrases :exec
+SELECT pg_advisory_xact_lock(hashtext('phrases:' || $1::text))
+`
+
+// Serialises candidate writes per language, so two providers proposing the
+// same phrase at once agree on one item.
+func (q *Queries) LockPhrases(ctx context.Context, languageCode string) error {
+	_, err := q.db.Exec(ctx, lockPhrases, languageCode)
+	return err
 }
 
 const matchEnglish = `-- name: MatchEnglish :many

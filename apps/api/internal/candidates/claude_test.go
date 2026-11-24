@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go/v2"
@@ -108,5 +109,23 @@ func TestClaudeGenerateFailures(t *testing.T) {
 				t.Errorf("err = %v, want %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestClaudePhrase(t *testing.T) {
+	c, body, _ := fakeClaude(t, "end_turn", `{"phrases":[{"text":"Mwashibukeni","notes":"to many or an elder"}]}`)
+	got, err := c.Phrase(context.Background(), PhraseRequest{Language: "bem", Pack: "greetings", SourceEn: "Good morning", Notes: "said on arrival"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Model != "claude-opus-5-5" || len(got.Candidates) != 1 || got.Candidates[0].Text != "Mwashibukeni" {
+		t.Errorf("Phrase = %+v", got)
+	}
+	req := *body
+	system := req["system"].([]any)[0].(map[string]any)["text"].(string)
+	user := req["messages"].([]any)[0].(map[string]any)["content"].([]any)[0].(map[string]any)["text"].(string)
+	if !strings.Contains(system, "phrase packs") || !strings.Contains(system, "{name}") ||
+		!strings.Contains(user, `"Good morning"`) || !strings.Contains(user, "said on arrival") {
+		t.Errorf("system %q\nuser %q", system, user)
 	}
 }

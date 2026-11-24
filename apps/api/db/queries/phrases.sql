@@ -31,3 +31,24 @@ FROM phrases p JOIN items i ON i.id = p.id
 WHERE p.language_code = @language AND p.text_fold = fold(@text::text) AND i.status = 'verified'
 ORDER BY p.pack, p.id
 LIMIT 10;
+
+-- name: ListLineIDs :many
+SELECT id FROM phrase_list ORDER BY pack, source_en;
+
+-- name: GetListLine :one
+SELECT id, pack, source_en, notes, concept_id FROM phrase_list WHERE id = $1;
+
+-- Serialises candidate writes per language, so two providers proposing the
+-- same phrase at once agree on one item.
+-- name: LockPhrases :exec
+SELECT pg_advisory_xact_lock(hashtext('phrases:' || @language_code::text));
+
+-- name: FindPhrase :one
+-- The phrase already proposed for this line with this text, folded.
+SELECT id FROM phrases
+WHERE language_code = @language AND pack = @pack AND source_en_fold = fold(@source_en::text) AND text_fold = fold(@text::text)
+LIMIT 1;
+
+-- name: InsertPhrase :exec
+INSERT INTO phrases (id, language_code, concept_id, pack, text, source_en, notes)
+VALUES (@id, @language, @concept_id, @pack, @text, @source_en, @notes);

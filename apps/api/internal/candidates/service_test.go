@@ -2,6 +2,7 @@ package candidates_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/candidates"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
@@ -18,6 +20,15 @@ type fixed candidates.Result
 
 func (f fixed) Generate(context.Context, candidates.Request) (candidates.Result, error) {
 	return candidates.Result(f), nil
+}
+
+// Phrase proposes each word candidate's headword as a phrase.
+func (f fixed) Phrase(context.Context, candidates.PhraseRequest) (candidates.PhraseResult, error) {
+	out := candidates.PhraseResult{Model: f.Model}
+	for _, c := range f.Candidates {
+		out.Candidates = append(out.Candidates, candidates.PhraseCandidate{Text: c.Headword, Notes: c.Plural})
+	}
+	return out, nil
 }
 
 func TestGenerateStoresMachineCandidates(t *testing.T) {
@@ -55,7 +66,7 @@ func TestGenerateStoresMachineCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (candidates.Stats{Proposed: 3, Senses: 2}); stats != want {
+	if want := (candidates.Stats{Proposed: 3, New: 2}); stats != want {
 		t.Errorf("first run = %+v, want %+v", stats, want)
 	}
 	again, err := svc.Generate(ctx, conceptID, "bem")
@@ -154,5 +165,50 @@ func TestAgreementAcrossProviders(t *testing.T) {
 	run("GATITOS", "zzmoto")
 	if got := priorities(); got["zzmulilo"] != "standard" || got["zzmoto"] != "full" {
 		t.Errorf("two of three agree = %v, want zzmulilo standard, zzmoto full", got)
+	}
+}
+
+// TestGeneratePhraseStoresMachinePhrases: each proposal for a line becomes a
+// machine phrase in the line's pack, citing the provider; a second provider
+// proposing the same text agrees on that phrase (AI-1, AI-2, AI-3).
+func TestGeneratePhraseStoresMachinePhrases(t *testing.T) {
+	ctx := context.Background()
+	tx := dbtest.Tx(t)
+	if _, err := phrases.ImportList(ctx, tx, strings.NewReader("pack,source_en,notes\nzz-greet,Zz good morning,on arrival\n")); err != nil {
+		t.Fatal(err)
+	}
+	var lineID uuid.UUID
+	if err := tx.QueryRow(ctx, "SELECT id FROM phrase_list WHERE pack = 'zz-greet'").Scan(&lineID); err != nil {
+		t.Fatal(err)
+	}
+	claude, err := sources.Lookup(ctx, tx, "Claude")
+	if err != nil {
+		t.Fatal(err)
+	}
+	google, err := sources.Lookup(ctx, tx, "Google Translate")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byClaude := fixed{Model: "claude-test-1", Candidates: []candidates.Candidate{{Headword: "Zz mwashibukeni", Plural: "to many"}, {Headword: "Zz shibukeni"}}}
+	if stats, err := candidates.NewService(tx, byClaude, claude, "ai:test").GeneratePhrase(ctx, lineID, "bem"); err != nil || stats != (candidates.Stats{Proposed: 2, New: 2}) {
+		t.Fatalf("claude = %+v, %v; want 2 new phrases", stats, err)
+	}
+	byGoogle := fixed{Model: "google-test", Candidates: []candidates.Candidate{{Headword: "zz  Mwashibukeni"}}}
+	if stats, err := candidates.NewService(tx, byGoogle, google, "ai:test").GeneratePhrase(ctx, lineID, "bem"); err != nil || stats != (candidates.Stats{Proposed: 1}) {
+		t.Fatalf("google = %+v, %v; want 1 proposal agreeing with Claude's", stats, err)
+	}
+
+	var n, cited int
+	var status, notes string
+	err = tx.QueryRow(ctx, `SELECT count(*) OVER (), i.status, p.notes,
+			(SELECT count(*) FROM item_sources s WHERE s.item_id = p.id)::int
+		FROM phrases p JOIN items i ON i.id = p.id
+		WHERE p.pack = 'zz-greet' AND p.text = 'Zz mwashibukeni'`).Scan(&n, &status, &notes, &cited)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != "machine" || notes != "to many" || cited != 2 {
+		t.Errorf("phrase = %s %q cited by %d; want machine, Claude's notes, cited by both providers", status, notes, cited)
 	}
 }

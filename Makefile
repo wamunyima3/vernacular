@@ -112,6 +112,10 @@ PROVIDER ?= claude
 candidates: ## Queue AI candidate jobs for every core concept: make candidates LANG=bem [PROVIDER=google]
 	cd $(API_DIR) && go run ./cmd/worker -enqueue $(LANG) -provider $(PROVIDER)
 
+.PHONY: phrase-candidates
+phrase-candidates: ## Queue AI candidate jobs for every line of the phrase list: make phrase-candidates LANG=bem [PROVIDER=google]
+	cd $(API_DIR) && go run ./cmd/worker -enqueue $(LANG) -provider $(PROVIDER) -phrases
+
 .PHONY: dev-web
 dev-web:
 	pnpm --filter @vernacular/web dev

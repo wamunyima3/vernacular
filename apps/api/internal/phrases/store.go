@@ -20,15 +20,16 @@ type Phrase struct {
 	Trust                 items.Trust
 }
 
-// Store reads phrase packs.
+// Store reads phrase packs and records phrase candidates.
 type Store struct {
-	q     *dbgen.Queries
-	items *items.Store
+	q      *dbgen.Queries
+	items  *items.Store
+	locked map[string]bool // languages this transaction holds the candidate lock for
 }
 
 // NewStore wraps a pool or transaction.
 func NewStore(db dbgen.DBTX) *Store {
-	return &Store{q: dbgen.New(db), items: items.NewStore(db)}
+	return &Store{q: dbgen.New(db), items: items.NewStore(db), locked: map[string]bool{}}
 }
 
 // Pack reads a pack's phrases in a language at or above minStatus.

@@ -33,19 +33,36 @@ func NewGoogle(client *translate.Client) *Google { return &Google{client: client
 
 // Generate translates one concept's English gloss.
 func (g *Google) Generate(ctx context.Context, r Request) (Result, error) {
-	target, ok := googleCodes[r.Language]
-	if !ok {
-		return Result{}, fmt.Errorf("google translate does not offer %q", r.Language)
+	model, text, err := g.translate(ctx, r.Language, r.Concept.GlossEn)
+	if err != nil {
+		return Result{}, err
 	}
-	out, err := g.client.Translate(ctx, []string{r.Concept.GlossEn}, target, &translate.Options{
+	return Result{Model: model, Candidates: []Candidate{{Headword: text}}}, nil
+}
+
+// Phrase translates one line of the phrase list.
+func (g *Google) Phrase(ctx context.Context, r PhraseRequest) (PhraseResult, error) {
+	model, text, err := g.translate(ctx, r.Language, r.SourceEn)
+	if err != nil {
+		return PhraseResult{}, err
+	}
+	return PhraseResult{Model: model, Candidates: []PhraseCandidate{{Text: text}}}, nil
+}
+
+// translate returns Google's model version and its translation of English text.
+func (g *Google) translate(ctx context.Context, lang, text string) (model, out string, err error) {
+	target, ok := googleCodes[lang]
+	if !ok {
+		return "", "", fmt.Errorf("google translate does not offer %q", lang)
+	}
+	res, err := g.client.Translate(ctx, []string{text}, target, &translate.Options{
 		Source: language.English, Format: translate.Text, Model: googleModel,
 	})
 	if err != nil {
-		return Result{}, fmt.Errorf("google translate: %w", err)
+		return "", "", fmt.Errorf("google translate: %w", err)
 	}
-	if len(out) == 0 {
-		return Result{}, errors.New("google translate returned nothing")
+	if len(res) == 0 {
+		return "", "", errors.New("google translate returned nothing")
 	}
-	model := "google-translate-" + cmp.Or(out[0].Model, googleModel)
-	return Result{Model: model, Candidates: []Candidate{{Headword: html.UnescapeString(out[0].Text)}}}, nil
+	return "google-translate-" + cmp.Or(res[0].Model, googleModel), html.UnescapeString(res[0].Text), nil
 }

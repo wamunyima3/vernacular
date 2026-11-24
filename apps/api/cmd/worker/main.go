@@ -1,9 +1,10 @@
 // Command worker runs background jobs with River. Today that is AI candidate
-// generation (P1-AI-01):
+// generation for words (P1-AI-01) and phrases (P1-AI-04):
 //
 //	worker                 run jobs until interrupted
 //	worker -enqueue bem                   queue Claude jobs for every core concept, then exit
 //	worker -enqueue nya -provider google  the same with Google Translate
+//	worker -enqueue bem -phrases          queue Claude jobs for every line of the phrase list
 package main
 
 import (
@@ -52,6 +53,7 @@ func main() {
 func run(ctx context.Context) error {
 	enqueue := flag.String("enqueue", "", "queue candidate jobs for every core concept in this language (bem or nya), then exit")
 	provider := flag.String("provider", candidates.ProviderClaude, "claude or google")
+	phraseList := flag.Bool("phrases", false, "with -enqueue: queue the phrase list instead of the core concepts")
 	flag.Parse()
 	cfg, err := env.ParseAs[config]()
 	if err != nil {
@@ -69,7 +71,11 @@ func run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		n, err := candidates.EnqueueCore(ctx, pool, client, *provider, *enqueue)
+		enqueueAll := candidates.EnqueueCore
+		if *phraseList {
+			enqueueAll = candidates.EnqueuePhrases
+		}
+		n, err := enqueueAll(ctx, pool, client, *provider, *enqueue)
 		if err != nil {
 			return err
 		}
@@ -101,6 +107,7 @@ func newClient(ctx context.Context, pool *pgxpool.Pool, cfg config, log *slog.Lo
 	}
 	workers := river.NewWorkers()
 	river.AddWorker(workers, candidates.NewWorker(providers, log))
+	river.AddWorker(workers, candidates.NewPhraseWorker(providers, log))
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Logger:  log,
 		Queues:  map[string]river.QueueConfig{candidates.Queue: {MaxWorkers: cfg.AIConcurrency}},

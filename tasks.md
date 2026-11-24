@@ -106,6 +106,10 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-AI-02** River job: generate Google Translate candidates (bem, ny only) (S) → AI-1, AI-2
 - [x] **P1-AI-03** Agreement scoring and review priority (M) → AI-3, US-21
 
+- [ ] **P1-AI-04** Phrase candidates: P1-AI-01 generated words only, so the phrase packs are still empty (found during P2-05). Split:
+  - [x] **P1-AI-04a** River job: Claude and Google propose each phrase-list line in a language, stored as `machine` phrases; identical proposals agree on one item (M) → AI-1, AI-2, PHR-1
+  - [ ] **P1-AI-04b** The review queue serves phrase candidates: cards, decisions, promotion and "write my own" for phrases (M) → CON-2, US-20
+
 ### Review
 
 - [x] **P1-AI-03a** Apply the /simplify findings on P1-AI-02/03 (S): agreement and priority are now the `review_agreement` view, read by the queue; restem reads active languages; provider source names live in `candidates`

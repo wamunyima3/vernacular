@@ -16,6 +16,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 )
 
@@ -39,10 +40,28 @@ type Result struct {
 	Candidates []Candidate
 }
 
-// Generator proposes candidates. Claude is one; Google Translate (P1-AI-02)
-// will be another.
+// PhraseRequest is one line of the phrase source list to say in one language.
+type PhraseRequest struct {
+	Language, Pack, SourceEn, Notes string
+}
+
+// PhraseCandidate is one way a model proposed to say a phrase.
+type PhraseCandidate struct {
+	Text  string `json:"text"`
+	Notes string `json:"notes"`
+}
+
+// PhraseResult is what a model returned for a phrase.
+type PhraseResult struct {
+	Model      string
+	Candidates []PhraseCandidate
+}
+
+// Generator proposes candidates: words for a concept, and phrases for a line
+// of the phrase list. Claude and Google Translate are the two.
 type Generator interface {
 	Generate(ctx context.Context, r Request) (Result, error)
+	Phrase(ctx context.Context, r PhraseRequest) (PhraseResult, error)
 }
 
 // ErrRefused means the model declined. Retrying will not help.
@@ -70,10 +89,10 @@ func NewService(db database.Beginner, gen Generator, sourceID uuid.UUID, actor s
 	return &Service{db: db, gen: gen, sourceID: sourceID, actor: actor}
 }
 
-// Stats counts what one Generate call stored. Proposals that are not new
-// senses agreed with a word already in the lexicon.
+// Stats counts what one call stored: proposals, and the new senses or
+// phrases among them. The rest agreed with an item already there.
 type Stats struct {
-	Proposed, Senses int
+	Proposed, New int
 }
 
 // Generate asks the model for one concept in one language and stores the
@@ -109,7 +128,44 @@ func (s *Service) Generate(ctx context.Context, conceptID uuid.UUID, language st
 				return fmt.Errorf("candidate %q: %w", c.Headword, err)
 			}
 			if added.Sense {
-				stats.Senses++
+				stats.New++
+			}
+		}
+		return nil
+	})
+	return stats, err
+}
+
+// GeneratePhrase asks the model for one line of the phrase list in one
+// language and stores each proposal as a machine phrase (AI-1, PHR-1). It
+// returns how many were proposed and how many were new phrases.
+func (s *Service) GeneratePhrase(ctx context.Context, lineID uuid.UUID, language string) (Stats, error) {
+	var line phrases.Line
+	err := database.InTx(ctx, s.db, s.actor, func(tx pgx.Tx) error {
+		var err error
+		line, err = phrases.NewStore(tx).Line(ctx, lineID)
+		return err
+	})
+	if err != nil {
+		return Stats{}, err
+	}
+
+	res, err := s.gen.Phrase(ctx, PhraseRequest{Language: language, Pack: line.Pack, SourceEn: line.SourceEn, Notes: line.Notes})
+	if err != nil {
+		return Stats{}, err
+	}
+
+	stats := Stats{Proposed: len(res.Candidates)}
+	origin := items.Machine(s.sourceID, res.Model, "phrase:"+line.ID.String())
+	err = database.InTx(ctx, s.db, s.actor, func(tx pgx.Tx) error {
+		store := phrases.NewStore(tx)
+		for _, c := range res.Candidates {
+			added, err := store.Propose(ctx, language, line, c.Text, c.Notes, origin)
+			if err != nil {
+				return fmt.Errorf("phrase candidate %q: %w", c.Text, err)
+			}
+			if added {
+				stats.New++
 			}
 		}
 		return nil
