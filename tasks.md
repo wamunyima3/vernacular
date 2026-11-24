@@ -180,6 +180,9 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 Done when: four languages are live and the dictionary and phrase API has launched publicly.
 
 - [ ] **P2-01** Add Tonga and Lozi: style guides, stemmers, AI candidates (Claude only) (L, split)
+  - [x] **P2-01a** Tonga (`toi`): draft style guide, spelling rules (`ch` → `c`, `ŋ` → `ng'`), stemmer, Claude prompt (S). Google Translate does not offer it
+  - [ ] **P2-01b** Lozi (`loz`): the same (S)
+  - [ ] **P2-01c** Activate Tonga and Lozi once each style guide is signed off by two senior reviewers 👤
 - [x] **P2-02** Release builder job and `GET /v1/releases` (M) → PRV-4, US-11, US-29. Split:
   - [x] **P2-02a** Build a release (admin, `POST /v1/releases`) that freezes the verified items with counts and changes against the previous release; `GET /v1/releases`; the portal releases page (M). Built in the request, in one transaction; move it to a River job if a build outgrows a request
   - [x] **P2-02b** Pinned reads (ADR-0012). Split:

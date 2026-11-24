@@ -10,6 +10,8 @@ var orthography = map[string]*strings.Replacer{
 	"bem": strings.NewReplacer("ch", "c", "ŋ", "ng'"),
 	// nya.md: c for /tʃ/, w not Malawian ŵ, ng' for /ŋ/.
 	"nya": strings.NewReplacer("ch", "c", "ŵ", "w", "ŋ", "ng'"),
+	// toi.md: c for /tʃ/, ng' for /ŋ/. The bb/b rule is left to reviewers.
+	"toi": strings.NewReplacer("ch", "c", "ŋ", "ng'"),
 }
 
 // Standardise returns the standard spelling of a normalised headword, and the

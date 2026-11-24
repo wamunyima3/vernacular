@@ -39,8 +39,8 @@ func fakeClaude(t *testing.T, stopReason, text string) (*Claude, *map[string]any
 	t.Cleanup(srv.Close)
 
 	dir := t.TempDir()
-	for _, f := range []string{"common.md", "bem.md", "nya.md"} {
-		if err := os.WriteFile(filepath.Join(dir, f), []byte("# "+f+"\nUse c, not ch."), 0o600); err != nil {
+	for f, title := range map[string]string{"common.md": "Common", "bem.md": "Bemba (Icibemba)", "nya.md": "Nyanja (Cinyanja)"} {
+		if err := os.WriteFile(filepath.Join(dir, f), []byte("# "+title+" style guide\nUse c, not ch."), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -127,5 +127,19 @@ func TestClaudePhrase(t *testing.T) {
 	if !strings.Contains(system, "phrase packs") || !strings.Contains(system, "{name}") ||
 		!strings.Contains(user, `"Good morning"`) || !strings.Contains(user, "said on arrival") {
 		t.Errorf("system %q\nuser %q", system, user)
+	}
+}
+
+// TestClaudeReadsTheStyleGuides: every guide in docs/style-guides has a title
+// Claude can name its language by.
+func TestClaudeReadsTheStyleGuides(t *testing.T) {
+	c, err := NewClaude(anthropic.NewClient(option.WithAPIKey("test")), "../../../../docs/style-guides")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, code := range []string{"bem", "nya", "toi"} {
+		if !strings.Contains(c.words[code], "style guide") {
+			t.Errorf("no prompt for %s", code)
+		}
 	}
 }

@@ -19,6 +19,9 @@ func TestStemGroupsShareAStem(t *testing.T) {
 		{"nya", []string{"munthu", "anthu", "cinthu", "zinthu"}},
 		{"nya", []string{"mtengo", "mitengo", "mutengo"}},
 		{"nya", []string{"kudya", "dya"}},
+		{"toi", []string{"muntu", "bantu", "cintu", "zintu", "kantu", "tuntu", "buntu"}},
+		{"toi", []string{"musamu", "misamu"}},
+		{"toi", []string{"kulya", "lya"}},
 	}
 	for _, g := range groups {
 		want := lexicon.Stem(g.lang, g.words[0])

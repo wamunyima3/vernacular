@@ -13,7 +13,9 @@ func TestStandardise(t *testing.T) {
 		{"bem", "ŋombe", "ng'ombe", "ŋombe"},
 		{"nya", "chinthu", "cinthu", "chinthu"},
 		{"nya", "aŵiri", "awiri", "aŵiri"},
-		{"toi", "chintu", "chintu", ""}, // no rules yet
+		{"toi", "chintu", "cintu", "chintu"},
+		{"toi", "ŋombe", "ng'ombe", "ŋombe"},
+		{"loz", "chintu", "chintu", ""}, // no rules yet
 	}
 	for _, tt := range tests {
 		got, variant := lexicon.Standardise(tt.lang, tt.in)

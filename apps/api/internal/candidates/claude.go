@@ -93,28 +93,41 @@ type Claude struct {
 	phrases map[string]string // language code → system prompt for phrases
 }
 
-// languageNames lists the languages Claude is asked about, by code. Own
-// names follow the style guides (c, not ch), which the languages table
-// predates.
-var languageNames = map[string]string{"bem": "Bemba (Icibemba)", "nya": "Nyanja (Cinyanja)"}
-
 // NewClaude builds a generator whose prompts include the style guides in dir
-// (docs/style-guides: common.md plus <code>.md per language).
+// (docs/style-guides: common.md plus <code>.md per language). Claude is asked
+// about every language with a guide, by the name in the guide's title, so its
+// own name follows the guide's spelling (c, not ch).
 func NewClaude(client anthropic.Client, dir string) (*Claude, error) {
 	common, err := os.ReadFile(filepath.Join(dir, "common.md"))
 	if err != nil {
 		return nil, fmt.Errorf("read style guide: %w", err)
 	}
+	paths, err := filepath.Glob(filepath.Join(dir, "[a-z][a-z][a-z].md"))
+	if err != nil {
+		return nil, err
+	}
 	c := &Claude{client: client, words: map[string]string{}, phrases: map[string]string{}}
-	for code, name := range languageNames {
-		guide, err := os.ReadFile(filepath.Join(dir, code+".md"))
+	for _, path := range paths {
+		guide, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("read style guide: %w", err)
 		}
+		name, ok := guideName(guide)
+		if !ok {
+			return nil, fmt.Errorf("style guide %s: the first line must be \"# <Language> style guide\"", path)
+		}
+		code := strings.TrimSuffix(filepath.Base(path), ".md")
 		c.words[code] = systemPrompt(name, wordTask(name), string(common), string(guide))
 		c.phrases[code] = systemPrompt(name, phraseTask(name), string(common), string(guide))
 	}
 	return c, nil
+}
+
+// guideName reads the language from a guide's title, "# Bemba (Icibemba) style guide".
+func guideName(guide []byte) (string, bool) {
+	title, _, _ := strings.Cut(string(guide), "\n")
+	name, ok := strings.CutSuffix(strings.TrimPrefix(title, "# "), " style guide")
+	return name, ok && name != "" && strings.HasPrefix(title, "# ")
 }
 
 func wordTask(language string) string {
