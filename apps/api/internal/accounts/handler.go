@@ -134,3 +134,53 @@ func (h *Handler) RevokeKey(ctx context.Context, req gen.RevokeKeyRequestObject)
 	}
 	return gen.RevokeKey204Response{}, nil
 }
+
+// StartQualification implements POST /v1/qualifications.
+func (h *Handler) StartQualification(ctx context.Context, req gen.StartQualificationRequestObject) (gen.StartQualificationResponseObject, error) {
+	t, err := h.svc.StartTest(ctx, req.Body.Language)
+	if err != nil {
+		return nil, err
+	}
+	questions := make([]gen.QualificationQuestion, len(t.Questions))
+	for i, q := range t.Questions {
+		options := make([]gen.QualificationOption, len(q.Options))
+		for j, o := range q.Options {
+			options[j] = gen.QualificationOption{Id: o.ID, Headword: o.Headword}
+		}
+		questions[i] = gen.QualificationQuestion{GlossEn: q.GlossEn, Options: options}
+	}
+	return gen.StartQualification201JSONResponse{Id: t.ID, Language: t.Language, Questions: questions}, nil
+}
+
+// AnswerQualification implements POST /v1/qualifications/{id}/answers.
+func (h *Handler) AnswerQualification(ctx context.Context, req gen.AnswerQualificationRequestObject) (gen.AnswerQualificationResponseObject, error) {
+	r, err := h.svc.AnswerTest(ctx, req.Id, req.Body.Answers)
+	if err != nil {
+		return nil, err
+	}
+	return gen.AnswerQualification200JSONResponse{Id: req.Id, Score: r.Score, Total: r.Total, Passed: r.Passed}, nil
+}
+
+// ConfirmQualification implements POST /v1/qualifications/{id}/confirmation.
+func (h *Handler) ConfirmQualification(ctx context.Context, req gen.ConfirmQualificationRequestObject) (gen.ConfirmQualificationResponseObject, error) {
+	if err := h.svc.ConfirmTest(ctx, req.Id); err != nil {
+		return nil, err
+	}
+	return gen.ConfirmQualification204Response{}, nil
+}
+
+// ListQualifications implements GET /v1/qualifications.
+func (h *Handler) ListQualifications(ctx context.Context, _ gen.ListQualificationsRequestObject) (gen.ListQualificationsResponseObject, error) {
+	rows, err := h.svc.PendingTests(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.PendingQualification, len(rows))
+	for i, r := range rows {
+		out[i] = gen.PendingQualification{
+			Id: r.ID, UserId: r.UserID, Name: r.Name, Language: r.LanguageCode,
+			Score: int(r.Score.Int32), Total: int(r.Total), AnsweredAt: r.AnsweredAt.Time,
+		}
+	}
+	return gen.ListQualifications200JSONResponse{Qualifications: out}, nil
+}

@@ -89,3 +89,53 @@ WHERE k.hash = $1 AND k.revoked_at IS NULL AND NOT coalesce(u.banned, false);
 -- last_used_at is kept to the hour, so busy keys do not write on every call.
 UPDATE api_keys SET last_used_at = now()
 WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 hour');
+
+-- name: LatestQualification :one
+-- The user's latest attempt in a language, to decide whether they may start another.
+SELECT passed, confirmed_at, created_at FROM qualification_attempts
+WHERE user_id = @user_id AND language_code = @language_code
+ORDER BY created_at DESC LIMIT 1;
+
+-- name: QualificationPool :many
+-- Up to 60 verified, current meanings of a language at random, one per
+-- entry, to draw questions and wrong options from (DQ-3).
+SELECT entry_id, headword, gloss_en FROM (
+    SELECT DISTINCT ON (e.id) e.id AS entry_id, e.headword, coalesce(c.gloss_en, s.gloss) AS gloss_en
+    FROM senses s
+    JOIN items i ON i.id = s.id
+    JOIN entries e ON e.id = s.entry_id
+    LEFT JOIN concepts c ON c.id = s.concept_id
+    WHERE i.language_code = @language_code AND i.status = 'verified' AND NOT retired(s.id)
+    ORDER BY e.id, s.position
+) pool
+ORDER BY random()
+LIMIT 60;
+
+-- name: CreateQualification :one
+INSERT INTO qualification_attempts (user_id, language_code, expected)
+VALUES (@user_id, @language_code, @expected)
+RETURNING id;
+
+-- name: LockQualification :one
+SELECT id, user_id, language_code, expected, passed, answered_at, confirmed_at
+FROM qualification_attempts WHERE id = $1 FOR UPDATE;
+
+-- name: ScoreQualification :exec
+UPDATE qualification_attempts SET score = @score::int, passed = @passed::boolean, answered_at = now()
+WHERE id = @id;
+
+-- name: ConfirmQualification :exec
+UPDATE qualification_attempts SET confirmed_by = @confirmed_by, confirmed_at = now() WHERE id = @id;
+
+-- name: GrantReviewer :exec
+-- Approves a qualified user as a reviewer; an existing approval stays as it is.
+INSERT INTO reviewer_approvals (user_id, language_code, level, approved_by)
+VALUES (@user_id, @language_code, 'reviewer', @approved_by)
+ON CONFLICT (user_id, language_code) DO NOTHING;
+
+-- name: PendingQualifications :many
+-- Passed attempts waiting for a senior reviewer of the languages, oldest first.
+SELECT q.id, q.user_id, u.name, q.language_code, q.score, cardinality(q.expected)::int AS total, q.answered_at
+FROM qualification_attempts q JOIN users u ON u.id = q.user_id
+WHERE q.language_code = ANY(@languages::text[]) AND q.passed AND q.confirmed_at IS NULL
+ORDER BY q.answered_at, q.id;

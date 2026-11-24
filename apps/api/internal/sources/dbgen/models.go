@@ -600,6 +600,20 @@ type ProviderQuality struct {
 	Corrected    int32
 }
 
+type QualificationAttempt struct {
+	ID           uuid.UUID
+	UserID       string
+	LanguageCode string
+	Expected     []uuid.UUID
+	Score        pgtype.Int4
+	Passed       pgtype.Bool
+	AnsweredAt   pgtype.Timestamptz
+	ConfirmedBy  pgtype.Text
+	ConfirmedAt  pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type Release struct {
 	ID          uuid.UUID
 	Name        string

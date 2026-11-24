@@ -398,6 +398,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/qualifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Passed qualification tests waiting for a senior reviewer
+         * @description Only the languages the signed-in user is a senior reviewer for, oldest first.
+         */
+        get: operations["listQualifications"];
+        put?: never;
+        /**
+         * Start a reviewer qualification test
+         * @description Ten questions drawn from the language's verified words: pick the word for each English
+         *     meaning (DQ-3). A pass is 8 or more; a senior reviewer then confirms it, which approves
+         *     you to review. After a fail you can try again the next day.
+         */
+        post: operations["startQualification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/qualifications/{id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand in a qualification test */
+        post: operations["answerQualification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/qualifications/{id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm a passed test, approving its taker as a reviewer (senior reviewers) */
+        post: operations["confirmQualification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/approvals": {
         parameters: {
             query?: never;
@@ -1191,6 +1251,45 @@ export interface components {
             item_id: string;
             headword: string;
             gloss: string;
+        };
+        QualificationTest: {
+            /** Format: uuid */
+            id: string;
+            language: components["schemas"]["LanguageCode"];
+            questions: components["schemas"]["QualificationQuestion"][];
+        };
+        QualificationQuestion: {
+            /** @description The English meaning */
+            gloss_en: string;
+            /** @description Four words; one means gloss_en */
+            options: components["schemas"]["QualificationOption"][];
+        };
+        QualificationOption: {
+            /** Format: uuid */
+            id: string;
+            headword: string;
+        };
+        QualificationResult: {
+            /** Format: uuid */
+            id: string;
+            score: number;
+            total: number;
+            /** @description A senior reviewer of the language confirms a pass before you can review */
+            passed: boolean;
+        };
+        QualificationList: {
+            qualifications: components["schemas"]["PendingQualification"][];
+        };
+        PendingQualification: {
+            /** Format: uuid */
+            id: string;
+            user_id: string;
+            name: string;
+            language: components["schemas"]["LanguageCode"];
+            score: number;
+            total: number;
+            /** Format: date-time */
+            answered_at: string;
         };
         Dispute: {
             language: components["schemas"]["LanguageCode"];
@@ -2010,6 +2109,105 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Undone; the items are back in the reviewer's queue */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listQualifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Passed tests to confirm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    startQualification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    language: components["schemas"]["LanguageCode"];
+                };
+            };
+        };
+        responses: {
+            /** @description The test */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationTest"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    answerQualification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The chosen option for each question, in order */
+                    answers: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The score */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationResult"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    confirmQualification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Confirmed; the taker is a reviewer of the language */
             204: {
                 headers: {
                     [name: string]: unknown;

@@ -13,6 +13,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const confirmQualification = `-- name: ConfirmQualification :exec
+UPDATE qualification_attempts SET confirmed_by = $1, confirmed_at = now() WHERE id = $2
+`
+
+type ConfirmQualificationParams struct {
+	ConfirmedBy pgtype.Text
+	ID          uuid.UUID
+}
+
+func (q *Queries) ConfirmQualification(ctx context.Context, arg ConfirmQualificationParams) error {
+	_, err := q.db.Exec(ctx, confirmQualification, arg.ConfirmedBy, arg.ID)
+	return err
+}
+
 const createKey = `-- name: CreateKey :one
 INSERT INTO api_keys (user_id, name, prefix, hash)
 SELECT $1, $2, $3, $4
@@ -43,6 +57,25 @@ func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (CreateKey
 	var i CreateKeyRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
 	return i, err
+}
+
+const createQualification = `-- name: CreateQualification :one
+INSERT INTO qualification_attempts (user_id, language_code, expected)
+VALUES ($1, $2, $3)
+RETURNING id
+`
+
+type CreateQualificationParams struct {
+	UserID       string
+	LanguageCode string
+	Expected     []uuid.UUID
+}
+
+func (q *Queries) CreateQualification(ctx context.Context, arg CreateQualificationParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createQualification, arg.UserID, arg.LanguageCode, arg.Expected)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteApproval = `-- name: DeleteApproval :execrows
@@ -126,6 +159,49 @@ func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionU
 		&i.Credited,
 		&i.Approvals,
 	)
+	return i, err
+}
+
+const grantReviewer = `-- name: GrantReviewer :exec
+INSERT INTO reviewer_approvals (user_id, language_code, level, approved_by)
+VALUES ($1, $2, 'reviewer', $3)
+ON CONFLICT (user_id, language_code) DO NOTHING
+`
+
+type GrantReviewerParams struct {
+	UserID       string
+	LanguageCode string
+	ApprovedBy   pgtype.Text
+}
+
+// Approves a qualified user as a reviewer; an existing approval stays as it is.
+func (q *Queries) GrantReviewer(ctx context.Context, arg GrantReviewerParams) error {
+	_, err := q.db.Exec(ctx, grantReviewer, arg.UserID, arg.LanguageCode, arg.ApprovedBy)
+	return err
+}
+
+const latestQualification = `-- name: LatestQualification :one
+SELECT passed, confirmed_at, created_at FROM qualification_attempts
+WHERE user_id = $1 AND language_code = $2
+ORDER BY created_at DESC LIMIT 1
+`
+
+type LatestQualificationParams struct {
+	UserID       string
+	LanguageCode string
+}
+
+type LatestQualificationRow struct {
+	Passed      pgtype.Bool
+	ConfirmedAt pgtype.Timestamptz
+	CreatedAt   time.Time
+}
+
+// The user's latest attempt in a language, to decide whether they may start another.
+func (q *Queries) LatestQualification(ctx context.Context, arg LatestQualificationParams) (LatestQualificationRow, error) {
+	row := q.db.QueryRow(ctx, latestQualification, arg.UserID, arg.LanguageCode)
+	var i LatestQualificationRow
+	err := row.Scan(&i.Passed, &i.ConfirmedAt, &i.CreatedAt)
 	return i, err
 }
 
@@ -266,6 +342,36 @@ func (q *Queries) ListReviewers(ctx context.Context, languageCode string) ([]Lis
 	return items, nil
 }
 
+const lockQualification = `-- name: LockQualification :one
+SELECT id, user_id, language_code, expected, passed, answered_at, confirmed_at
+FROM qualification_attempts WHERE id = $1 FOR UPDATE
+`
+
+type LockQualificationRow struct {
+	ID           uuid.UUID
+	UserID       string
+	LanguageCode string
+	Expected     []uuid.UUID
+	Passed       pgtype.Bool
+	AnsweredAt   pgtype.Timestamptz
+	ConfirmedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) LockQualification(ctx context.Context, id uuid.UUID) (LockQualificationRow, error) {
+	row := q.db.QueryRow(ctx, lockQualification, id)
+	var i LockQualificationRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.LanguageCode,
+		&i.Expected,
+		&i.Passed,
+		&i.AnsweredAt,
+		&i.ConfirmedAt,
+	)
+	return i, err
+}
+
 const markRetrained = `-- name: MarkRetrained :execrows
 UPDATE reviewer_approvals SET retrained_at = now() WHERE user_id = $1 AND language_code = $2
 `
@@ -281,6 +387,94 @@ func (q *Queries) MarkRetrained(ctx context.Context, arg MarkRetrainedParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const pendingQualifications = `-- name: PendingQualifications :many
+SELECT q.id, q.user_id, u.name, q.language_code, q.score, cardinality(q.expected)::int AS total, q.answered_at
+FROM qualification_attempts q JOIN users u ON u.id = q.user_id
+WHERE q.language_code = ANY($1::text[]) AND q.passed AND q.confirmed_at IS NULL
+ORDER BY q.answered_at, q.id
+`
+
+type PendingQualificationsRow struct {
+	ID           uuid.UUID
+	UserID       string
+	Name         string
+	LanguageCode string
+	Score        pgtype.Int4
+	Total        int32
+	AnsweredAt   pgtype.Timestamptz
+}
+
+// Passed attempts waiting for a senior reviewer of the languages, oldest first.
+func (q *Queries) PendingQualifications(ctx context.Context, languages []string) ([]PendingQualificationsRow, error) {
+	rows, err := q.db.Query(ctx, pendingQualifications, languages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingQualificationsRow
+	for rows.Next() {
+		var i PendingQualificationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.LanguageCode,
+			&i.Score,
+			&i.Total,
+			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const qualificationPool = `-- name: QualificationPool :many
+SELECT entry_id, headword, gloss_en FROM (
+    SELECT DISTINCT ON (e.id) e.id AS entry_id, e.headword, coalesce(c.gloss_en, s.gloss) AS gloss_en
+    FROM senses s
+    JOIN items i ON i.id = s.id
+    JOIN entries e ON e.id = s.entry_id
+    LEFT JOIN concepts c ON c.id = s.concept_id
+    WHERE i.language_code = $1 AND i.status = 'verified' AND NOT retired(s.id)
+    ORDER BY e.id, s.position
+) pool
+ORDER BY random()
+LIMIT 60
+`
+
+type QualificationPoolRow struct {
+	EntryID  uuid.UUID
+	Headword string
+	GlossEn  string
+}
+
+// Up to 60 verified, current meanings of a language at random, one per
+// entry, to draw questions and wrong options from (DQ-3).
+func (q *Queries) QualificationPool(ctx context.Context, languageCode string) ([]QualificationPoolRow, error) {
+	rows, err := q.db.Query(ctx, qualificationPool, languageCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QualificationPoolRow
+	for rows.Next() {
+		var i QualificationPoolRow
+		if err := rows.Scan(&i.EntryID, &i.Headword, &i.GlossEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revokeKey = `-- name: RevokeKey :execrows
@@ -299,6 +493,22 @@ func (q *Queries) RevokeKey(ctx context.Context, arg RevokeKeyParams) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const scoreQualification = `-- name: ScoreQualification :exec
+UPDATE qualification_attempts SET score = $1::int, passed = $2::boolean, answered_at = now()
+WHERE id = $3
+`
+
+type ScoreQualificationParams struct {
+	Score  int32
+	Passed bool
+	ID     uuid.UUID
+}
+
+func (q *Queries) ScoreQualification(ctx context.Context, arg ScoreQualificationParams) error {
+	_, err := q.db.Exec(ctx, scoreQualification, arg.Score, arg.Passed, arg.ID)
+	return err
 }
 
 const setCreditConsent = `-- name: SetCreditConsent :exec

@@ -22,10 +22,9 @@ type Service struct {
 // NewService returns an accounts service.
 func NewService(db database.Beginner) *Service { return &Service{db: db} }
 
-// requireSenior admits the language's senior reviewers, and admins, so a
-// language whose seniors are all suspended can still recover.
+// requireSenior admits those who may act as a senior reviewer of the language.
 func requireSenior(ctx context.Context, language string) (Principal, error) {
-	return Require(ctx, func(p Principal) bool { return p.IsSenior(language) || p.HasRole(gen.RoleAdmin) })
+	return Require(ctx, func(p Principal) bool { return p.SeniorOrAdmin(language) })
 }
 
 // Reviewers lists a language's reviewers with their agreement, suspended first.

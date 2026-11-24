@@ -59,6 +59,13 @@ func (p Principal) IsSenior(language string) bool {
 	return slices.Contains(p.SeniorLanguages(), language)
 }
 
+// SeniorOrAdmin reports whether the caller may act as a senior reviewer of a
+// language: its seniors, and admins, so a language whose seniors are all
+// suspended can still recover.
+func (p Principal) SeniorOrAdmin(language string) bool {
+	return p.IsSenior(language) || p.HasRole(gen.RoleAdmin)
+}
+
 // SeniorLanguages lists the languages the caller is an active senior reviewer for.
 func (p Principal) SeniorLanguages() []string {
 	var out []string

@@ -612,6 +612,102 @@ paths:
           description: Undone; the items are back in the reviewer's queue
         default:
           $ref: "#/components/responses/Error"
+  /v1/qualifications:
+    get:
+      operationId: listQualifications
+      summary: Passed qualification tests waiting for a senior reviewer
+      description: Only the languages the signed-in user is a senior reviewer for, oldest first.
+      tags: [review]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Passed tests to confirm
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QualificationList" }
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: startQualification
+      summary: Start a reviewer qualification test
+      description: |
+        Ten questions drawn from the language's verified words: pick the word for each English
+        meaning (DQ-3). A pass is 8 or more; a senior reviewer then confirms it, which approves
+        you to review. After a fail you can try again the next day.
+      tags: [review]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [language]
+              properties:
+                language: { $ref: "#/components/schemas/LanguageCode" }
+      responses:
+        "201":
+          description: The test
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QualificationTest" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/qualifications/{id}/answers:
+    post:
+      operationId: answerQualification
+      summary: Hand in a qualification test
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  description: The chosen option for each question, in order
+                  minItems: 1
+                  maxItems: 50
+                  items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The score
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QualificationResult" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/qualifications/{id}/confirmation:
+    post:
+      operationId: confirmQualification
+      summary: Confirm a passed test, approving its taker as a reviewer (senior reviewers)
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Confirmed; the taker is a reviewer of the language
+        default:
+          $ref: "#/components/responses/Error"
   /v1/approvals:
     get:
       operationId: listApprovals
@@ -1754,6 +1850,58 @@ components:
         item_id: { type: string, format: uuid }
         headword: { type: string }
         gloss: { type: string }
+    QualificationTest:
+      type: object
+      required: [id, language, questions]
+      properties:
+        id: { type: string, format: uuid }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        questions:
+          type: array
+          items: { $ref: "#/components/schemas/QualificationQuestion" }
+    QualificationQuestion:
+      type: object
+      required: [gloss_en, options]
+      properties:
+        gloss_en: { type: string, description: The English meaning }
+        options:
+          type: array
+          description: Four words; one means gloss_en
+          items: { $ref: "#/components/schemas/QualificationOption" }
+    QualificationOption:
+      type: object
+      required: [id, headword]
+      properties:
+        id: { type: string, format: uuid }
+        headword: { type: string }
+    QualificationResult:
+      type: object
+      required: [id, score, total, passed]
+      properties:
+        id: { type: string, format: uuid }
+        score: { type: integer }
+        total: { type: integer }
+        passed:
+          type: boolean
+          description: A senior reviewer of the language confirms a pass before you can review
+    QualificationList:
+      type: object
+      required: [qualifications]
+      properties:
+        qualifications:
+          type: array
+          items: { $ref: "#/components/schemas/PendingQualification" }
+    PendingQualification:
+      type: object
+      required: [id, user_id, name, language, score, total, answered_at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string }
+        name: { type: string }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        score: { type: integer }
+        total: { type: integer }
+        answered_at: { type: string, format: date-time }
     Dispute:
       type: object
       required: [language, gloss_en, candidate, disputed_since, reviews]
