@@ -112,3 +112,8 @@ money,savings,
 money,mobile money,
 money,Send money,button or instruction
 money,Withdraw money,button or instruction
+greetings,"Hello, {name}",{name}: a person's first name. Say whether the greeting changes for an elder.
+money,Amount due: K{amount},"{amount}: a number of kwacha, written in figures"
+money,You paid K{amount} to {name},{amount}: kwacha in figures; {name}: a person or business
+health,Your appointment is on {date},"{date}: a date, as the dates pack writes it"
+interface,{count} new messages,"{count}: a number. Say how the word for messages, and words agreeing with it, change when {count} is 1."

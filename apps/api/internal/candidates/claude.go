@@ -139,7 +139,7 @@ Each English concept you receive comes from a core vocabulary list. Give the ` +
 func phraseTask(language string) string {
 	return `You translate short everyday phrases into ` + language + `, a Zambian language, for phrase packs that apps and public services show to the people they serve: greetings, numbers, dates, interface labels, health and money.
 
-Each English line you receive names its pack and may carry a note on its context, such as "button". Give the ` + language + ` phrase speakers in Zambia would expect to see there, as natural speech rather than a word-for-word rendering. Give a second form only when the choice depends on who is addressed, such as one person or many, or an elder, and say so in its notes; at most two. Keep any placeholder in braces, such as {name}, exactly as written.`
+Each English line you receive names its pack and may carry a note on its context, such as "button". Give the ` + language + ` phrase speakers in Zambia would expect to see there, as natural speech rather than a word-for-word rendering. Give a second form only when the choice depends on who is addressed, such as one person or many, or an elder, and say so in its notes; at most two. Keep every placeholder in braces, such as {name}, exactly as written; a phrase that drops or renames one is discarded. When the words around a placeholder change with what fills it, such as agreement with a noun's class or one against many, say how in its notes.`
 }
 
 func systemPrompt(language, task, common, guide string) string {

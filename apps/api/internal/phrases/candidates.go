@@ -38,11 +38,15 @@ func (s *Store) Line(ctx context.Context, id uuid.UUID) (Line, error) {
 // as one of its sources. When the same text, folded, was already proposed
 // for the line, the origin is linked to that item instead, so providers that
 // agree raise one candidate (AI-3). Give it a transaction. It returns the
-// phrase, and whether it is new; empty text is no phrase.
+// phrase, and whether it is new; empty text is no phrase. Text that drops or
+// adds a placeholder fails with ErrPlaceholders.
 func (s *Store) Propose(ctx context.Context, language string, line Line, text, notes string, origin items.Origin) (uuid.UUID, bool, error) {
 	text = textnorm.Squash(textnorm.NFC(text))
 	if text == "" {
 		return uuid.Nil, false, nil
+	}
+	if err := checkPlaceholders(line.SourceEn, text); err != nil {
+		return uuid.Nil, false, err
 	}
 	if err := s.lock(ctx, language); err != nil {
 		return uuid.Nil, false, err

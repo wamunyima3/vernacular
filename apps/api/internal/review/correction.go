@@ -3,6 +3,7 @@ package review
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -71,6 +72,8 @@ func replacePhrase(ctx context.Context, tx pgx.Tx, reviewerID, language string, 
 	}
 	id, added, err := phr.Propose(ctx, language, line, c.Headword, "", items.Contributed(sourceID, reviewerID))
 	switch {
+	case errors.Is(err, phrases.ErrPlaceholders):
+		return nil, httpx.BadRequest(phrases.PlaceholderMessage(err))
 	case err != nil:
 		return nil, err
 	case id == uuid.Nil:

@@ -73,7 +73,15 @@ func phrase(ph Phrase) gen.Phrase {
 	return gen.Phrase{
 		Id: ph.ID, Text: ph.Text, SourceEn: ph.SourceEn, Notes: httpx.Optional(ph.Notes),
 		ConceptId: httpx.OptionalUUID(ph.ConceptID), Trust: ph.Trust.API(),
+		Placeholders: placeholders(ph.SourceEn),
 	}
+}
+
+func placeholders(source string) *[]string {
+	if p := Placeholders(source); len(p) > 0 {
+		return &p
+	}
+	return nil
 }
 
 // ExportPhrasePack implements GET /v1/phrases/export (PHR-3, US-12).

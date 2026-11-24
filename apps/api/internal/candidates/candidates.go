@@ -161,6 +161,9 @@ func (s *Service) GeneratePhrase(ctx context.Context, lineID uuid.UUID, language
 		store := phrases.NewStore(tx)
 		for _, c := range res.Candidates {
 			_, added, err := store.Propose(ctx, language, line, c.Text, c.Notes, origin)
+			if errors.Is(err, phrases.ErrPlaceholders) {
+				continue // the model dropped a placeholder; not worth a reviewer's time
+			}
 			if err != nil {
 				return fmt.Errorf("phrase candidate %q: %w", c.Text, err)
 			}

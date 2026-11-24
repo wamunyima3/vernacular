@@ -24,6 +24,9 @@ func ImportList(ctx context.Context, db database.Beginner, r io.Reader) (int, er
 		lex, q := lexicon.NewStore(tx), dbgen.New(tx)
 		return csvx.Each(r, []string{"pack", "source_en", "notes"}, func(rec []string) error {
 			source := textnorm.NFC(textnorm.Squash(rec[1]))
+			if err := checkSource(source); err != nil {
+				return err
+			}
 			concept, err := lex.ConceptFor(ctx, source)
 			if err != nil {
 				return err

@@ -1067,7 +1067,13 @@ export interface components {
             text: string;
             /** @example Good morning */
             source_en: string;
+            /** @description Context, and how the words around a placeholder change with what fills it */
             notes?: string;
+            /**
+             * @description Names in braces in `source_en` and `text`, such as `name` for `{name}`, which your app
+             *     fills in. Absent when the phrase has none (PHR-2).
+             */
+            placeholders?: string[];
             /** Format: uuid */
             concept_id?: string;
             trust: components["schemas"]["Trust"];

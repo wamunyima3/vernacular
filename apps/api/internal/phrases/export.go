@@ -55,6 +55,9 @@ func PO(pack, language string, phrases []Phrase) []byte {
 			}
 		}
 		fmt.Fprintf(&b, "#. id: %s, status: %s\n", p.ID, p.Trust.Status)
+		if len(Placeholders(p.SourceEn)) > 0 {
+			b.WriteString("#, python-brace-format\n") // lets msgfmt check the placeholders
+		}
 		fmt.Fprintf(&b, "msgid %s\nmsgstr %s\n\n", poQuote(p.SourceEn), poQuote(p.Text))
 	}
 	return b.Bytes()

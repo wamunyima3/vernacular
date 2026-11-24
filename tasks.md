@@ -190,7 +190,7 @@ Done when: four languages are live and the dictionary and phrase API has launche
     - [x] **P2-02b2** `release=` on the read endpoints, through a per-request connection on the release's `search_path`; `trust.release` filled; the `ETag` tied to the release (M) → US-11, NFR-3
 - [x] **P2-03** Open dataset export in open formats and the download page (M) → NFR-9, US-17
 - [x] **P2-04** `GET /v1/phrases/export` in JSON, PO and XLIFF (M) → PHR-3, US-12
-- [ ] **P2-05** Phrase placeholders with grammar notes (M) → PHR-2, US-32
+- [x] **P2-05** Phrase placeholders with grammar notes (M) → PHR-2, US-32
 - [ ] **P2-06** JavaScript and Python client libraries (M) → DEV-4, US-14
 - [ ] **P2-07** Usage dashboard per key (M) → DEV-5, US-13
 - [ ] **P2-08** Pronunciation audio with consent records (L, split) → LEX-8, NFR-6, US-33
