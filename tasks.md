@@ -196,6 +196,8 @@ Done when: four languages are live and the dictionary and phrase API has launche
   - [x] **P2-06b** `vernacular-client` (`clients/python`): openapi-python-client output in `vernacular/_api` from `make gen`, and a `Vernacular` class with the same named methods raising `VernacularError`; pytest and ruff in CI through uv (M)
   - [ ] **P2-06c** Publish both to npm and PyPI under the project's accounts 👤
 - [ ] **P2-07** Usage dashboard per key (M) → DEV-5, US-13
+  - [x] **P2-07a** api: calls per key per UTC day, counted in memory and flushed every 30 s into `key_usage` (calls, errors, 429s); `GET /v1/keys/{id}/usage` for the key's owner, with the per-minute limit (M)
+  - [ ] **P2-07b** web: usage per key on the account page: today, the last 30 days, and the limit (S)
 - [ ] **P2-08** Pronunciation audio with consent records (L, split) → LEX-8, NFR-6, US-33
 - [ ] **P2-09** Example sentences for every sense in the core list (M) → LEX-5
 - [ ] **P2-10** Quarterly 5% re-check sampling job (S) → DQ-6, US-28

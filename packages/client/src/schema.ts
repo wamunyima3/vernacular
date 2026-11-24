@@ -284,6 +284,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/keys/{id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily calls with one of your API keys
+         * @description Calls, errors and calls refused by the rate limit, per UTC day, newest first; days
+         *     without calls are left out (DEV-5, US-13). Counts arrive within a minute.
+         */
+        get: operations["getKeyUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/credit": {
         parameters: {
             query?: never;
@@ -1299,6 +1320,22 @@ export interface components {
             /** Format: date-time */
             answered_at: string;
         };
+        KeyUsage: {
+            /** Format: uuid */
+            key_id: string;
+            /** @description Calls a key may make per minute; 0 means unlimited */
+            limit_per_minute: number;
+            days: components["schemas"]["KeyUsageDay"][];
+        };
+        KeyUsageDay: {
+            /** Format: date */
+            day: string;
+            calls: number;
+            /** @description Calls answered with an error other than 429 */
+            errors: number;
+            /** @description Calls refused with 429 for going over the limit */
+            limited: number;
+        };
         Dispute: {
             language: components["schemas"]["LanguageCode"];
             gloss_en: string;
@@ -1970,6 +2007,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getKeyUsage: {
+        parameters: {
+            query?: {
+                /** @description How many days back, today included */
+                days?: number;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The key's usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyUsage"];
+                };
             };
             404: components["responses"]["Error"];
             default: components["responses"]["Error"];

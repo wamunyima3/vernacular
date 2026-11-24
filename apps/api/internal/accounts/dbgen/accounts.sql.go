@@ -13,6 +13,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addKeyUsage = `-- name: AddKeyUsage :exec
+INSERT INTO key_usage (key_id, day, calls, errors, limited)
+SELECT unnest($1::uuid[]), unnest($2::date[]), unnest($3::int[]), unnest($4::int[]), unnest($5::int[])
+ON CONFLICT (key_id, day) DO UPDATE SET
+    calls = key_usage.calls + EXCLUDED.calls,
+    errors = key_usage.errors + EXCLUDED.errors,
+    limited = key_usage.limited + EXCLUDED.limited
+`
+
+type AddKeyUsageParams struct {
+	KeyIds  []uuid.UUID
+	Days    []pgtype.Date
+	Calls   []int32
+	Errors  []int32
+	Limited []int32
+}
+
+// Adds one flush of counts, a row per key and day.
+func (q *Queries) AddKeyUsage(ctx context.Context, arg AddKeyUsageParams) error {
+	_, err := q.db.Exec(ctx, addKeyUsage,
+		arg.KeyIds,
+		arg.Days,
+		arg.Calls,
+		arg.Errors,
+		arg.Limited,
+	)
+	return err
+}
+
 const confirmQualification = `-- name: ConfirmQualification :exec
 UPDATE qualification_attempts SET confirmed_by = $1, confirmed_at = now() WHERE id = $2
 `
@@ -178,6 +207,50 @@ type GrantReviewerParams struct {
 func (q *Queries) GrantReviewer(ctx context.Context, arg GrantReviewerParams) error {
 	_, err := q.db.Exec(ctx, grantReviewer, arg.UserID, arg.LanguageCode, arg.ApprovedBy)
 	return err
+}
+
+const keyUsage = `-- name: KeyUsage :many
+SELECT day, calls, errors, limited FROM key_usage
+WHERE key_id = $1 AND day >= $2::date
+ORDER BY day DESC
+`
+
+type KeyUsageParams struct {
+	KeyID uuid.UUID
+	Since pgtype.Date
+}
+
+type KeyUsageRow struct {
+	Day     pgtype.Date
+	Calls   int32
+	Errors  int32
+	Limited int32
+}
+
+// A key's days with calls since a day, newest first. Check ownership with OwnsKey.
+func (q *Queries) KeyUsage(ctx context.Context, arg KeyUsageParams) ([]KeyUsageRow, error) {
+	rows, err := q.db.Query(ctx, keyUsage, arg.KeyID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []KeyUsageRow
+	for rows.Next() {
+		var i KeyUsageRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Calls,
+			&i.Errors,
+			&i.Limited,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const latestQualification = `-- name: LatestQualification :one
@@ -387,6 +460,22 @@ func (q *Queries) MarkRetrained(ctx context.Context, arg MarkRetrainedParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const ownsKey = `-- name: OwnsKey :one
+SELECT EXISTS (SELECT 1 FROM api_keys WHERE id = $1 AND user_id = $2)
+`
+
+type OwnsKeyParams struct {
+	ID     uuid.UUID
+	UserID string
+}
+
+func (q *Queries) OwnsKey(ctx context.Context, arg OwnsKeyParams) (bool, error) {
+	row := q.db.QueryRow(ctx, ownsKey, arg.ID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const pendingQualifications = `-- name: PendingQualifications :many

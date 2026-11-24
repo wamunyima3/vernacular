@@ -139,3 +139,21 @@ SELECT q.id, q.user_id, u.name, q.language_code, q.score, cardinality(q.expected
 FROM qualification_attempts q JOIN users u ON u.id = q.user_id
 WHERE q.language_code = ANY(@languages::text[]) AND q.passed AND q.confirmed_at IS NULL
 ORDER BY q.answered_at, q.id;
+
+-- name: AddKeyUsage :exec
+-- Adds one flush of counts, a row per key and day.
+INSERT INTO key_usage (key_id, day, calls, errors, limited)
+SELECT unnest(@key_ids::uuid[]), unnest(@days::date[]), unnest(@calls::int[]), unnest(@errors::int[]), unnest(@limited::int[])
+ON CONFLICT (key_id, day) DO UPDATE SET
+    calls = key_usage.calls + EXCLUDED.calls,
+    errors = key_usage.errors + EXCLUDED.errors,
+    limited = key_usage.limited + EXCLUDED.limited;
+
+-- name: KeyUsage :many
+-- A key's days with calls since a day, newest first. Check ownership with OwnsKey.
+SELECT day, calls, errors, limited FROM key_usage
+WHERE key_id = @key_id AND day >= @since::date
+ORDER BY day DESC;
+
+-- name: OwnsKey :one
+SELECT EXISTS (SELECT 1 FROM api_keys WHERE id = @id AND user_id = @user_id);

@@ -69,6 +69,8 @@ func run() error {
 		return err
 	}
 	log.Info("language detector trained", "languages", detector.Languages())
+	usage := accounts.NewUsage(pool)
+	go usage.Run(ctx, 30*time.Second, log)
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	handler := server.New(
@@ -92,6 +94,7 @@ func run() error {
 			Phrases:       phrases.NewStore(reads),
 			Detector:      detector,
 			Releases:      releases.NewService(pool),
+			Usage:         usage,
 		},
 	)
 
@@ -131,7 +134,11 @@ func run() error {
 	if metrics != nil {
 		_ = metrics.Shutdown(shutdownCtx)
 	}
-	return srv.Shutdown(shutdownCtx)
+	err = srv.Shutdown(shutdownCtx)
+	if ferr := usage.Flush(shutdownCtx); ferr != nil { // after the last call, before the pool closes
+		log.Error("key usage", "err", ferr)
+	}
+	return err
 }
 
 // metricsServer serves Prometheus metrics on their own port, or nil when addr is empty.

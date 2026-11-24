@@ -12,11 +12,14 @@ import (
 
 // Handler implements the account operations of the generated strict server.
 type Handler struct {
-	svc *Service
+	svc       *Service
+	perMinute int // calls a key may make per minute, for the usage dashboard
 }
 
-// NewHandler returns an accounts handler.
-func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
+// NewHandler returns an accounts handler. perMinute is the per-key rate limit.
+func NewHandler(svc *Service, perMinute int) *Handler {
+	return &Handler{svc: svc, perMinute: perMinute}
+}
 
 // GetMe implements GET /v1/me.
 func (h *Handler) GetMe(ctx context.Context, _ gen.GetMeRequestObject) (gen.GetMeResponseObject, error) {
@@ -183,4 +186,23 @@ func (h *Handler) ListQualifications(ctx context.Context, _ gen.ListQualificatio
 		}
 	}
 	return gen.ListQualifications200JSONResponse{Qualifications: out}, nil
+}
+
+// GetKeyUsage implements GET /v1/keys/{id}/usage.
+func (h *Handler) GetKeyUsage(ctx context.Context, req gen.GetKeyUsageRequestObject) (gen.GetKeyUsageResponseObject, error) {
+	days := 30
+	if req.Params.Days != nil {
+		days = *req.Params.Days
+	}
+	rows, err := h.svc.KeyUsage(ctx, req.Id, days)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.KeyUsageDay, len(rows))
+	for i, r := range rows {
+		out[i] = gen.KeyUsageDay{
+			Day: openapi_types.Date{Time: r.Day.Time}, Calls: int(r.Calls), Errors: int(r.Errors), Limited: int(r.Limited),
+		}
+	}
+	return gen.GetKeyUsage200JSONResponse{KeyId: req.Id, LimitPerMinute: h.perMinute, Days: out}, nil
 }

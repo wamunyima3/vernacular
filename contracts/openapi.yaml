@@ -461,6 +461,32 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/keys/{id}/usage:
+    get:
+      operationId: getKeyUsage
+      summary: Daily calls with one of your API keys
+      description: |
+        Calls, errors and calls refused by the rate limit, per UTC day, newest first; days
+        without calls are left out (DEV-5, US-13). Counts arrive within a minute.
+      tags: [accounts]
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: days
+          in: query
+          description: How many days back, today included
+          schema: { type: integer, minimum: 1, maximum: 90, default: 30 }
+      responses:
+        "200":
+          description: The key's usage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyUsage" }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/me/credit:
     put:
       operationId: setCredit
@@ -1911,6 +1937,25 @@ components:
         score: { type: integer }
         total: { type: integer }
         answered_at: { type: string, format: date-time }
+    KeyUsage:
+      type: object
+      required: [key_id, limit_per_minute, days]
+      properties:
+        key_id: { type: string, format: uuid }
+        limit_per_minute:
+          type: integer
+          description: Calls a key may make per minute; 0 means unlimited
+        days:
+          type: array
+          items: { $ref: "#/components/schemas/KeyUsageDay" }
+    KeyUsageDay:
+      type: object
+      required: [day, calls, errors, limited]
+      properties:
+        day: { type: string, format: date }
+        calls: { type: integer }
+        errors: { type: integer, description: Calls answered with an error other than 429 }
+        limited: { type: integer, description: Calls refused with 429 for going over the limit }
     Dispute:
       type: object
       required: [language, gloss_en, candidate, disputed_since, reviews]

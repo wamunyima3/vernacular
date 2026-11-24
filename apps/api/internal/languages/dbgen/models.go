@@ -558,6 +558,14 @@ type ItemSource struct {
 	CreatedAt time.Time
 }
 
+type KeyUsage struct {
+	KeyID   uuid.UUID
+	Day     pgtype.Date
+	Calls   int32
+	Errors  int32
+	Limited int32
+}
+
 type Language struct {
 	Code      string
 	Name      string

@@ -80,6 +80,15 @@ type Deps struct {
 	Phrases       phrases.Reader
 	Detector      *detect.Model
 	Releases      *releases.Service
+	Usage         *accounts.Usage // optional: counts calls per key
+}
+
+// countUsage records calls per key when deps has a recorder.
+func countUsage(u *accounts.Usage) func(http.Handler) http.Handler {
+	if u == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return u.Middleware
 }
 
 // New returns the full HTTP handler for the API.
@@ -92,10 +101,10 @@ func New(opts Options, deps Deps) http.Handler {
 	if err != nil {
 		panic(fmt.Sprintf("embedded OpenAPI spec is invalid: %v", err)) // a build defect, caught by every test
 	}
-	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), httpx.ETag(cacheControl), validateRequests(spec, errs))
+	r.Use(accounts.Middleware(deps.Accounts, errs), countUsage(deps.Usage), rateLimit(opts.RateLimits, errs), httpx.ETag(cacheControl), validateRequests(spec, errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
-		accountsOps:  accounts.NewHandler(deps.Reviewers),
+		accountsOps:  accounts.NewHandler(deps.Reviewers, opts.RateLimits.PerKey),
 		healthOps:    health.NewHandler(deps.DB, errs),
 		languagesOps: languages.NewHandler(deps.Languages),
 		sourcesOps:   sources.NewHandler(deps.Sources),

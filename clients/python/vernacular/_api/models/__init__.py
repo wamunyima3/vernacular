@@ -36,6 +36,8 @@ from .health import Health
 from .health_status import HealthStatus
 from .key import Key
 from .key_list import KeyList
+from .key_usage import KeyUsage
+from .key_usage_day import KeyUsageDay
 from .kind_counts import KindCounts
 from .language import Language
 from .language_list import LanguageList
@@ -141,6 +143,8 @@ __all__ = (
     "HealthStatus",
     "Key",
     "KeyList",
+    "KeyUsage",
+    "KeyUsageDay",
     "KindCounts",
     "Language",
     "LanguageList",
