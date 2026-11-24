@@ -137,7 +137,7 @@ func TestClaudeReadsTheStyleGuides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, code := range []string{"bem", "nya", "toi"} {
+	for _, code := range []string{"bem", "nya", "toi", "loz"} {
 		if !strings.Contains(c.words[code], "style guide") {
 			t.Errorf("no prompt for %s", code)
 		}

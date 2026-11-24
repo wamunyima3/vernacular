@@ -22,6 +22,8 @@ func TestStemGroupsShareAStem(t *testing.T) {
 		{"toi", []string{"muntu", "bantu", "cintu", "zintu", "kantu", "tuntu", "buntu"}},
 		{"toi", []string{"musamu", "misamu"}},
 		{"toi", []string{"kulya", "lya"}},
+		{"loz", []string{"litapi", "matapi"}},
+		{"loz", []string{"komu", "likomu"}},
 	}
 	for _, g := range groups {
 		want := lexicon.Stem(g.lang, g.words[0])
@@ -38,7 +40,7 @@ func TestStemLeavesShortWordsPhrasesAndUnknownLanguages(t *testing.T) {
 		{"bem", "ama", "ama"},               // nothing would be left
 		{"bem", "muli shani", "muli shani"}, // phrases are not stemmed
 		{"bem", "ee", "ee"},
-		{"loz", "mutu", "mutu"},     // no Lozi stemmer yet
+		{"zzz", "mutu", "mutu"},     // no stemmer for the language
 		{"nya", "nyumba", "nyumba"}, // class 9 nasal stays
 	}
 	for _, tt := range tests {

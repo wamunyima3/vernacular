@@ -12,6 +12,8 @@ var orthography = map[string]*strings.Replacer{
 	"nya": strings.NewReplacer("ch", "c", "ŵ", "w", "ŋ", "ng'"),
 	// toi.md: c for /tʃ/, ng' for /ŋ/. The bb/b rule is left to reviewers.
 	"toi": strings.NewReplacer("ch", "c", "ŋ", "ng'"),
+	// loz.md: c for /tʃ/, ñ for /ŋ/.
+	"loz": strings.NewReplacer("ch", "c", "ng'", "ñ", "ŋ", "ñ"),
 }
 
 // Standardise returns the standard spelling of a normalised headword, and the
