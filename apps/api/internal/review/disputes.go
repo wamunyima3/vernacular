@@ -106,12 +106,8 @@ func (s *Service) Resolve(ctx context.Context, itemID uuid.UUID, outcome dbgen.R
 		case item.Status != items.StatusDisputed:
 			return httpx.Conflict("This item is " + string(item.Status) + ", not disputed")
 		}
-		reviewed, err := store.hasReviewed(ctx, itemID, me.ID)
-		if err != nil {
+		if err := store.notOwn(ctx, itemID, item.AuthorID, me.ID, "settles"); err != nil {
 			return err
-		}
-		if reviewed || item.AuthorID == me.ID {
-			return httpx.Forbidden("You wrote or reviewed this item; another senior reviewer settles it")
 		}
 		if err := store.resolve(ctx, itemID, me.ID, outcome, note); err != nil {
 			return err

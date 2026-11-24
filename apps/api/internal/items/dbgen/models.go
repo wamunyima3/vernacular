@@ -108,6 +108,48 @@ func (ns NullPartOfSpeech) Value() (driver.Value, error) {
 	return string(ns.PartOfSpeech), nil
 }
 
+type RecheckOutcome string
+
+const (
+	RecheckOutcomePass RecheckOutcome = "pass"
+	RecheckOutcomeFail RecheckOutcome = "fail"
+)
+
+func (e *RecheckOutcome) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RecheckOutcome(s)
+	case string:
+		*e = RecheckOutcome(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RecheckOutcome: %T", src)
+	}
+	return nil
+}
+
+type NullRecheckOutcome struct {
+	RecheckOutcome RecheckOutcome
+	Valid          bool // Valid is true if RecheckOutcome is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRecheckOutcome) Scan(value interface{}) error {
+	if value == nil {
+		ns.RecheckOutcome, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RecheckOutcome.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRecheckOutcome) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RecheckOutcome), nil
+}
+
 type Register string
 
 const (
@@ -628,6 +670,20 @@ type QualificationAttempt struct {
 	AnsweredAt   pgtype.Timestamptz
 	ConfirmedBy  pgtype.Text
 	ConfirmedAt  pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type Recheck struct {
+	Quarter      string
+	ItemID       uuid.UUID
+	LanguageCode string
+	SourceID     uuid.UUID
+	Model        string
+	Outcome      NullRecheckOutcome
+	Note         pgtype.Text
+	CheckedBy    pgtype.Text
+	CheckedAt    pgtype.Timestamptz
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

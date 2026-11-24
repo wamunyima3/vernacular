@@ -620,6 +620,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/rechecks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draw a quarter's re-check sample (admins)
+         * @description Draws 5% of each language's verified items, at least one, to be checked again by
+         *     senior reviewers (DQ-6). A quarter is drawn once, so calling again returns
+         *     `sampled: 0`. The worker draws each quarter on its own; this starts it by hand.
+         */
+        post: operations["sampleRechecks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rechecks/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The next item to re-check (senior reviewers)
+         * @description The oldest open re-check in the language, never one the caller wrote or reviewed.
+         *     `204` when none is left.
+         */
+        get: operations["getNextRecheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rechecks/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a re-check (senior reviewers)
+         * @description `pass` leaves the item verified. `fail`, with a note saying what is wrong, sends it
+         *     back to the review queue, where only reviews made after this count.
+         */
+        post: operations["recordRecheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/disputes": {
         parameters: {
             query?: never;
@@ -1576,6 +1640,39 @@ export interface components {
         };
         DisputeList: {
             disputes: components["schemas"]["Dispute"][];
+        };
+        /**
+         * @description A calendar quarter, UTC
+         * @example 2026-Q4
+         */
+        Quarter: string;
+        RecheckSampleInput: {
+            /** @description The quarter to draw; the current one when left out */
+            quarter?: components["schemas"]["Quarter"];
+        };
+        RecheckSample: {
+            quarter: components["schemas"]["Quarter"];
+            /** @description Items drawn by this call */
+            sampled: number;
+        };
+        Recheck: {
+            quarter: components["schemas"]["Quarter"];
+            language: components["schemas"]["LanguageCode"];
+            candidate: components["schemas"]["ReviewCandidate"];
+        };
+        /** @enum {string} */
+        RecheckOutcome: "pass" | "fail";
+        RecheckInput: {
+            outcome: components["schemas"]["RecheckOutcome"];
+            /** @description What is wrong; needed for `fail` */
+            note?: string;
+        };
+        RecheckResult: {
+            /** Format: uuid */
+            item_id: string;
+            quarter: components["schemas"]["Quarter"];
+            outcome: components["schemas"]["RecheckOutcome"];
+            status: components["schemas"]["TrustStatus"];
         };
         /** @enum {string} */
         ResolutionOutcome: "keep" | "send_back";
@@ -2696,6 +2793,91 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    sampleRechecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecheckSampleInput"];
+            };
+        };
+        responses: {
+            /** @description The quarter and how many items were drawn */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecheckSample"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getNextRecheck: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+                /** @description Items skipped in this session, so they are not offered again */
+                skip?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next re-check */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recheck"];
+                };
+            };
+            /** @description Nothing left to re-check in this language */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    recordRecheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The sampled sense, phrase or example */
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecheckInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecheckResult"];
+                };
             };
             default: components["responses"]["Error"];
         };

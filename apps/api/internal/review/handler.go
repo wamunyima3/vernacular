@@ -2,6 +2,7 @@ package review
 
 import (
 	"context"
+	"time"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
@@ -178,4 +179,35 @@ func (h *Handler) DecideReport(ctx context.Context, req gen.DecideReportRequestO
 		return nil, err
 	}
 	return gen.DecideReport200JSONResponse{Status: gen.TrustStatus(status)}, nil
+}
+
+// SampleRechecks implements POST /v1/rechecks.
+func (h *Handler) SampleRechecks(ctx context.Context, req gen.SampleRechecksRequestObject) (gen.SampleRechecksResponseObject, error) {
+	quarter := httpx.DerefOr(req.Body.Quarter, Quarter(time.Now()))
+	n, err := h.svc.Sample(ctx, quarter)
+	if err != nil {
+		return nil, err
+	}
+	return gen.SampleRechecks200JSONResponse{Quarter: quarter, Sampled: int(n)}, nil
+}
+
+// GetNextRecheck implements GET /v1/rechecks/next.
+func (h *Handler) GetNextRecheck(ctx context.Context, req gen.GetNextRecheckRequestObject) (gen.GetNextRecheckResponseObject, error) {
+	r, ok, err := h.svc.NextRecheck(ctx, req.Params.Language, httpx.Deref(req.Params.Skip))
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return gen.GetNextRecheck204Response{}, nil
+	}
+	return gen.GetNextRecheck200JSONResponse{Quarter: r.Quarter, Language: req.Params.Language, Candidate: candidate(r.Candidate)}, nil
+}
+
+// RecordRecheck implements POST /v1/rechecks/{item_id}.
+func (h *Handler) RecordRecheck(ctx context.Context, req gen.RecordRecheckRequestObject) (gen.RecordRecheckResponseObject, error) {
+	c, err := h.svc.RecordRecheck(ctx, req.ItemId, dbgen.RecheckOutcome(req.Body.Outcome), httpx.Deref(req.Body.Note))
+	if err != nil {
+		return nil, err
+	}
+	return gen.RecordRecheck200JSONResponse{ItemId: req.ItemId, Quarter: c.Quarter, Outcome: req.Body.Outcome, Status: gen.TrustStatus(c.Status)}, nil
 }

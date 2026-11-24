@@ -207,7 +207,10 @@ Done when: four languages are live and the dictionary and phrase API has launche
   - [x] **P2-09a** api: examples go through the review queue like meanings and phrases (cards per concept, two accepts verify; a correction adds a new example to the same meaning) (M)
   - [x] **P2-09b** web: example cards name the meaning, show each sentence with its English and the word it uses (also on dispute cards), and "Write my own" takes a sentence and its English (S)
   - [x] **P2-09c** api + web: `POST /v1/senses/{id}/examples` and "Add an example" under each meaning on its entry page; `GET /v1/examples/missing` and a "Needs examples" page with coverage of verified core meanings and those still missing one (M)
-- [ ] **P2-10** Quarterly 5% re-check sampling job (S) → DQ-6, US-28
+- [ ] **P2-10** Quarterly 5% re-check sampling job (L, split) → DQ-6, US-28
+  - [x] **P2-10a** api: each quarter the worker draws 5% of each language's verified items (`POST /v1/rechecks` by hand); senior reviewers who did not write or review an item re-check it (`GET /v1/rechecks/next`, `POST /v1/rechecks/{item_id}`), and a failed re-check sends it back to review (M)
+  - [ ] **P2-10b** api: a quarter's results per batch (source and model): sampled, checked, failed; an admin sends a batch failing more than 2% back to review (M)
+  - [ ] **P2-10c** web: the re-check queue for reviewers, and the quarter's batches with send-back for admins (M)
 
 ---
 

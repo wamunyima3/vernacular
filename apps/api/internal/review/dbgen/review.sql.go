@@ -408,6 +408,25 @@ func (q *Queries) ListProviderQuality(ctx context.Context) ([]ProviderQuality, e
 	return items, nil
 }
 
+const lockOpenRecheck = `-- name: LockOpenRecheck :one
+SELECT quarter, language_code FROM rechecks
+WHERE item_id = $1 AND outcome IS NULL
+ORDER BY quarter LIMIT 1
+FOR UPDATE
+`
+
+type LockOpenRecheckRow struct {
+	Quarter      string
+	LanguageCode string
+}
+
+func (q *Queries) LockOpenRecheck(ctx context.Context, itemID uuid.UUID) (LockOpenRecheckRow, error) {
+	row := q.db.QueryRow(ctx, lockOpenRecheck, itemID)
+	var i LockOpenRecheckRow
+	err := row.Scan(&i.Quarter, &i.LanguageCode)
+	return i, err
+}
+
 const lockReport = `-- name: LockReport :one
 SELECT reporter_id, state FROM reports WHERE id = $1 FOR UPDATE
 `
@@ -422,6 +441,37 @@ func (q *Queries) LockReport(ctx context.Context, id uuid.UUID) (LockReportRow, 
 	row := q.db.QueryRow(ctx, lockReport, id)
 	var i LockReportRow
 	err := row.Scan(&i.ReporterID, &i.State)
+	return i, err
+}
+
+const nextRecheck = `-- name: NextRecheck :one
+SELECT r.quarter, r.item_id
+FROM rechecks r JOIN items i ON i.id = r.item_id
+WHERE r.outcome IS NULL AND r.language_code = $1::text
+  AND i.author_id IS DISTINCT FROM $2::text
+  AND NOT EXISTS (SELECT 1 FROM reviews v WHERE v.item_id = r.item_id AND v.reviewer_id = $2::text)
+  AND r.item_id <> ALL (coalesce($3::uuid[], '{}'))
+ORDER BY r.created_at, r.item_id
+LIMIT 1
+`
+
+type NextRecheckParams struct {
+	Language   string
+	ReviewerID string
+	Skip       []uuid.UUID
+}
+
+type NextRecheckRow struct {
+	Quarter string
+	ItemID  uuid.UUID
+}
+
+// The oldest open re-check in the languages for a reviewer who neither wrote
+// nor reviewed the item.
+func (q *Queries) NextRecheck(ctx context.Context, arg NextRecheckParams) (NextRecheckRow, error) {
+	row := q.db.QueryRow(ctx, nextRecheck, arg.Language, arg.ReviewerID, arg.Skip)
+	var i NextRecheckRow
+	err := row.Scan(&i.Quarter, &i.ItemID)
 	return i, err
 }
 
@@ -487,6 +537,58 @@ func (q *Queries) NextReviewCard(ctx context.Context, arg NextReviewCardParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const recordRecheck = `-- name: RecordRecheck :exec
+UPDATE rechecks SET outcome = $1, note = $2, checked_by = $3, checked_at = now()
+WHERE quarter = $4 AND item_id = $5
+`
+
+type RecordRecheckParams struct {
+	Outcome   NullRecheckOutcome
+	Note      pgtype.Text
+	CheckedBy pgtype.Text
+	Quarter   string
+	ItemID    uuid.UUID
+}
+
+func (q *Queries) RecordRecheck(ctx context.Context, arg RecordRecheckParams) error {
+	_, err := q.db.Exec(ctx, recordRecheck,
+		arg.Outcome,
+		arg.Note,
+		arg.CheckedBy,
+		arg.Quarter,
+		arg.ItemID,
+	)
+	return err
+}
+
+const sampleRechecks = `-- name: SampleRechecks :execrows
+INSERT INTO rechecks (quarter, item_id, language_code, source_id, model)
+SELECT $1::text, v.id, v.language_code, src.source_id, coalesce(src.model, '')
+FROM (
+    SELECT i.id, i.language_code,
+           row_number() OVER (PARTITION BY i.language_code ORDER BY random()) AS n,
+           count(*) OVER (PARTITION BY i.language_code) AS total
+    FROM items i
+    WHERE i.status = 'verified' AND i.kind IN ('sense', 'phrase', 'example') AND NOT retired(i.id)
+) v
+CROSS JOIN LATERAL ( -- the batch: the item's first source, looked up for the sample only
+    SELECT s.source_id, s.model FROM item_sources s
+    WHERE s.item_id = v.id ORDER BY s.created_at, s.source_id LIMIT 1
+) src
+WHERE v.n <= ceil(v.total * 0.05)
+  AND NOT EXISTS (SELECT 1 FROM rechecks r WHERE r.quarter = $1::text)
+`
+
+// Draws a quarter's sample once: in each language, 5% of the verified items
+// (at least one), each with the batch it came from (DQ-6).
+func (q *Queries) SampleRechecks(ctx context.Context, quarter string) (int64, error) {
+	result, err := q.db.Exec(ctx, sampleRechecks, quarter)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setReviewsAside = `-- name: SetReviewsAside :exec

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
 )
 
@@ -121,6 +122,19 @@ func (s *Store) resolve(ctx context.Context, itemID uuid.UUID, seniorID string, 
 		if err != nil {
 			return fmt.Errorf("set reviews of %s aside: %w", itemID, err)
 		}
+	}
+	return nil
+}
+
+// notOwn refuses a senior reviewer's call on an item they wrote or
+// reviewed: another senior reviewer `does` it.
+func (s *Store) notOwn(ctx context.Context, itemID uuid.UUID, authorID, me, does string) error {
+	reviewed, err := s.hasReviewed(ctx, itemID, me)
+	if err != nil {
+		return err
+	}
+	if reviewed || authorID == me {
+		return httpx.Forbidden("You wrote or reviewed this item; another senior reviewer " + does + " it")
 	}
 	return nil
 }

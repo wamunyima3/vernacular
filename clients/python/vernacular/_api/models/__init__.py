@@ -68,6 +68,12 @@ from .qualification_option import QualificationOption
 from .qualification_question import QualificationQuestion
 from .qualification_result import QualificationResult
 from .qualification_test import QualificationTest
+from .recheck import Recheck
+from .recheck_input import RecheckInput
+from .recheck_outcome import RecheckOutcome
+from .recheck_result import RecheckResult
+from .recheck_sample import RecheckSample
+from .recheck_sample_input import RecheckSampleInput
 from .register import Register
 from .release import Release
 from .release_changes import ReleaseChanges
@@ -182,6 +188,12 @@ __all__ = (
     "QualificationQuestion",
     "QualificationResult",
     "QualificationTest",
+    "Recheck",
+    "RecheckInput",
+    "RecheckOutcome",
+    "RecheckResult",
+    "RecheckSample",
+    "RecheckSampleInput",
     "Register",
     "Release",
     "ReleaseChanges",

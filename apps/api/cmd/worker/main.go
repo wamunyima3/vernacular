@@ -1,5 +1,6 @@
-// Command worker runs background jobs with River. Today that is AI candidate
-// generation for words (P1-AI-01) and phrases (P1-AI-04):
+// Command worker runs background jobs with River: AI candidate generation
+// for words (P1-AI-01) and phrases (P1-AI-04), and each quarter the re-check
+// sample (P2-10, DQ-6):
 //
 //	worker                 run jobs until interrupted
 //	worker -enqueue bem                   queue Claude jobs for every core concept, then exit
@@ -28,6 +29,7 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/candidates"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
+	"github.com/wamunyima3/vernacular/apps/api/internal/review"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
 
@@ -108,9 +110,14 @@ func newClient(ctx context.Context, pool *pgxpool.Pool, cfg config, log *slog.Lo
 	workers := river.NewWorkers()
 	river.AddWorker(workers, candidates.NewWorker(providers, log))
 	river.AddWorker(workers, candidates.NewPhraseWorker(providers, log))
+	river.AddWorker(workers, review.NewSampleWorker(review.NewService(pool), log))
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Logger:  log,
-		Queues:  map[string]river.QueueConfig{candidates.Queue: {MaxWorkers: cfg.AIConcurrency}},
+		Logger:       log,
+		PeriodicJobs: []*river.PeriodicJob{review.SamplePeriodically()},
+		Queues: map[string]river.QueueConfig{
+			candidates.Queue:   {MaxWorkers: cfg.AIConcurrency},
+			river.QueueDefault: {MaxWorkers: 1}, // re-check sampling
+		},
 		Workers: workers,
 	})
 }

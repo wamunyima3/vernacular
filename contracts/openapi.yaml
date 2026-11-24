@@ -906,6 +906,91 @@ paths:
           description: Recorded
         default:
           $ref: "#/components/responses/Error"
+  /v1/rechecks:
+    post:
+      operationId: sampleRechecks
+      summary: Draw a quarter's re-check sample (admins)
+      description: |
+        Draws 5% of each language's verified items, at least one, to be checked again by
+        senior reviewers (DQ-6). A quarter is drawn once, so calling again returns
+        `sampled: 0`. The worker draws each quarter on its own; this starts it by hand.
+      tags: [review]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecheckSampleInput" }
+      responses:
+        "200":
+          description: The quarter and how many items were drawn
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecheckSample" }
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/rechecks/next:
+    get:
+      operationId: getNextRecheck
+      summary: The next item to re-check (senior reviewers)
+      description: |
+        The oldest open re-check in the language, never one the caller wrote or reviewed.
+        `204` when none is left.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: language
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/LanguageCode" }
+        - name: skip
+          in: query
+          description: Items skipped in this session, so they are not offered again
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The next re-check
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Recheck" }
+        "204":
+          description: Nothing left to re-check in this language
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/rechecks/{item_id}:
+    post:
+      operationId: recordRecheck
+      summary: Record a re-check (senior reviewers)
+      description: |
+        `pass` leaves the item verified. `fail`, with a note saying what is wrong, sends it
+        back to the review queue, where only reviews made after this count.
+      tags: [review]
+      security:
+        - session: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          description: The sampled sense, phrase or example
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecheckInput" }
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecheckResult" }
+        default:
+          $ref: "#/components/responses/Error"
   /v1/disputes:
     get:
       operationId: listDisputes
@@ -2317,6 +2402,49 @@ components:
         disputes:
           type: array
           items: { $ref: "#/components/schemas/Dispute" }
+    Quarter:
+      type: string
+      pattern: "^[0-9]{4}-Q[1-4]$"
+      description: A calendar quarter, UTC
+      example: 2026-Q4
+    RecheckSampleInput:
+      type: object
+      additionalProperties: false
+      properties:
+        quarter:
+          allOf: [{ $ref: "#/components/schemas/Quarter" }]
+          description: The quarter to draw; the current one when left out
+    RecheckSample:
+      type: object
+      required: [quarter, sampled]
+      properties:
+        quarter: { $ref: "#/components/schemas/Quarter" }
+        sampled: { type: integer, description: Items drawn by this call }
+    Recheck:
+      type: object
+      required: [quarter, language, candidate]
+      properties:
+        quarter: { $ref: "#/components/schemas/Quarter" }
+        language: { $ref: "#/components/schemas/LanguageCode" }
+        candidate: { $ref: "#/components/schemas/ReviewCandidate" }
+    RecheckOutcome:
+      type: string
+      enum: [pass, fail]
+    RecheckInput:
+      type: object
+      additionalProperties: false
+      required: [outcome]
+      properties:
+        outcome: { $ref: "#/components/schemas/RecheckOutcome" }
+        note: { type: string, maxLength: 1000, description: What is wrong; needed for `fail` }
+    RecheckResult:
+      type: object
+      required: [item_id, quarter, outcome, status]
+      properties:
+        item_id: { type: string, format: uuid }
+        quarter: { $ref: "#/components/schemas/Quarter" }
+        outcome: { $ref: "#/components/schemas/RecheckOutcome" }
+        status: { $ref: "#/components/schemas/TrustStatus" }
     ResolutionOutcome:
       type: string
       enum: [keep, send_back]

@@ -121,3 +121,44 @@ SELECT reporter_id, state FROM reports WHERE id = $1 FOR UPDATE;
 -- name: HandleReport :exec
 UPDATE reports SET state = @state, handled_by = @handled_by, handled_at = now(), note = @note, updated_at = now()
 WHERE id = @id;
+
+-- name: SampleRechecks :execrows
+-- Draws a quarter's sample once: in each language, 5% of the verified items
+-- (at least one), each with the batch it came from (DQ-6).
+INSERT INTO rechecks (quarter, item_id, language_code, source_id, model)
+SELECT @quarter::text, v.id, v.language_code, src.source_id, coalesce(src.model, '')
+FROM (
+    SELECT i.id, i.language_code,
+           row_number() OVER (PARTITION BY i.language_code ORDER BY random()) AS n,
+           count(*) OVER (PARTITION BY i.language_code) AS total
+    FROM items i
+    WHERE i.status = 'verified' AND i.kind IN ('sense', 'phrase', 'example') AND NOT retired(i.id)
+) v
+CROSS JOIN LATERAL ( -- the batch: the item's first source, looked up for the sample only
+    SELECT s.source_id, s.model FROM item_sources s
+    WHERE s.item_id = v.id ORDER BY s.created_at, s.source_id LIMIT 1
+) src
+WHERE v.n <= ceil(v.total * 0.05)
+  AND NOT EXISTS (SELECT 1 FROM rechecks r WHERE r.quarter = @quarter::text);
+
+-- name: NextRecheck :one
+-- The oldest open re-check in the languages for a reviewer who neither wrote
+-- nor reviewed the item.
+SELECT r.quarter, r.item_id
+FROM rechecks r JOIN items i ON i.id = r.item_id
+WHERE r.outcome IS NULL AND r.language_code = @language::text
+  AND i.author_id IS DISTINCT FROM @reviewer_id::text
+  AND NOT EXISTS (SELECT 1 FROM reviews v WHERE v.item_id = r.item_id AND v.reviewer_id = @reviewer_id::text)
+  AND r.item_id <> ALL (coalesce(@skip::uuid[], '{}'))
+ORDER BY r.created_at, r.item_id
+LIMIT 1;
+
+-- name: LockOpenRecheck :one
+SELECT quarter, language_code FROM rechecks
+WHERE item_id = $1 AND outcome IS NULL
+ORDER BY quarter LIMIT 1
+FOR UPDATE;
+
+-- name: RecordRecheck :exec
+UPDATE rechecks SET outcome = @outcome, note = sqlc.narg(note), checked_by = @checked_by, checked_at = now()
+WHERE quarter = @quarter AND item_id = @item_id;
