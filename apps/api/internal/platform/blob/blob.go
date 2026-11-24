@@ -23,6 +23,9 @@ import (
 // Delete methods directly.
 type Bucket = blob.Bucket
 
+// WriterOptions are the options for WriteAll, such as the content type.
+type WriterOptions = blob.WriterOptions
+
 // Open opens the bucket at url.
 func Open(ctx context.Context, url string) (*Bucket, error) {
 	b, err := blob.OpenBucket(ctx, url)

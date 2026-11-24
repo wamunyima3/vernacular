@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/audio"
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
 	"github.com/wamunyima3/vernacular/apps/api/internal/detect"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
@@ -95,6 +96,7 @@ func run() error {
 			Detector:      detector,
 			Releases:      releases.NewService(pool),
 			Usage:         usage,
+			Audio:         audio.NewService(pool, bucket, cfg.AudioEnabled),
 		},
 	)
 

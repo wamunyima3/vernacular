@@ -96,6 +96,7 @@ from .source_input import SourceInput
 from .source_kind import SourceKind
 from .source_list import SourceList
 from .source_ref import SourceRef
+from .speaker import Speaker
 from .start_qualification_body import StartQualificationBody
 from .translate_body import TranslateBody
 from .translation import Translation
@@ -203,6 +204,7 @@ __all__ = (
     "SourceKind",
     "SourceList",
     "SourceRef",
+    "Speaker",
     "StartQualificationBody",
     "TranslateBody",
     "Translation",

@@ -199,6 +199,10 @@ Done when: four languages are live and the dictionary and phrase API has launche
   - [x] **P2-07a** api: calls per key per UTC day, counted in memory and flushed every 30 s into `key_usage` (calls, errors, 429s); `GET /v1/keys/{id}/usage` for the key's owner, with the per-minute limit (M)
   - [x] **P2-07b** web: today and 30-day calls per key on the account page (totals now in `GET /v1/keys`), and `/account/keys/[id]` with daily calls, errors, 429s and the per-minute limit (S)
 - [ ] **P2-08** Pronunciation audio with consent records (L, split) → LEX-8, NFR-6, US-33
+  - [x] **P2-08a** api: speakers and their consent records: an admin records a speaker's signed consent form (stored like permission documents), a speaker sees and withdraws their consent; everything behind `AUDIO_ENABLED`, off by default (M)
+  - [ ] **P2-08b** api: clips: a consenting speaker uploads a short clip (Ogg, WebM, MP3 or WAV, at most 1 MB) for an entry in a language they speak; entries list their clips; withdrawing consent deletes the speaker's clips and files (M)
+  - [ ] **P2-08c** web: record a clip in the browser on an entry page, play clips on entries, and withdraw consent on the account page (M)
+  - [ ] **P2-08d** Take legal advice, register as a data controller, decide where audio is hosted, then set `AUDIO_ENABLED` 👤
 - [ ] **P2-09** Example sentences for every sense in the core list (M) → LEX-5
 - [ ] **P2-10** Quarterly 5% re-check sampling job (S) → DQ-6, US-28
 

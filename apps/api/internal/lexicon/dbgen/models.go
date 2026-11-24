@@ -833,6 +833,16 @@ type Source struct {
 	UpdatedAt     time.Time
 }
 
+type Speaker struct {
+	UserID      string
+	ConsentKey  string
+	ConsentedAt time.Time
+	RecordedBy  string
+	WithdrawnAt pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type User struct {
 	ID              string
 	Name            string

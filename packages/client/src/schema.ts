@@ -787,6 +787,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/speakers/{user_id}/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        /** Download a speaker's consent form (admin) */
+        get: operations["downloadConsent"];
+        /**
+         * Record a speaker's signed consent form (admin)
+         * @description The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
+         *     replaces the earlier one and, after a withdrawal, restores consent.
+         */
+        put: operations["recordConsent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/speaker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your consent to be recorded
+         * @description 404 when no consent form has been recorded for you.
+         */
+        get: operations["getMySpeaker"];
+        put?: never;
+        post?: never;
+        /**
+         * Withdraw your consent to be recorded
+         * @description You can no longer record, and your clips are deleted (NFR-6). The record of when you
+         *     consented and withdrew is kept.
+         */
+        delete: operations["withdrawConsent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1323,6 +1372,17 @@ export interface components {
             total: number;
             /** Format: date-time */
             answered_at: string;
+        };
+        /** @description A speaker's consent to be recorded */
+        Speaker: {
+            user_id: string;
+            /** Format: date-time */
+            consented_at: string;
+            /**
+             * Format: date-time
+             * @description Set once the speaker withdraws; they cannot record until a new form is recorded
+             */
+            withdrawn_at?: string;
         };
         KeyUsage: {
             /** Format: uuid */
@@ -2807,6 +2867,103 @@ export interface operations {
                     "application/json": components["schemas"]["Source"];
                 };
             };
+            default: components["responses"]["Error"];
+        };
+    };
+    downloadConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    recordConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Speaker"];
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getMySpeaker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Your consent record */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Speaker"];
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    withdrawConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Withdrawn */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Speaker"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

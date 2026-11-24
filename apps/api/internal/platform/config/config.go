@@ -21,6 +21,9 @@ type Config struct {
 	// Requests per minute (DEV-3); 0 turns a limit off.
 	RateLimitPerKey int `env:"RATE_LIMIT_PER_KEY" envDefault:"120"`
 	RateLimitPerIP  int `env:"RATE_LIMIT_PER_IP"  envDefault:"30"`
+	// Pronunciation audio (LEX-8). Voice is personal data: keep this off until
+	// the legal steps in tasks.md P2-08d are done.
+	AudioEnabled bool `env:"AUDIO_ENABLED" envDefault:"false"`
 	// Proxies whose X-Forwarded-For is believed, as CIDRs (NFR-5).
 	TrustedProxies []netip.Prefix `env:"TRUSTED_PROXIES" envSeparator:","`
 }

@@ -14,6 +14,7 @@ import (
 	validator "github.com/oapi-codegen/nethttp-middleware"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/audio"
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
 	"github.com/wamunyima3/vernacular/apps/api/internal/detect"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
@@ -39,6 +40,7 @@ type (
 	phrasesOps   = phrases.Handler
 	detectOps    = detect.Handler
 	releasesOps  = releases.Handler
+	audioOps     = audio.Handler
 )
 
 // api satisfies gen.StrictServerInterface by embedding one handler per module.
@@ -54,6 +56,7 @@ type api struct {
 	*phrasesOps
 	*detectOps
 	*releasesOps
+	*audioOps
 }
 
 var _ gen.StrictServerInterface = api{}
@@ -81,6 +84,7 @@ type Deps struct {
 	Detector      *detect.Model
 	Releases      *releases.Service
 	Usage         *accounts.Usage // optional: counts calls per key
+	Audio         *audio.Service
 }
 
 // countUsage records calls per key when deps has a recorder.
@@ -114,6 +118,7 @@ func New(opts Options, deps Deps) http.Handler {
 		phrasesOps:   phrases.NewHandler(deps.Phrases),
 		detectOps:    detect.NewHandler(deps.Detector),
 		releasesOps:  releases.NewHandler(deps.Releases),
+		audioOps:     audio.NewHandler(deps.Audio),
 	}, []gen.StrictMiddlewareFunc{pinRelease(spec, deps.Releases)}, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  errs.RequestError,
 		ResponseErrorHandlerFunc: errs.ResponseError,

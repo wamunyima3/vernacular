@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,10 +19,6 @@ import (
 
 // MaxPermissionSize caps a permission document upload.
 const MaxPermissionSize = 10 << 20
-
-// permissionTypes are the file types accepted as permission documents, by
-// what the bytes are, not what the client claims.
-var permissionTypes = map[string]bool{"application/pdf": true, "image/png": true, "image/jpeg": true}
 
 // Input is what an admin sends to create or update a source.
 type Input struct {
@@ -120,22 +115,15 @@ func (r *Register) UploadPermission(ctx context.Context, id uuid.UUID, body io.R
 	if err != nil {
 		return Source{}, err
 	}
-	data, err := io.ReadAll(io.LimitReader(body, MaxPermissionSize+1))
+	data, contentType, err := httpx.ReadUpload(body, MaxPermissionSize, httpx.DocumentTypes, "Permission documents", httpx.DocumentAccept)
 	if err != nil {
-		return Source{}, fmt.Errorf("read upload: %w", err)
-	}
-	if len(data) > MaxPermissionSize {
-		return Source{}, httpx.TooLarge("Permission documents are limited to 10 MB")
-	}
-	contentType := http.DetectContentType(data)
-	if !permissionTypes[contentType] {
-		return Source{}, httpx.BadRequest("Upload a PDF, PNG or JPEG file")
+		return Source{}, err
 	}
 	if _, err := r.Get(ctx, id); err != nil {
 		return Source{}, err
 	}
 	key := "sources/" + id.String() + "/permission"
-	if err := r.bucket.WriteAll(ctx, key, data, nil); err != nil {
+	if err := r.bucket.WriteAll(ctx, key, data, &blob.WriterOptions{ContentType: contentType}); err != nil {
 		return Source{}, fmt.Errorf("store permission document: %w", err)
 	}
 	var row dbgen.Source

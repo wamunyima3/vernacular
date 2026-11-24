@@ -38,6 +38,10 @@ tags:
   - name: phrases
   - name: detect
   - name: releases
+  - name: audio
+    description: |
+      Pronunciation clips and the speakers' consent records (LEX-8, NFR-6). Off unless the
+      server sets AUDIO_ENABLED; until then these endpoints return 404.
 paths:
   /healthz:
     get:
@@ -1186,6 +1190,91 @@ paths:
               schema: { type: string, format: binary }
         default:
           $ref: "#/components/responses/Error"
+  /v1/speakers/{user_id}/consent:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: recordConsent
+      summary: Record a speaker's signed consent form (admin)
+      description: |
+        The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
+        replaces the earlier one and, after a withdrawal, restores consent.
+      tags: [audio]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Speaker" }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+    get:
+      operationId: downloadConsent
+      summary: Download a speaker's consent form (admin)
+      tags: [audio]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: The file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/me/speaker:
+    get:
+      operationId: getMySpeaker
+      summary: Your consent to be recorded
+      description: 404 when no consent form has been recorded for you.
+      tags: [audio]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Your consent record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Speaker" }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: withdrawConsent
+      summary: Withdraw your consent to be recorded
+      description: |
+        You can no longer record, and your clips are deleted (NFR-6). The record of when you
+        consented and withdrew is kept.
+      tags: [audio]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Withdrawn
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Speaker" }
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   parameters:
     MinStatus:
@@ -1940,6 +2029,17 @@ components:
         score: { type: integer }
         total: { type: integer }
         answered_at: { type: string, format: date-time }
+    Speaker:
+      type: object
+      description: A speaker's consent to be recorded
+      required: [user_id, consented_at]
+      properties:
+        user_id: { type: string }
+        consented_at: { type: string, format: date-time }
+        withdrawn_at:
+          type: string
+          format: date-time
+          description: Set once the speaker withdraws; they cannot record until a new form is recorded
     KeyUsage:
       type: object
       required: [key_id, name, prefix, limit_per_minute, days]
