@@ -4,6 +4,7 @@ import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AccountDetails } from "@/features/auth/components/account-details"
 import { CreateKeyForm } from "@/features/keys/components/create-key-form"
+import { SpeakerConsent } from "@/features/audio/components/speaker-consent"
 import { KeyList, KeyListSkeleton } from "@/features/keys/components/key-list"
 
 export const metadata: Metadata = { title: "Account" }
@@ -30,6 +31,9 @@ export default function AccountPage() {
           <KeyList />
         </Suspense>
       </section>
+      <Suspense>
+        <SpeakerConsent />
+      </Suspense>
     </div>
   )
 }

@@ -73,11 +73,14 @@ func TestClips(t *testing.T) {
 	checkRecordRefusals(sp, t, svc, bem)
 
 	checkReplace(sp, t, svc, tst)
+	if cs, can, err := svc.Clips(sp, tst); err != nil || len(cs) != 1 || !can {
+		t.Errorf("clips = %v, can record %v, %v; want one clip and may record", cs, can, err)
+	}
 
 	if _, err := svc.Withdraw(sp); err != nil {
 		t.Fatal(err)
 	}
-	if cs, err := svc.Clips(t.Context(), tst); err != nil || len(cs) != 0 {
+	if cs, can, err := svc.Clips(sp, tst); err != nil || len(cs) != 0 || can {
 		t.Errorf("clips after withdrawal = %v, %v; want none", cs, err)
 	}
 	if ok, _ := bucket.Exists(t.Context(), "speakers/sp/audio/"+tst.String()); ok {

@@ -23,6 +23,7 @@ class Clip:
         url (str): Where to fetch the sound Example: /v1/audio/0b6c….
         content_type (str):  Example: audio/webm.
         recorded_at (datetime.datetime):
+        mine (bool): Recorded by the signed-in caller
     """
 
     id: UUID
@@ -30,6 +31,7 @@ class Clip:
     url: str
     content_type: str
     recorded_at: datetime.datetime
+    mine: bool
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -43,6 +45,8 @@ class Clip:
 
         recorded_at = self.recorded_at.isoformat()
 
+        mine = self.mine
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -52,6 +56,7 @@ class Clip:
                 "url": url,
                 "content_type": content_type,
                 "recorded_at": recorded_at,
+                "mine": mine,
             }
         )
 
@@ -70,12 +75,15 @@ class Clip:
 
         recorded_at = isoparse(d.pop("recorded_at"))
 
+        mine = d.pop("mine")
+
         clip = cls(
             id=id,
             entry_id=entry_id,
             url=url,
             content_type=content_type,
             recorded_at=recorded_at,
+            mine=mine,
         )
 
         clip.additional_properties = d

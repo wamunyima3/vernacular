@@ -1,4 +1,5 @@
 import type { Schemas } from "@vernacular/api-client"
+import type { ReactNode } from "react"
 
 import Link from "next/link"
 
@@ -30,9 +31,12 @@ function sourcesOf(entry: Schemas["Entry"]): Schemas["SourceRef"][] {
 export function EntryView({
   entry,
   languageName,
+  pronunciation,
 }: {
   entry: Schemas["Entry"]
   languageName: string
+  /** The entry's recordings, streamed in after the entry (features/audio). */
+  pronunciation?: ReactNode
 }) {
   const facts = [
     wordClassLabel(entry),
@@ -54,6 +58,7 @@ export function EntryView({
           <p className="text-pretty text-muted-foreground">{facts.join(" · ")}</p>
         )}
       </header>
+      {pronunciation}
 
       <ol className="flex flex-col gap-6">
         {entry.senses.map((s, i) => (

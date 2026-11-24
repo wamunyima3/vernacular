@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"gocloud.dev/gcerrors"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/audio/dbgen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
@@ -65,25 +66,8 @@ func (s *Service) Record(ctx context.Context, entryID uuid.UUID, body io.Reader)
 	if err != nil {
 		return Clip{}, err
 	}
-	sp, err := s.speaker(ctx, me.ID)
-	if errors.Is(err, httpx.ErrNotFound) {
-		return Clip{}, httpx.Forbidden("Recording needs your signed consent form on file; ask an admin")
-	}
-	if err != nil {
+	if err := s.mayRecord(ctx, me.ID, entryID); err != nil {
 		return Clip{}, err
-	}
-	if sp.WithdrawnAt.Valid {
-		return Clip{}, httpx.Forbidden("You withdrew your consent to be recorded")
-	}
-	lang, err := s.q.EntryLanguage(ctx, entryID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Clip{}, httpx.ErrNotFound
-	}
-	if err != nil {
-		return Clip{}, err
-	}
-	if !slices.Contains(sp.Languages, lang) {
-		return Clip{}, httpx.Forbidden("Your consent form does not cover " + lang)
 	}
 	data, t, err := httpx.ReadUpload(body, MaxClipSize, sniffedClipTypes, "Recordings", "an Ogg, WebM, MP4, MP3 or WAV recording")
 	if err != nil {
@@ -106,20 +90,48 @@ func (s *Service) Record(ctx context.Context, entryID uuid.UUID, body io.Reader)
 	return clipFromRow(row), nil
 }
 
-// Clips lists an entry's clips from speakers whose consent is in force.
-func (s *Service) Clips(ctx context.Context, entryID uuid.UUID) ([]Clip, error) {
+// mayRecord is nil if userID has consent in force that covers the entry's
+// language, or else the problem to show them.
+func (s *Service) mayRecord(ctx context.Context, userID string, entryID uuid.UUID) error {
+	sp, err := s.speaker(ctx, userID)
+	switch {
+	case errors.Is(err, httpx.ErrNotFound):
+		return httpx.Forbidden("Recording needs your signed consent form on file; ask an admin")
+	case err != nil:
+		return err
+	case sp.WithdrawnAt.Valid:
+		return httpx.Forbidden("You withdrew your consent to be recorded")
+	}
+	lang, err := s.q.EntryLanguage(ctx, entryID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return httpx.ErrNotFound
+	case err != nil:
+		return err
+	case !slices.Contains(sp.Languages, lang):
+		return httpx.Forbidden("Your consent form does not cover " + lang)
+	}
+	return nil
+}
+
+// Clips lists an entry's clips from speakers whose consent is in force, and
+// whether the signed-in caller may record it.
+func (s *Service) Clips(ctx context.Context, entryID uuid.UUID) (clips []Clip, canRecord bool, err error) {
 	if _, err := s.check(ctx, anyone); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	rows, err := s.q.ListClips(ctx, entryID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	out := make([]Clip, len(rows))
+	clips = make([]Clip, len(rows))
 	for i, r := range rows {
-		out[i] = clipFromRow(r)
+		clips[i] = clipFromRow(r)
 	}
-	return out, nil
+	if me, err := accounts.Require(ctx, nil); err == nil {
+		canRecord = s.mayRecord(ctx, me.ID, entryID) == nil
+	}
+	return clips, canRecord, nil
 }
 
 // Open opens a clip's file. The caller closes the reader.

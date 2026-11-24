@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiErrorMessage } from "@/lib/api-error"
 import { parseMinStatus } from "@/lib/min-status"
 import { apiForVisitor } from "@/features/auth/session"
+import { ClipList } from "@/features/audio/components/clip-list"
 import { EntryView } from "@/features/entries/components/entry-view"
 import { getLanguages, languageName } from "@/features/languages/get-languages"
 
@@ -22,7 +23,19 @@ async function Entry({ params, searchParams }: PageProps<"/entries/[id]">) {
   const get = (min_status: typeof minStatus) =>
     api.GET("/v1/entries/{id}", { params: { path: { id }, query: { min_status } } })
   const [{ data, error, response }, languages] = await Promise.all([get(minStatus), getLanguages()])
-  if (data) return <EntryView entry={data} languageName={languageName(languages, data.language)} />
+  if (data) {
+    return (
+      <EntryView
+        entry={data}
+        languageName={languageName(languages, data.language)}
+        pronunciation={
+          <Suspense>
+            <ClipList entryId={data.id} />
+          </Suspense>
+        }
+      />
+    )
+  }
   // 404 means no such entry, or none of its meanings checked enough: ask at the widest level.
   if (response.status === 404 && minStatus !== "machine" && (await get("machine")).data) {
     return (

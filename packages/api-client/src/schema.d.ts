@@ -1432,8 +1432,12 @@ export interface components {
             content_type: string;
             /** Format: date-time */
             recorded_at: string;
+            /** @description Recorded by the signed-in caller */
+            mine: boolean;
         };
         ClipList: {
+            /** @description The signed-in caller has consent in force that covers the entry's language */
+            can_record: boolean;
             data: components["schemas"]["Clip"][];
         };
         /** @description A speaker's consent to be recorded */

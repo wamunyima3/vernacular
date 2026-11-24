@@ -2124,7 +2124,7 @@ components:
     Clip:
       type: object
       description: A pronunciation recorded by a native speaker (LEX-8)
-      required: [id, entry_id, url, content_type, recorded_at]
+      required: [id, entry_id, url, content_type, recorded_at, mine]
       properties:
         id: { type: string, format: uuid }
         entry_id: { type: string, format: uuid }
@@ -2137,10 +2137,14 @@ components:
           }
         content_type: { type: string, example: audio/webm }
         recorded_at: { type: string, format: date-time }
+        mine: { type: boolean, description: Recorded by the signed-in caller, who may delete it }
     ClipList:
       type: object
-      required: [data]
+      required: [data, can_record]
       properties:
+        can_record:
+          type: boolean
+          description: The signed-in caller has consent in force that covers the entry's language
         data:
           type: array
           items: { $ref: "#/components/schemas/Clip" }

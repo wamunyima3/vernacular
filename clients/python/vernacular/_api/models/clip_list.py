@@ -16,13 +16,17 @@ T = TypeVar("T", bound="ClipList")
 class ClipList:
     """
     Attributes:
+        can_record (bool): The signed-in caller has consent in force that covers the entry's language
         data (list['Clip']):
     """
 
+    can_record: bool
     data: list["Clip"]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        can_record = self.can_record
+
         data = []
         for data_item_data in self.data:
             data_item = data_item_data.to_dict()
@@ -32,6 +36,7 @@ class ClipList:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
+                "can_record": can_record,
                 "data": data,
             }
         )
@@ -43,6 +48,8 @@ class ClipList:
         from ..models.clip import Clip
 
         d = dict(src_dict)
+        can_record = d.pop("can_record")
+
         data = []
         _data = d.pop("data")
         for data_item_data in _data:
@@ -51,6 +58,7 @@ class ClipList:
             data.append(data_item)
 
         clip_list = cls(
+            can_record=can_record,
             data=data,
         )
 

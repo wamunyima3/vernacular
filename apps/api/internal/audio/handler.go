@@ -3,6 +3,7 @@ package audio
 import (
 	"context"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 )
 
@@ -55,21 +56,31 @@ func (h *Handler) WithdrawConsent(ctx context.Context, _ gen.WithdrawConsentRequ
 	return gen.WithdrawConsent200JSONResponse(toAPI(s)), nil
 }
 
-func clip(c Clip) gen.Clip {
-	return gen.Clip{Id: c.ID, EntryId: c.EntryID, Url: "/v1/audio/" + c.ID.String(), ContentType: c.ContentType, RecordedAt: c.RecordedAt}
+// clip is c as the caller sees it; me is the caller's user ID, if signed in.
+func clip(c Clip, me string) gen.Clip {
+	return gen.Clip{
+		Id: c.ID, EntryId: c.EntryID, Url: "/v1/audio/" + c.ID.String(), ContentType: c.ContentType,
+		RecordedAt: c.RecordedAt, Mine: me != "" && c.SpeakerID == me,
+	}
+}
+
+func caller(ctx context.Context) string {
+	p, _ := accounts.FromContext(ctx)
+	return p.ID
 }
 
 // ListClips implements GET /v1/audio.
 func (h *Handler) ListClips(ctx context.Context, req gen.ListClipsRequestObject) (gen.ListClipsResponseObject, error) {
-	cs, err := h.svc.Clips(ctx, req.Params.EntryId)
+	cs, canRecord, err := h.svc.Clips(ctx, req.Params.EntryId)
 	if err != nil {
 		return nil, err
 	}
+	me := caller(ctx)
 	out := make([]gen.Clip, len(cs))
 	for i, c := range cs {
-		out[i] = clip(c)
+		out[i] = clip(c, me)
 	}
-	return gen.ListClips200JSONResponse{Data: out}, nil
+	return gen.ListClips200JSONResponse{Data: out, CanRecord: canRecord}, nil
 }
 
 // RecordClip implements POST /v1/audio.
@@ -78,7 +89,7 @@ func (h *Handler) RecordClip(ctx context.Context, req gen.RecordClipRequestObjec
 	if err != nil {
 		return nil, err
 	}
-	return gen.RecordClip201JSONResponse(clip(c)), nil
+	return gen.RecordClip201JSONResponse(clip(c, caller(ctx))), nil
 }
 
 // GetClip implements GET /v1/audio/{id}.
