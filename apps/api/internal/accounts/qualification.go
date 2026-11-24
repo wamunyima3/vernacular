@@ -120,8 +120,8 @@ func drawTest(pool []dbgen.QualificationPoolRow) (questions []Question, expected
 
 // Result is a handed-in test's score.
 type Result struct {
-	Score, Total int
-	Passed       bool
+	Score, Total, PassMark int
+	Passed                 bool
 }
 
 // AnswerTest scores the signed-in user's test, once.
@@ -144,7 +144,7 @@ func (s *Service) AnswerTest(ctx context.Context, id uuid.UUID, answers []uuid.U
 		case len(answers) != len(t.Expected):
 			return httpx.BadRequest(fmt.Sprintf("Answer all %d questions", len(t.Expected)))
 		}
-		r.Total = len(t.Expected)
+		r.Total, r.PassMark = len(t.Expected), testPassMark
 		for i, want := range t.Expected {
 			if answers[i] == want {
 				r.Score++

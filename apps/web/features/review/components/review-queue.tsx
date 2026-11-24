@@ -98,9 +98,15 @@ function notReviewing(approvals: Schemas["Approval"][]) {
     )
   }
   return (
-    <NoticeCard title="You are not a reviewer yet" actions={contribute}>
-      Reviewers are approved per language by an admin after a short test. Contributing words is the
-      way in.
+    <NoticeCard
+      title="You are not a reviewer yet"
+      actions={
+        <Button nativeButton={false} render={<Link href="/qualify" />}>
+          Take the reviewer test
+        </Button>
+      }
+    >
+      Reviewers are approved per language after a short test, confirmed by a senior reviewer.
     </NoticeCard>
   )
 }

@@ -1274,6 +1274,8 @@ export interface components {
             id: string;
             score: number;
             total: number;
+            /** @description Right answers needed to pass */
+            pass_mark: number;
             /** @description A senior reviewer of the language confirms a pass before you can review */
             passed: boolean;
         };

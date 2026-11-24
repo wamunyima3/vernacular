@@ -158,7 +158,7 @@ func (h *Handler) AnswerQualification(ctx context.Context, req gen.AnswerQualifi
 	if err != nil {
 		return nil, err
 	}
-	return gen.AnswerQualification200JSONResponse{Id: req.Id, Score: r.Score, Total: r.Total, Passed: r.Passed}, nil
+	return gen.AnswerQualification200JSONResponse{Id: req.Id, Score: r.Score, Total: r.Total, PassMark: r.PassMark, Passed: r.Passed}, nil
 }
 
 // ConfirmQualification implements POST /v1/qualifications/{id}/confirmation.

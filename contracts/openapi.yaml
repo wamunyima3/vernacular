@@ -1876,11 +1876,12 @@ components:
         headword: { type: string }
     QualificationResult:
       type: object
-      required: [id, score, total, passed]
+      required: [id, score, total, pass_mark, passed]
       properties:
         id: { type: string, format: uuid }
         score: { type: integer }
         total: { type: integer }
+        pass_mark: { type: integer, description: Right answers needed to pass }
         passed:
           type: boolean
           description: A senior reviewer of the language confirms a pass before you can review

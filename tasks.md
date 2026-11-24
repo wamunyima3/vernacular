@@ -130,11 +130,11 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
   - [x] **P1-REV-03b** "Write my own": a reviewer's correction becomes a new candidate for others to review; the candidates it replaces keep their history (M)
 - [x] **P1-REV-04c** Disputed phrases reach senior reviewers: `/disputes` lists senses only, so a disputed phrase waits there unseen (S) → CON-4, DQ-8
 - [x] **P1-REV-04** Disputes slice for senior reviewers; reports and senior resolutions become inputs to `review.Status`, so an undo cannot overwrite them (M). Reports join with P1-API-10 → CON-4, DQ-8, US-23
-- [ ] **P1-REV-05** Reviewer qualification test set and agreement-rate tracking (M) → DQ-3, DQ-7, US-24
+- [x] **P1-REV-05** Reviewer qualification test set and agreement-rate tracking (M) → DQ-3, DQ-7, US-24
   - [x] **P1-REV-05a** Agreement rates: each reviewer's share of decisions that match settled outcomes, shown to senior reviewers; below the threshold a reviewer loses approval until a senior marks them retrained (M)
-  - [ ] **P1-REV-05b** Qualification: a short test set from verified items for new reviewers, confirmed by a senior reviewer (M). Needs verified items in the language
+  - [x] **P1-REV-05b** Qualification: a short test set from verified items for new reviewers, confirmed by a senior reviewer (M). Needs verified items in the language
     - [x] **P1-REV-05b1** api: `POST /v1/qualifications` draws ten pick-the-word questions from verified words (answers kept server side), `POST …/answers` scores once (8 of 10 passes), seniors list passes and confirm one, which approves the taker as a reviewer. Once a day until passed (M)
-    - [ ] **P1-REV-05b2** web: take the test in `(tools)/qualify`, see the score; seniors confirm passes on the reviewers page (M)
+    - [x] **P1-REV-05b2** web: take the test in `(tools)/qualify`, see the score; seniors confirm passes on the reviewers page (M)
 - [x] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
 - [x] **P1-REV-07** Public contributor credit page (S) → CON-5, US-19
 - [x] **P1-REV-08** Rename the review API's `sense_id` to `item_id` (decisions, candidates, reviews, corrections) now that phrases are reviewed too, and give the review package one candidate type for senses and phrases (S)

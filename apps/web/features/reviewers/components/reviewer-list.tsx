@@ -18,6 +18,7 @@ import { apiAs } from "@/lib/api"
 import { apiErrorMessage } from "@/lib/api-error"
 
 import { requireSession } from "../../auth/session"
+import { PendingTests } from "../../qualify/components/pending-tests"
 import { getLanguages, languageName } from "../../languages/get-languages"
 import { retrain } from "../actions"
 import { agreementThreshold as threshold } from "../threshold"
@@ -46,9 +47,10 @@ export async function ReviewerList({ asked }: { asked?: string }) {
     senior.map((a) => a.language),
     asked,
   )
-  const [{ data, error }, names] = await Promise.all([
+  const [{ data, error }, names, { data: tests, error: testsError }] = await Promise.all([
     api.GET("/v1/reviewers", { params: { query: { language } } }),
     languages,
+    api.GET("/v1/qualifications"),
   ])
   if (!data)
     return <ErrorCard title="Reviewers could not be loaded" message={apiErrorMessage(error)} />
@@ -110,6 +112,14 @@ export async function ReviewerList({ asked }: { asked?: string }) {
           ))}
         </TableBody>
       </Table>
+      {tests ? (
+        <PendingTests
+          tests={tests.qualifications.filter((t) => t.language === language)}
+          languageName={languageName(names, language)}
+        />
+      ) : (
+        <ErrorCard title="Passed tests could not be loaded" message={apiErrorMessage(testsError)} />
+      )}
     </div>
   )
 }
