@@ -17,6 +17,7 @@ apps/api/bin/
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # reports
 .jscpd-report/

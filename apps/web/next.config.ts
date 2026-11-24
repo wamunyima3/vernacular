@@ -1,7 +1,13 @@
+import { join } from "node:path"
+
 import { createMDX } from "fumadocs-mdx/next"
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  // A self-contained server for the container image (apps/web/Dockerfile), traced from the
+  // monorepo root so workspace packages are included.
+  output: "standalone",
+  outputFileTracingRoot: join(import.meta.dirname, "../.."),
   cacheComponents: true,
   partialPrefetching: true,
   experimental: {

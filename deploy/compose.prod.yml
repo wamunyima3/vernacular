@@ -1,0 +1,97 @@
+# Everything on one server (P1-OPS-01, docs/deploy.md). Run from the repo root:
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env.production up -d --build
+# Caddy is the only service with open ports; it gets HTTPS certificates itself.
+name: vernacular-prod
+
+x-api-image: &api-image
+  image: vernacular-api:${VERSION:-latest}
+  build: { context: .., dockerfile: apps/api/Dockerfile }
+
+x-db: &db
+  DATABASE_URL: postgres://vernacular:${POSTGRES_PASSWORD:?}@postgres:5432/vernacular?sslmode=disable
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vernacular
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env.production}
+      POSTGRES_DB: vernacular
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vernacular -d vernacular"]
+      interval: 5s
+      retries: 30
+
+  # Applies migrations on every `up`, then exits; the API waits for it.
+  migrate:
+    <<: *api-image
+    command: ["migrate"]
+    environment: *db
+    depends_on: { postgres: { condition: service_healthy } }
+
+  api:
+    <<: *api-image
+    restart: unless-stopped
+    environment:
+      <<: *db
+      APP_ENV: production
+      BLOB_URL: file:///data/blobs?create_dir=true
+      CORS_ALLOWED_ORIGINS: https://${WEB_DOMAIN:?}
+      DOCS_BASE_URL: https://${WEB_DOMAIN}/docs/errors
+      RATE_LIMIT_PER_KEY: ${RATE_LIMIT_PER_KEY:-120}
+      RATE_LIMIT_PER_IP: ${RATE_LIMIT_PER_IP:-30}
+      # Caddy's address on the network below: its X-Forwarded-For is believed.
+      TRUSTED_PROXIES: 172.30.0.0/24
+    volumes: [blobs:/data/blobs]
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+
+  # AI candidate jobs call paid APIs, so the worker runs only with --profile worker.
+  worker:
+    <<: *api-image
+    profiles: [worker]
+    restart: unless-stopped
+    command: ["worker"]
+    environment:
+      <<: *db
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_TRANSLATE_API_KEY: ${GOOGLE_TRANSLATE_API_KEY:-}
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+  web:
+    image: vernacular-web:${VERSION:-latest}
+    build: { context: .., dockerfile: apps/web/Dockerfile }
+    restart: unless-stopped
+    environment:
+      <<: *db
+      API_URL: http://api:8080
+      PUBLIC_API_URL: https://${API_DOMAIN:?}
+      WEB_API_KEY: ${WEB_API_KEY:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Generate one with openssl rand -base64 32}
+      BETTER_AUTH_URL: https://${WEB_DOMAIN}
+    depends_on: { api: { condition: service_healthy } }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web, api]
+
+networks:
+  default:
+    ipam: { config: [{ subnet: 172.30.0.0/24 }] }
+
+volumes:
+  pgdata:
+  blobs:
+  caddy:

@@ -160,7 +160,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 
 ### Operations
 
-- [ ] **P1-OPS-01** Container images and a cheap single-server deploy recipe (M) → NFR-10
+- [x] **P1-OPS-01** Container images and a cheap single-server deploy recipe (M) → NFR-10
 - [ ] **P1-OPS-02** p95 latency measurement on read endpoints (S) → NFR-1
 
 ---

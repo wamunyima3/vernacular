@@ -29,7 +29,7 @@ apps/web/                Next.js 16 developer portal and contributor/reviewer to
 packages/api-client/     Typed TS client generated from the contract
 packages/eslint-config/  Shared lint rules
 packages/tsconfig/       Shared TS config
-deploy/                  docker compose for local services
+deploy/                  docker compose for local services, and the production stack
 docs/                    Requirements, stories, architecture, ADRs
 ```
 

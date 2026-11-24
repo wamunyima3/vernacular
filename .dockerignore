@@ -1,0 +1,12 @@
+# Build contexts are the repo root; send only sources.
+**/node_modules
+**/.next
+**/.source
+**/.turbo
+.git
+.data
+.tmp
+.env
+.env.*
+!.env.example
+**/.DS_Store

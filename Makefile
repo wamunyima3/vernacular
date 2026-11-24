@@ -56,6 +56,11 @@ ingest: ## Import a registered source, e.g. make ingest FEED=gatitos-en-bem
 restem: ## Recompute search stems after changing a stemmer
 	cd $(API_DIR) && go run ./cmd/ingest -restem
 
+.PHONY: images
+images: ## Build the API and web container images (docs/deploy.md)
+	docker build -f apps/api/Dockerfile -t vernacular-api .
+	docker build -f apps/web/Dockerfile -t vernacular-web .
+
 .PHONY: examples
 examples: ## Run the docs' examples against the API (needs VERNACULAR_KEY)
 	./scripts/run-examples.sh
