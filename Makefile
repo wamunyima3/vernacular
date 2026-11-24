@@ -45,7 +45,12 @@ migrate-down: ## Roll back the last migration
 	cd $(API_DIR) && $(GOOSE) down
 
 .PHONY: migrate-roundtrip
-migrate-roundtrip: ## Prove every migration applies, rolls back and re-applies
+migrate-roundtrip: ## Prove every migration applies, rolls back and re-applies. Deletes all data: CI, or CONFIRM=reset
+	@if [ -z "$$CI" ] && [ "$(CONFIRM)" != "reset" ]; then \
+		echo "migrate-roundtrip resets the database in DATABASE_URL and deletes all its data."; \
+		echo "Run it against a database you can lose, with: make migrate-roundtrip CONFIRM=reset"; \
+		exit 1; \
+	fi
 	cd $(API_DIR) && $(GOOSE) up && $(GOOSE) reset && $(GOOSE) up
 
 .PHONY: ingest
