@@ -1200,11 +1200,23 @@ paths:
       operationId: recordConsent
       summary: Record a speaker's signed consent form (admin)
       description: |
-        The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
-        replaces the earlier one and, after a withdrawal, restores consent.
+        The scanned form as the body, at most 10 MB: PDF, PNG or JPEG, and the languages it
+        lets the speaker record. Recording a form again replaces the earlier one and, after a
+        withdrawal, restores consent.
       tags: [audio]
       security:
         - session: []
+      parameters:
+        - name: languages
+          in: query
+          required: true
+          style: form
+          explode: false
+          description: The languages the speaker records, comma-separated
+          schema:
+            type: array
+            minItems: 1
+            items: { $ref: "#/components/schemas/LanguageCode" }
       requestBody:
         required: true
         content:
@@ -1258,8 +1270,8 @@ paths:
       operationId: withdrawConsent
       summary: Withdraw your consent to be recorded
       description: |
-        You can no longer record, and your clips are deleted (NFR-6). The record of when you
-        consented and withdrew is kept.
+        You can no longer record, and your clips and their files are deleted (NFR-6). The
+        record of when you consented and withdrew is kept.
       tags: [audio]
       security:
         - session: []
@@ -1272,6 +1284,86 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
         "409":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/audio:
+    get:
+      operationId: listClips
+      summary: An entry's pronunciation clips
+      tags: [audio]
+      parameters:
+        - name: entry_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Clips, oldest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClipList" }
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: recordClip
+      summary: Record a pronunciation of an entry
+      description: |
+        The recording as the body, at most 1 MB: Ogg, WebM, MP4, MP3 or WAV. You need a consent
+        form on file that names the entry's language. Recording an entry again replaces your
+        earlier clip.
+      tags: [audio]
+      security:
+        - session: []
+      parameters:
+        - name: entry_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Clip" }
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/audio/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      operationId: getClip
+      summary: A clip's sound file
+      tags: [audio]
+      responses:
+        "200":
+          description: The recording, with its own content type
+          content:
+            audio/*:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteClip
+      summary: Delete a clip (its speaker or an admin)
+      tags: [audio]
+      security:
+        - session: []
+      responses:
+        "204":
+          description: Deleted
+        "404":
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
@@ -2029,12 +2121,39 @@ components:
         score: { type: integer }
         total: { type: integer }
         answered_at: { type: string, format: date-time }
+    Clip:
+      type: object
+      description: A pronunciation recorded by a native speaker (LEX-8)
+      required: [id, entry_id, url, content_type, recorded_at]
+      properties:
+        id: { type: string, format: uuid }
+        entry_id: { type: string, format: uuid }
+        url:
+          {
+            type: string,
+            description: Where to fetch the sound,
+            relative to the API,
+            example: /v1/audio/0b6c…,
+          }
+        content_type: { type: string, example: audio/webm }
+        recorded_at: { type: string, format: date-time }
+    ClipList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Clip" }
     Speaker:
       type: object
       description: A speaker's consent to be recorded
-      required: [user_id, consented_at]
+      required: [user_id, languages, consented_at]
       properties:
         user_id: { type: string }
+        languages:
+          type: array
+          description: The languages the speaker may record
+          items: { $ref: "#/components/schemas/LanguageCode" }
         consented_at: { type: string, format: date-time }
         withdrawn_at:
           type: string

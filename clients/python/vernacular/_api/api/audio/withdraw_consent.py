@@ -59,8 +59,8 @@ def sync_detailed(
 ) -> Response[Union[Error, Speaker]]:
     """Withdraw your consent to be recorded
 
-     You can no longer record, and your clips are deleted (NFR-6). The record of when you
-    consented and withdrew is kept.
+     You can no longer record, and your clips and their files are deleted (NFR-6). The
+    record of when you consented and withdrew is kept.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -85,8 +85,8 @@ def sync(
 ) -> Optional[Union[Error, Speaker]]:
     """Withdraw your consent to be recorded
 
-     You can no longer record, and your clips are deleted (NFR-6). The record of when you
-    consented and withdrew is kept.
+     You can no longer record, and your clips and their files are deleted (NFR-6). The
+    record of when you consented and withdrew is kept.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -107,8 +107,8 @@ async def asyncio_detailed(
 ) -> Response[Union[Error, Speaker]]:
     """Withdraw your consent to be recorded
 
-     You can no longer record, and your clips are deleted (NFR-6). The record of when you
-    consented and withdrew is kept.
+     You can no longer record, and your clips and their files are deleted (NFR-6). The
+    record of when you consented and withdrew is kept.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -131,8 +131,8 @@ async def asyncio(
 ) -> Optional[Union[Error, Speaker]]:
     """Withdraw your consent to be recorded
 
-     You can no longer record, and your clips are deleted (NFR-6). The record of when you
-    consented and withdrew is kept.
+     You can no longer record, and your clips and their files are deleted (NFR-6). The
+    record of when you consented and withdrew is kept.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

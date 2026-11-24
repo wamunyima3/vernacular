@@ -31,12 +31,13 @@ var ErrDisabled = &httpx.Problem{Status: http.StatusNotFound, Code: gen.ErrorCod
 // Speaker is a speaker's consent record.
 type Speaker struct {
 	UserID      string
+	Languages   []string
 	ConsentedAt time.Time
 	WithdrawnAt *time.Time
 }
 
 func fromRow(r dbgen.Speaker) Speaker {
-	return Speaker{UserID: r.UserID, ConsentedAt: r.ConsentedAt, WithdrawnAt: httpx.OptionalTime(r.WithdrawnAt)}
+	return Speaker{UserID: r.UserID, Languages: r.Languages, ConsentedAt: r.ConsentedAt, WithdrawnAt: httpx.OptionalTime(r.WithdrawnAt)}
 }
 
 // DB reads from the pool and writes in audited transactions.
@@ -69,12 +70,17 @@ func (s *Service) check(ctx context.Context, require func(context.Context) (acco
 
 func signedIn(ctx context.Context) (accounts.Principal, error) { return accounts.Require(ctx, nil) }
 
-// consentKey is where a speaker's signed form is kept; a new form replaces it.
-func consentKey(userID string) string { return "speakers/" + userID + "/consent" }
+func anyone(context.Context) (accounts.Principal, error) { return accounts.Principal{}, nil }
+
+// A speaker's files sit under one prefix: their signed form (a new form
+// replaces it) and their clips, so withdrawal can clear the clips at once.
+func speakerPrefix(userID string) string { return "speakers/" + userID + "/" }
+
+func consentKey(userID string) string { return speakerPrefix(userID) + "consent" }
 
 // RecordConsent stores a speaker's signed consent form and records their
-// consent. Admins only.
-func (s *Service) RecordConsent(ctx context.Context, userID string, form io.Reader) (Speaker, error) {
+// consent to record in languages. Admins only.
+func (s *Service) RecordConsent(ctx context.Context, userID string, languages []string, form io.Reader) (Speaker, error) {
 	admin, err := s.check(ctx, accounts.RequireAdmin)
 	if err != nil {
 		return Speaker{}, err
@@ -95,7 +101,7 @@ func (s *Service) RecordConsent(ctx context.Context, userID string, form io.Read
 	}
 	var row dbgen.Speaker
 	err = database.InTx(ctx, s.db, admin.ID, func(tx pgx.Tx) error {
-		row, err = dbgen.New(tx).RecordConsent(ctx, dbgen.RecordConsentParams{UserID: userID, ConsentKey: key, RecordedBy: admin.ID})
+		row, err = dbgen.New(tx).RecordConsent(ctx, dbgen.RecordConsentParams{UserID: userID, ConsentKey: key, RecordedBy: admin.ID, Languages: languages})
 		return err
 	})
 	if err != nil {
@@ -142,7 +148,8 @@ func (s *Service) speaker(ctx context.Context, userID string) (dbgen.Speaker, er
 	return row, err
 }
 
-// Withdraw ends the signed-in user's consent (NFR-6).
+// Withdraw ends the signed-in user's consent and deletes their clips and
+// files (NFR-6).
 func (s *Service) Withdraw(ctx context.Context) (Speaker, error) {
 	me, err := s.check(ctx, signedIn)
 	if err != nil {
@@ -151,17 +158,30 @@ func (s *Service) Withdraw(ctx context.Context) (Speaker, error) {
 	var row dbgen.Speaker
 	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
 		q := dbgen.New(tx)
+		if err := q.DeleteSpeakerClips(ctx, me.ID); err != nil {
+			return err
+		}
 		row, err = q.WithdrawConsent(ctx, me.ID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			if _, err := q.GetSpeaker(ctx, me.ID); errors.Is(err, pgx.ErrNoRows) {
 				return httpx.ErrNotFound
 			}
-			return httpx.Conflict("You have already withdrawn your consent")
+			return errWithdrawn
 		}
 		return err
 	})
+	if err != nil && !errors.Is(err, errWithdrawn) {
+		return Speaker{}, err
+	}
+	// The rows are gone and the clips hidden; now the files. If this fails,
+	// withdrawing again retries it.
+	if perr := s.purgeFiles(ctx, me.ID); perr != nil {
+		return Speaker{}, perr
+	}
 	if err != nil {
 		return Speaker{}, err
 	}
 	return fromRow(row), nil
 }
+
+var errWithdrawn = httpx.Conflict("You have already withdrawn your consent")

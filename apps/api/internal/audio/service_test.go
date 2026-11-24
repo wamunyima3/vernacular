@@ -39,7 +39,7 @@ func TestConsent(t *testing.T) {
 	svc := audio.NewService(tx, bucket, true)
 	checkRefusals(admin, sp, t, svc)
 
-	if _, err := svc.RecordConsent(admin, "sp", strings.NewReader(pdf)); err != nil {
+	if _, err := svc.RecordConsent(admin, "sp", []string{"bem"}, strings.NewReader(pdf)); err != nil {
 		t.Fatal(err)
 	}
 	if me, err := svc.Me(sp); err != nil || me.WithdrawnAt != nil {
@@ -61,7 +61,7 @@ func TestConsent(t *testing.T) {
 	if _, err := svc.Withdraw(sp); httpx.Status(err) != 409 {
 		t.Errorf("withdraw twice: %v, want 409", err)
 	}
-	if again, err := svc.RecordConsent(admin, "sp", strings.NewReader(pdf)); err != nil || again.WithdrawnAt != nil {
+	if again, err := svc.RecordConsent(admin, "sp", []string{"bem"}, strings.NewReader(pdf)); err != nil || again.WithdrawnAt != nil {
 		t.Errorf("new form after withdrawal = %+v, %v; want consent restored", again, err)
 	}
 }
@@ -81,7 +81,7 @@ func checkRefusals(admin, sp context.Context, t *testing.T, svc *audio.Service) 
 		{"unknown user", admin, "nobody", pdf, 404},
 		{"text form", admin, "sp", "plain text", 400},
 	} {
-		if _, err := svc.RecordConsent(tc.ctx, tc.user, strings.NewReader(tc.form)); httpx.Status(err) != tc.status {
+		if _, err := svc.RecordConsent(tc.ctx, tc.user, []string{"bem"}, strings.NewReader(tc.form)); httpx.Status(err) != tc.status {
 			t.Errorf("%s: %v, want %d", tc.name, err, tc.status)
 		}
 	}

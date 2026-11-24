@@ -485,6 +485,16 @@ type ApiKey struct {
 	UpdatedAt  time.Time
 }
 
+type AudioClip struct {
+	ID          uuid.UUID
+	EntryID     uuid.UUID
+	SpeakerID   string
+	ContentType string
+	Size        int32
+	RecordedAt  time.Time
+	UpdatedAt   time.Time
+}
+
 type AuditLog struct {
 	ID        int64
 	TableName string
@@ -747,6 +757,7 @@ type Speaker struct {
 	WithdrawnAt pgtype.Timestamptz
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Languages   []string
 }
 
 type User struct {

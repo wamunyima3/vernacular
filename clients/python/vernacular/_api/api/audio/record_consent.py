@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 import httpx
 
 from ...client import AuthenticatedClient, Client
-from ...types import Response
+from ...types import Response, UNSET
 
 from ...models.error import Error
 from ...models.speaker import Speaker
@@ -15,14 +15,24 @@ def _get_kwargs(
     user_id: str,
     *,
     body: File,
+    languages: list[str],
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
+
+    params: dict[str, Any] = {}
+
+    json_languages = languages
+
+    params["languages"] = json_languages
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
         "method": "put",
         "url": "/v1/speakers/{user_id}/consent".format(
             user_id=user_id,
         ),
+        "params": params,
     }
 
     _kwargs["content"] = body.payload
@@ -67,14 +77,17 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     body: File,
+    languages: list[str],
 ) -> Response[Union[Error, Speaker]]:
     """Record a speaker's signed consent form (admin)
 
-     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
-    replaces the earlier one and, after a withdrawal, restores consent.
+     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG, and the languages it
+    lets the speaker record. Recording a form again replaces the earlier one and, after a
+    withdrawal, restores consent.
 
     Args:
         user_id (str):
+        languages (list[str]):
         body (File):
 
     Raises:
@@ -88,6 +101,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         user_id=user_id,
         body=body,
+        languages=languages,
     )
 
     response = client.get_httpx_client().request(
@@ -102,14 +116,17 @@ def sync(
     *,
     client: AuthenticatedClient,
     body: File,
+    languages: list[str],
 ) -> Optional[Union[Error, Speaker]]:
     """Record a speaker's signed consent form (admin)
 
-     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
-    replaces the earlier one and, after a withdrawal, restores consent.
+     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG, and the languages it
+    lets the speaker record. Recording a form again replaces the earlier one and, after a
+    withdrawal, restores consent.
 
     Args:
         user_id (str):
+        languages (list[str]):
         body (File):
 
     Raises:
@@ -124,6 +141,7 @@ def sync(
         user_id=user_id,
         client=client,
         body=body,
+        languages=languages,
     ).parsed
 
 
@@ -132,14 +150,17 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     body: File,
+    languages: list[str],
 ) -> Response[Union[Error, Speaker]]:
     """Record a speaker's signed consent form (admin)
 
-     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
-    replaces the earlier one and, after a withdrawal, restores consent.
+     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG, and the languages it
+    lets the speaker record. Recording a form again replaces the earlier one and, after a
+    withdrawal, restores consent.
 
     Args:
         user_id (str):
+        languages (list[str]):
         body (File):
 
     Raises:
@@ -153,6 +174,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         user_id=user_id,
         body=body,
+        languages=languages,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -165,14 +187,17 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     body: File,
+    languages: list[str],
 ) -> Optional[Union[Error, Speaker]]:
     """Record a speaker's signed consent form (admin)
 
-     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
-    replaces the earlier one and, after a withdrawal, restores consent.
+     The scanned form as the body, at most 10 MB: PDF, PNG or JPEG, and the languages it
+    lets the speaker record. Recording a form again replaces the earlier one and, after a
+    withdrawal, restores consent.
 
     Args:
         user_id (str):
+        languages (list[str]):
         body (File):
 
     Raises:
@@ -188,5 +213,6 @@ async def asyncio(
             user_id=user_id,
             client=client,
             body=body,
+            languages=languages,
         )
     ).parsed

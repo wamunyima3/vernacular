@@ -800,8 +800,9 @@ export interface paths {
         get: operations["downloadConsent"];
         /**
          * Record a speaker's signed consent form (admin)
-         * @description The scanned form as the body, at most 10 MB: PDF, PNG or JPEG. Recording a form again
-         *     replaces the earlier one and, after a withdrawal, restores consent.
+         * @description The scanned form as the body, at most 10 MB: PDF, PNG or JPEG, and the languages it
+         *     lets the speaker record. Recording a form again replaces the earlier one and, after a
+         *     withdrawal, restores consent.
          */
         put: operations["recordConsent"];
         post?: never;
@@ -827,10 +828,53 @@ export interface paths {
         post?: never;
         /**
          * Withdraw your consent to be recorded
-         * @description You can no longer record, and your clips are deleted (NFR-6). The record of when you
-         *     consented and withdrew is kept.
+         * @description You can no longer record, and your clips and their files are deleted (NFR-6). The
+         *     record of when you consented and withdrew is kept.
          */
         delete: operations["withdrawConsent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An entry's pronunciation clips */
+        get: operations["listClips"];
+        put?: never;
+        /**
+         * Record a pronunciation of an entry
+         * @description The recording as the body, at most 1 MB: Ogg, WebM, MP4, MP3 or WAV. You need a consent
+         *     form on file that names the entry's language. Recording an entry again replaces your
+         *     earlier clip.
+         */
+        post: operations["recordClip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audio/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** A clip's sound file */
+        get: operations["getClip"];
+        put?: never;
+        post?: never;
+        /** Delete a clip (its speaker or an admin) */
+        delete: operations["deleteClip"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1373,9 +1417,30 @@ export interface components {
             /** Format: date-time */
             answered_at: string;
         };
+        /** @description A pronunciation recorded by a native speaker (LEX-8) */
+        Clip: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            entry_id: string;
+            /**
+             * @description Where to fetch the sound
+             * @example /v1/audio/0b6c…
+             */
+            url: string;
+            /** @example audio/webm */
+            content_type: string;
+            /** Format: date-time */
+            recorded_at: string;
+        };
+        ClipList: {
+            data: components["schemas"]["Clip"][];
+        };
         /** @description A speaker's consent to be recorded */
         Speaker: {
             user_id: string;
+            /** @description The languages the speaker may record */
+            languages: components["schemas"]["LanguageCode"][];
             /** Format: date-time */
             consented_at: string;
             /**
@@ -2896,7 +2961,10 @@ export interface operations {
     };
     recordConsent: {
         parameters: {
-            query?: never;
+            query: {
+                /** @description The languages the speaker records, comma-separated */
+                languages: components["schemas"]["LanguageCode"][];
+            };
             header?: never;
             path: {
                 user_id: string;
@@ -2964,6 +3032,104 @@ export interface operations {
             };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listClips: {
+        parameters: {
+            query: {
+                entry_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Clips, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClipList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    recordClip: {
+        parameters: {
+            query: {
+                entry_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Saved */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Clip"];
+                };
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getClip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recording, with its own content type */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/*": string;
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteClip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

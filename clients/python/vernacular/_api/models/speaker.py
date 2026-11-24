@@ -7,6 +7,7 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 from dateutil.parser import isoparse
+from typing import cast
 from typing import Union
 import datetime
 
@@ -20,18 +21,22 @@ class Speaker:
 
     Attributes:
         user_id (str):
+        languages (list[str]): The languages the speaker may record
         consented_at (datetime.datetime):
         withdrawn_at (Union[Unset, datetime.datetime]): Set once the speaker withdraws; they cannot record until a new
             form is recorded
     """
 
     user_id: str
+    languages: list[str]
     consented_at: datetime.datetime
     withdrawn_at: Union[Unset, datetime.datetime] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         user_id = self.user_id
+
+        languages = self.languages
 
         consented_at = self.consented_at.isoformat()
 
@@ -44,6 +49,7 @@ class Speaker:
         field_dict.update(
             {
                 "user_id": user_id,
+                "languages": languages,
                 "consented_at": consented_at,
             }
         )
@@ -57,6 +63,8 @@ class Speaker:
         d = dict(src_dict)
         user_id = d.pop("user_id")
 
+        languages = cast(list[str], d.pop("languages"))
+
         consented_at = isoparse(d.pop("consented_at"))
 
         _withdrawn_at = d.pop("withdrawn_at", UNSET)
@@ -68,6 +76,7 @@ class Speaker:
 
         speaker = cls(
             user_id=user_id,
+            languages=languages,
             consented_at=consented_at,
             withdrawn_at=withdrawn_at,
         )

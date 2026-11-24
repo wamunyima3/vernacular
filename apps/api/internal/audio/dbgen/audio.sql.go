@@ -7,10 +7,61 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
+const deleteClip = `-- name: DeleteClip :exec
+DELETE FROM audio_clips WHERE id = $1
+`
+
+func (q *Queries) DeleteClip(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteClip, id)
+	return err
+}
+
+const deleteSpeakerClips = `-- name: DeleteSpeakerClips :exec
+DELETE FROM audio_clips WHERE speaker_id = $1
+`
+
+func (q *Queries) DeleteSpeakerClips(ctx context.Context, speakerID string) error {
+	_, err := q.db.Exec(ctx, deleteSpeakerClips, speakerID)
+	return err
+}
+
+const entryLanguage = `-- name: EntryLanguage :one
+SELECT language_code FROM entries WHERE id = $1
+`
+
+func (q *Queries) EntryLanguage(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, entryLanguage, id)
+	var language_code string
+	err := row.Scan(&language_code)
+	return language_code, err
+}
+
+const getClip = `-- name: GetClip :one
+SELECT c.id, c.entry_id, c.speaker_id, c.content_type, c.size, c.recorded_at, c.updated_at FROM audio_clips c JOIN speakers s ON s.user_id = c.speaker_id
+WHERE c.id = $1 AND s.withdrawn_at IS NULL
+`
+
+func (q *Queries) GetClip(ctx context.Context, id uuid.UUID) (AudioClip, error) {
+	row := q.db.QueryRow(ctx, getClip, id)
+	var i AudioClip
+	err := row.Scan(
+		&i.ID,
+		&i.EntryID,
+		&i.SpeakerID,
+		&i.ContentType,
+		&i.Size,
+		&i.RecordedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getSpeaker = `-- name: GetSpeaker :one
-SELECT user_id, consent_key, consented_at, recorded_by, withdrawn_at, created_at, updated_at FROM speakers WHERE user_id = $1
+SELECT user_id, consent_key, consented_at, recorded_by, withdrawn_at, created_at, updated_at, languages FROM speakers WHERE user_id = $1
 `
 
 func (q *Queries) GetSpeaker(ctx context.Context, userID string) (Speaker, error) {
@@ -24,28 +75,70 @@ func (q *Queries) GetSpeaker(ctx context.Context, userID string) (Speaker, error
 		&i.WithdrawnAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Languages,
 	)
 	return i, err
 }
 
+const listClips = `-- name: ListClips :many
+SELECT c.id, c.entry_id, c.speaker_id, c.content_type, c.size, c.recorded_at, c.updated_at FROM audio_clips c JOIN speakers s ON s.user_id = c.speaker_id
+WHERE c.entry_id = $1 AND s.withdrawn_at IS NULL
+ORDER BY c.recorded_at
+`
+
+// An entry's clips from speakers whose consent is in force, oldest first.
+func (q *Queries) ListClips(ctx context.Context, entryID uuid.UUID) ([]AudioClip, error) {
+	rows, err := q.db.Query(ctx, listClips, entryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AudioClip
+	for rows.Next() {
+		var i AudioClip
+		if err := rows.Scan(
+			&i.ID,
+			&i.EntryID,
+			&i.SpeakerID,
+			&i.ContentType,
+			&i.Size,
+			&i.RecordedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordConsent = `-- name: RecordConsent :one
-INSERT INTO speakers (user_id, consent_key, consented_at, recorded_by)
-VALUES ($1, $2, now(), $3)
+INSERT INTO speakers (user_id, consent_key, consented_at, recorded_by, languages)
+VALUES ($1, $2, now(), $3, $4::text[])
 ON CONFLICT (user_id) DO UPDATE SET
-    consent_key = EXCLUDED.consent_key, consented_at = now(),
+    consent_key = EXCLUDED.consent_key, consented_at = now(), languages = EXCLUDED.languages,
     recorded_by = EXCLUDED.recorded_by, withdrawn_at = NULL, updated_at = now()
-RETURNING user_id, consent_key, consented_at, recorded_by, withdrawn_at, created_at, updated_at
+RETURNING user_id, consent_key, consented_at, recorded_by, withdrawn_at, created_at, updated_at, languages
 `
 
 type RecordConsentParams struct {
 	UserID     string
 	ConsentKey string
 	RecordedBy string
+	Languages  []string
 }
 
 // A new signed form; recording it again after a withdrawal starts consent anew.
 func (q *Queries) RecordConsent(ctx context.Context, arg RecordConsentParams) (Speaker, error) {
-	row := q.db.QueryRow(ctx, recordConsent, arg.UserID, arg.ConsentKey, arg.RecordedBy)
+	row := q.db.QueryRow(ctx, recordConsent,
+		arg.UserID,
+		arg.ConsentKey,
+		arg.RecordedBy,
+		arg.Languages,
+	)
 	var i Speaker
 	err := row.Scan(
 		&i.UserID,
@@ -54,6 +147,42 @@ func (q *Queries) RecordConsent(ctx context.Context, arg RecordConsentParams) (S
 		&i.RecordedBy,
 		&i.WithdrawnAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Languages,
+	)
+	return i, err
+}
+
+const saveClip = `-- name: SaveClip :one
+INSERT INTO audio_clips (entry_id, speaker_id, content_type, size)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (entry_id, speaker_id) DO UPDATE SET
+    content_type = EXCLUDED.content_type, size = EXCLUDED.size, recorded_at = now()
+RETURNING id, entry_id, speaker_id, content_type, size, recorded_at, updated_at
+`
+
+type SaveClipParams struct {
+	EntryID     uuid.UUID
+	SpeakerID   string
+	ContentType string
+	Size        int32
+}
+
+func (q *Queries) SaveClip(ctx context.Context, arg SaveClipParams) (AudioClip, error) {
+	row := q.db.QueryRow(ctx, saveClip,
+		arg.EntryID,
+		arg.SpeakerID,
+		arg.ContentType,
+		arg.Size,
+	)
+	var i AudioClip
+	err := row.Scan(
+		&i.ID,
+		&i.EntryID,
+		&i.SpeakerID,
+		&i.ContentType,
+		&i.Size,
+		&i.RecordedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -73,7 +202,7 @@ func (q *Queries) UserExists(ctx context.Context, id string) (bool, error) {
 const withdrawConsent = `-- name: WithdrawConsent :one
 UPDATE speakers SET withdrawn_at = now(), updated_at = now()
 WHERE user_id = $1 AND withdrawn_at IS NULL
-RETURNING user_id, consent_key, consented_at, recorded_by, withdrawn_at, created_at, updated_at
+RETURNING user_id, consent_key, consented_at, recorded_by, withdrawn_at, created_at, updated_at, languages
 `
 
 func (q *Queries) WithdrawConsent(ctx context.Context, userID string) (Speaker, error) {
@@ -87,6 +216,7 @@ func (q *Queries) WithdrawConsent(ctx context.Context, userID string) (Speaker, 
 		&i.WithdrawnAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Languages,
 	)
 	return i, err
 }

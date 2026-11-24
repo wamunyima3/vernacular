@@ -5,6 +5,8 @@ from .answer_qualification_body import AnswerQualificationBody
 from .approval import Approval
 from .approval_input import ApprovalInput
 from .approval_list import ApprovalList
+from .clip import Clip
+from .clip_list import ClipList
 from .concept import Concept
 from .contribution import Contribution
 from .contribution_input import ContributionInput
@@ -113,6 +115,8 @@ __all__ = (
     "Approval",
     "ApprovalInput",
     "ApprovalList",
+    "Clip",
+    "ClipList",
     "Concept",
     "Contribution",
     "ContributionInput",
