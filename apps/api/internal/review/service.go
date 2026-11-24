@@ -41,6 +41,7 @@ type Candidate struct {
 	English                                string // the concept's gloss, or a phrase's English line
 	Text                                   string // the headword, or the phrase
 	PartOfSpeech, NounClass, Plural, Notes string
+	Corrects                               *lexicon.Corrected // the meaning a correction would replace
 }
 
 // loadCandidates reads senses and phrases by ID, in the order of ids;
@@ -60,7 +61,7 @@ func loadCandidates(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) ([]Candidat
 	for _, c := range senses {
 		byID[c.ID] = Candidate{
 			ID: c.ID, Kind: dbgen.ItemKindSense, ConceptID: c.ConceptID, English: c.GlossEn, Text: c.Headword,
-			PartOfSpeech: c.PartOfSpeech, NounClass: c.NounClass, Plural: c.Plural,
+			PartOfSpeech: c.PartOfSpeech, NounClass: c.NounClass, Plural: c.Plural, Corrects: c.Corrects,
 		}
 	}
 	for _, p := range phr {

@@ -431,7 +431,7 @@ WITH open AS (
     FROM review_agreement a
     JOIN items i ON i.id = a.item_id
     WHERE a.language_code = $1::text
-      AND open_for_review(i.status)
+      AND open_for_review(i.status) AND NOT retired(i.id)
       AND i.author_id IS DISTINCT FROM $2::text
       AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.item_id = i.id AND r.reviewer_id = $2::text)
 ), next AS (

@@ -48,10 +48,10 @@ SELECT $1::uuid, i.id,
                                FROM phrases p WHERE p.id = i.id)
        END, '{}')
 FROM items i
-WHERE i.status = 'verified'
+WHERE i.status = 'verified' AND NOT retired(i.id)
 `
 
-// Copies every verified item as it is now. A snapshot is the item's own row
+// Copies every verified item as it is now, except retired ones. A snapshot is the item's own row
 // without generated columns or timestamps, so it changes only with content.
 func (q *Queries) FreezeVerified(ctx context.Context, releaseID uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, freezeVerified, releaseID)
@@ -143,6 +143,7 @@ func (q *Queries) ResolveRelease(ctx context.Context, name string) (Release, err
 }
 
 const summariseRelease = `-- name: SummariseRelease :one
+
 WITH cur AS (SELECT item_id, snapshot FROM release_items WHERE release_id = $1::uuid),
      prev AS (SELECT item_id, snapshot FROM release_items WHERE release_id = $2::uuid),
      per_kind AS (
@@ -170,6 +171,7 @@ type SummariseReleaseParams struct {
 	PreviousID uuid.NullUUID
 }
 
+// a replaced meaning leaves the next release
 // Counts per language and kind, and the changes against the previous release
 // (none given: everything is added).
 func (q *Queries) SummariseRelease(ctx context.Context, arg SummariseReleaseParams) (Release, error) {

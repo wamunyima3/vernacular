@@ -1745,6 +1745,15 @@ components:
           example: "6"
         plural:
           type: string
+        corrects: { $ref: "#/components/schemas/CorrectedMeaning" }
+    CorrectedMeaning:
+      type: object
+      description: The meaning a correction would replace; verifying the correction retires it
+      required: [item_id, headword, gloss]
+      properties:
+        item_id: { type: string, format: uuid }
+        headword: { type: string }
+        gloss: { type: string }
     Dispute:
       type: object
       required: [language, gloss_en, candidate, disputed_since, reviews]

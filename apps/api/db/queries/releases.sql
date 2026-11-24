@@ -15,7 +15,7 @@ SELECT to_char(now(), 'YYYY') || '.' || (count(*) + 1), now(), @changelog
 FROM releases WHERE name LIKE to_char(now(), 'YYYY') || '.%'
 RETURNING *;
 
--- Copies every verified item as it is now. A snapshot is the item's own row
+-- Copies every verified item as it is now, except retired ones. A snapshot is the item's own row
 -- without generated columns or timestamps, so it changes only with content.
 -- name: FreezeVerified :execrows
 INSERT INTO release_items (release_id, item_id, snapshot)
@@ -31,7 +31,7 @@ SELECT @release_id::uuid, i.id,
                                FROM phrases p WHERE p.id = i.id)
        END, '{}')
 FROM items i
-WHERE i.status = 'verified';
+WHERE i.status = 'verified' AND NOT retired(i.id); -- a replaced meaning leaves the next release
 
 -- Counts per language and kind, and the changes against the previous release
 -- (none given: everything is added).

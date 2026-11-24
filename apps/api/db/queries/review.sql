@@ -7,7 +7,7 @@ WITH open AS (
     FROM review_agreement a
     JOIN items i ON i.id = a.item_id
     WHERE a.language_code = @language_code::text
-      AND open_for_review(i.status)
+      AND open_for_review(i.status) AND NOT retired(i.id)
       AND i.author_id IS DISTINCT FROM @reviewer_id::text
       AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.item_id = i.id AND r.reviewer_id = @reviewer_id::text)
 ), next AS (

@@ -38,7 +38,7 @@ SELECT e.language_code,
 FROM entries e
 JOIN senses s ON s.entry_id = e.id
 JOIN items i ON i.id = s.id
-WHERE servable(i.status)
+WHERE servable(i.status) AND NOT retired(s.id)
 GROUP BY e.language_code
 `
 
@@ -246,7 +246,7 @@ WITH found AS (
     FROM senses s
     JOIN items i ON i.id = s.id
     JOIN entries e ON e.id = s.entry_id
-    WHERE s.concept_id = ANY($1::uuid[]) AND at_least(i.status, $2)
+    WHERE s.concept_id = ANY($1::uuid[]) AND at_least(i.status, $2) AND NOT retired(s.id)
       AND ($3::text IS NULL OR e.variety = $3::text)
       AND (coalesce(cardinality($4::text[]), 0) = 0 OR e.language_code = ANY($4::text[]))
 ), ranked AS (
@@ -474,23 +474,31 @@ func (q *Queries) ListHeadwords(ctx context.Context, languageCode string) ([]Lis
 }
 
 const listSenseCards = `-- name: ListSenseCards :many
-SELECT s.id, s.concept_id, c.gloss_en, e.headword, e.part_of_speech, e.noun_class, e.plural
+SELECT s.id, s.concept_id, c.gloss_en, e.headword, e.part_of_speech, e.noun_class, e.plural,
+       i.corrects, oe.headword AS corrects_headword, os.gloss AS corrects_gloss
 FROM senses s JOIN entries e ON e.id = s.entry_id
+JOIN items i ON i.id = s.id
 LEFT JOIN concepts c ON c.id = s.concept_id
+LEFT JOIN senses os ON os.id = i.corrects
+LEFT JOIN entries oe ON oe.id = os.entry_id
 WHERE s.id = ANY($1::uuid[])
 ORDER BY array_position($1::uuid[], s.id)
 `
 
 type ListSenseCardsRow struct {
-	ID           uuid.UUID
-	ConceptID    uuid.NullUUID
-	GlossEn      pgtype.Text
-	Headword     string
-	PartOfSpeech NullPartOfSpeech
-	NounClass    pgtype.Text
-	Plural       pgtype.Text
+	ID               uuid.UUID
+	ConceptID        uuid.NullUUID
+	GlossEn          pgtype.Text
+	Headword         string
+	PartOfSpeech     NullPartOfSpeech
+	NounClass        pgtype.Text
+	Plural           pgtype.Text
+	Corrects         uuid.NullUUID
+	CorrectsHeadword pgtype.Text
+	CorrectsGloss    pgtype.Text
 }
 
+// Senses for review, with the meaning each one corrects, if any.
 func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSenseCardsRow, error) {
 	rows, err := q.db.Query(ctx, listSenseCards, ids)
 	if err != nil {
@@ -508,6 +516,9 @@ func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSe
 			&i.PartOfSpeech,
 			&i.NounClass,
 			&i.Plural,
+			&i.Corrects,
+			&i.CorrectsHeadword,
+			&i.CorrectsGloss,
 		); err != nil {
 			return nil, err
 		}
@@ -522,7 +533,7 @@ func (q *Queries) ListSenseCards(ctx context.Context, ids []uuid.UUID) ([]ListSe
 const listSenses = `-- name: ListSenses :many
 SELECT s.id, s.entry_id, s.gloss, s.definition, s.concept_id
 FROM senses s JOIN items i ON i.id = s.id
-WHERE s.entry_id = ANY($1::uuid[]) AND at_least(i.status, $2)
+WHERE s.entry_id = ANY($1::uuid[]) AND at_least(i.status, $2) AND NOT retired(s.id)
 ORDER BY s.entry_id, s.position, s.id
 `
 
@@ -631,7 +642,7 @@ JOIN items i ON i.id = e.id
 WHERE servable(i.status)
   AND ($1::text IS NULL OR e.variety = $1::text)
   AND EXISTS (SELECT 1 FROM senses s JOIN items si ON si.id = s.id
-              WHERE s.entry_id = e.id AND at_least(si.status, $2))
+              WHERE s.entry_id = e.id AND at_least(si.status, $2) AND NOT retired(s.id))
 ORDER BY b.rank, b.score DESC, e.headword, e.id
 LIMIT $3
 `

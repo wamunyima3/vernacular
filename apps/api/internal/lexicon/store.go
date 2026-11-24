@@ -256,6 +256,13 @@ type SenseCard struct {
 	ConceptID                                 uuid.NullUUID
 	GlossEn                                   string // the concept's, if any
 	Headword, PartOfSpeech, NounClass, Plural string
+	Corrects                                  *Corrected // the meaning this sense would replace
+}
+
+// Corrected is the meaning a correction would replace.
+type Corrected struct {
+	ID              uuid.UUID
+	Headword, Gloss string
 }
 
 // SenseCards reads the given senses, in the order of ids.
@@ -269,6 +276,9 @@ func (s *Store) SenseCards(ctx context.Context, ids []uuid.UUID) ([]SenseCard, e
 		out[i] = SenseCard{
 			ID: r.ID, ConceptID: r.ConceptID, GlossEn: r.GlossEn.String, Headword: r.Headword, PartOfSpeech: string(r.PartOfSpeech.PartOfSpeech),
 			NounClass: r.NounClass.String, Plural: r.Plural.String,
+		}
+		if r.Corrects.Valid {
+			out[i].Corrects = &Corrected{ID: r.Corrects.UUID, Headword: r.CorrectsHeadword.String, Gloss: r.CorrectsGloss.String}
 		}
 	}
 	return out, nil

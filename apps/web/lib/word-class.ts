@@ -38,5 +38,11 @@ export function wordClassLabel(w: { part_of_speech?: string; noun_class?: string
   return [w.part_of_speech, w.noun_class && `class ${w.noun_class}`].filter(Boolean).join(" · ")
 }
 
-/** The line under a review candidate: a phrase's notes, or a word's class. */
-export const candidateDetail = (c: Schemas["ReviewCandidate"]) => c.notes ?? wordClassLabel(c)
+/**
+ * The line under a review candidate: a phrase's notes or a word's class, and
+ * the meaning a correction would replace.
+ */
+export function candidateDetail(c: Schemas["ReviewCandidate"]): string {
+  const replaces = c.corrects && `replaces ${c.corrects.headword} (${c.corrects.gloss})`
+  return [c.notes ?? wordClassLabel(c), replaces].filter(Boolean).join(" · ")
+}

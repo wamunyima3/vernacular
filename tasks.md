@@ -118,9 +118,9 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-REV-01** Contribute slice: propose entry, sense and example (M) → CON-1, US-18
   - [x] api: `POST /v1/contributions`, stored as `sourced` citing "Community contributors" and the author
   - [x] web: `(tools)/contribute`, with the trust badge on the receipt
-- [ ] **P1-REV-01b** Corrections: propose a change to an existing item, linked to it and kept in its history (M) → CON-1, US-18, PRV-2. Needs item reads (P1-API) and promotion rules (P1-REV-03)
+- [x] **P1-REV-01b** Corrections: propose a change to an existing item, linked to it and kept in its history (M) → CON-1, US-18, PRV-2. Needs item reads (P1-API) and promotion rules (P1-REV-03)
   - [x] **P1-REV-01b1** api + web: a contribution can name the meaning it `corrects`; it is a new candidate linked by `items.corrects`, and the original stays served. "Suggest a correction" on each meaning opens the contribute form prefilled (S)
-  - [ ] **P1-REV-01b2** Reviewers see a correction beside the meaning it corrects; when the correction is verified the original is retired (kept, with its history, never served) (M)
+  - [x] **P1-REV-01b2** Reviewers see a correction beside the meaning it corrects; when the correction is verified the original is retired (kept, with its history, never served) (M)
 - [x] **P1-REV-02** Review queue slice, blind and mobile-first → CON-2, CON-3, DQ-4, AI-4, US-20, US-21
   - [x] **P1-REV-02a** api: `GET /v1/review/next` gives one concept with every pending candidate, no provider names, quick confirms first; `POST /v1/reviews` records accepts and rejects. Only approved languages, never the reviewer's own or already-reviewed items. Decisions only; promotion is P1-REV-03 (M)
   - [x] **P1-REV-02b** web: `(tools)/review`, one card per screen, fixed action bar, reject reasons, skip, empty state (M)

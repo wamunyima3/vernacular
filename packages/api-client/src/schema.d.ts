@@ -1183,6 +1183,14 @@ export interface components {
             /** @example 6 */
             noun_class?: string;
             plural?: string;
+            corrects?: components["schemas"]["CorrectedMeaning"];
+        };
+        /** @description The meaning a correction would replace; verifying the correction retires it */
+        CorrectedMeaning: {
+            /** Format: uuid */
+            item_id: string;
+            headword: string;
+            gloss: string;
         };
         Dispute: {
             language: components["schemas"]["LanguageCode"];

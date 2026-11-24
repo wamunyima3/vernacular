@@ -53,9 +53,14 @@ SELECT pg_advisory_xact_lock(hashtext('lexicon:' || @language_code::text));
 INSERT INTO examples (id, sense_id, text, translation_en) VALUES ($1, $2, $3, $4);
 
 -- name: ListSenseCards :many
-SELECT s.id, s.concept_id, c.gloss_en, e.headword, e.part_of_speech, e.noun_class, e.plural
+-- Senses for review, with the meaning each one corrects, if any.
+SELECT s.id, s.concept_id, c.gloss_en, e.headword, e.part_of_speech, e.noun_class, e.plural,
+       i.corrects, oe.headword AS corrects_headword, os.gloss AS corrects_gloss
 FROM senses s JOIN entries e ON e.id = s.entry_id
+JOIN items i ON i.id = s.id
 LEFT JOIN concepts c ON c.id = s.concept_id
+LEFT JOIN senses os ON os.id = i.corrects
+LEFT JOIN entries oe ON oe.id = os.entry_id
 WHERE s.id = ANY(@ids::uuid[])
 ORDER BY array_position(@ids::uuid[], s.id);
 
@@ -68,7 +73,7 @@ SELECT e.language_code,
 FROM entries e
 JOIN senses s ON s.entry_id = e.id
 JOIN items i ON i.id = s.id
-WHERE servable(i.status)
+WHERE servable(i.status) AND NOT retired(s.id)
 GROUP BY e.language_code;
 
 -- name: SearchEntries :many
@@ -100,7 +105,7 @@ JOIN items i ON i.id = e.id
 WHERE servable(i.status)
   AND (sqlc.narg(variety)::text IS NULL OR e.variety = sqlc.narg(variety)::text)
   AND EXISTS (SELECT 1 FROM senses s JOIN items si ON si.id = s.id
-              WHERE s.entry_id = e.id AND at_least(si.status, @min_status))
+              WHERE s.entry_id = e.id AND at_least(si.status, @min_status) AND NOT retired(s.id))
 ORDER BY b.rank, b.score DESC, e.headword, e.id
 LIMIT @lim;
 
@@ -108,7 +113,7 @@ LIMIT @lim;
 -- The senses of entries at or above min_status, in order.
 SELECT s.id, s.entry_id, s.gloss, s.definition, s.concept_id
 FROM senses s JOIN items i ON i.id = s.id
-WHERE s.entry_id = ANY(@entry_ids::uuid[]) AND at_least(i.status, @min_status)
+WHERE s.entry_id = ANY(@entry_ids::uuid[]) AND at_least(i.status, @min_status) AND NOT retired(s.id)
 ORDER BY s.entry_id, s.position, s.id;
 
 -- name: ListEntries :many
@@ -138,7 +143,7 @@ WITH found AS (
     FROM senses s
     JOIN items i ON i.id = s.id
     JOIN entries e ON e.id = s.entry_id
-    WHERE s.concept_id = ANY(@concept_ids::uuid[]) AND at_least(i.status, @min_status)
+    WHERE s.concept_id = ANY(@concept_ids::uuid[]) AND at_least(i.status, @min_status) AND NOT retired(s.id)
       AND (sqlc.narg(variety)::text IS NULL OR e.variety = sqlc.narg(variety)::text)
       AND (coalesce(cardinality(@languages::text[]), 0) = 0 OR e.language_code = ANY(@languages::text[]))
 ), ranked AS (

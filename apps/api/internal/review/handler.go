@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
 )
@@ -72,7 +73,15 @@ func candidate(c Candidate) gen.ReviewCandidate {
 	return gen.ReviewCandidate{
 		ItemId: c.ID, Headword: c.Text, PartOfSpeech: httpx.Optional(gen.PartOfSpeech(c.PartOfSpeech)),
 		NounClass: httpx.Optional(c.NounClass), Plural: httpx.Optional(c.Plural), Notes: httpx.Optional(c.Notes),
+		Corrects: correctedMeaning(c.Corrects),
 	}
+}
+
+func correctedMeaning(c *lexicon.Corrected) *gen.CorrectedMeaning {
+	if c == nil {
+		return nil
+	}
+	return &gen.CorrectedMeaning{ItemId: c.ID, Headword: c.Headword, Gloss: c.Gloss}
 }
 
 // ListDisputes implements GET /v1/disputes.
