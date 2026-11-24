@@ -58,6 +58,7 @@ var _ gen.StrictServerInterface = api{}
 type Options struct {
 	Log            *slog.Logger
 	AllowedOrigins []string
+	RateLimits     RateLimits
 	DocsBaseURL    string
 }
 
@@ -79,7 +80,7 @@ type Deps struct {
 func New(opts Options, deps Deps) http.Handler {
 	errs := httpx.Errors{DocsBaseURL: opts.DocsBaseURL, Log: opts.Log}
 	r := httpx.NewRouter(httpx.RouterOptions{Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs})
-	r.Use(accounts.Middleware(deps.Accounts, errs), validateRequests(errs))
+	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), validateRequests(errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
 		accountsOps:  accounts.NewHandler(deps.Reviewers),

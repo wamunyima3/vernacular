@@ -3,6 +3,7 @@ package config
 
 import (
 	"log/slog"
+	"net/netip"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -16,6 +17,11 @@ type Config struct {
 	CORSAllowedOrigins []string   `env:"CORS_ALLOWED_ORIGINS" envDefault:"http://localhost:3000" envSeparator:","`
 	DocsBaseURL        string     `env:"DOCS_BASE_URL"        envDefault:"http://localhost:3000/docs/errors"`
 	BlobURL            string     `env:"BLOB_URL,required"` // see internal/platform/blob
+	// Requests per minute (DEV-3); 0 turns a limit off.
+	RateLimitPerKey int `env:"RATE_LIMIT_PER_KEY" envDefault:"120"`
+	RateLimitPerIP  int `env:"RATE_LIMIT_PER_IP"  envDefault:"30"`
+	// Proxies whose X-Forwarded-For is believed, as CIDRs (NFR-5).
+	TrustedProxies []netip.Prefix `env:"TRUSTED_PROXIES" envSeparator:","`
 }
 
 // Load parses the environment into a Config.

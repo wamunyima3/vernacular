@@ -7,6 +7,14 @@ info:
     Every item the API returns says where it came from and who checked it.
     Only items accepted by two independent native-speaker reviewers are `verified`,
     and only verified items are returned by default.
+
+    ## Keys and limits
+
+    Send your API key in the `X-API-Key` header. Calls are limited per key, and anonymous
+    calls per IP address, in one-minute windows (120 and 30 requests by default). Every
+    response says where you stand in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and
+    `X-RateLimit-Reset` (Unix seconds). Over the limit, the API answers `429` with
+    `Retry-After`.
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -89,6 +97,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/entries/{id}:
@@ -116,6 +126,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/concepts/{id}:
@@ -142,6 +154,8 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "429":
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
@@ -197,6 +211,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/phrases:
@@ -231,6 +247,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "429":
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
@@ -268,6 +286,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/translate:
@@ -303,6 +323,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "429":
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"

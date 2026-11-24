@@ -28,8 +28,8 @@ func NewRouter(opts RouterOptions) chi.Router {
 		cors.Handler(cors.Options{
 			AllowedOrigins: opts.AllowedOrigins,
 			AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
-			AllowedHeaders: []string{"Authorization", "Content-Type"},
-			ExposedHeaders: []string{"ETag", "X-Request-Id"},
+			AllowedHeaders: []string{"Authorization", "Content-Type", "X-API-Key"},
+			ExposedHeaders: []string{"ETag", "X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After"},
 			MaxAge:         300,
 		}),
 		middleware.Compress(5),

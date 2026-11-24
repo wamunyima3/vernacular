@@ -17,5 +17,5 @@ Developers create and revoke their own keys (DEV-1, US-01), keys are hashed at r
 ## Consequences
 
 - `GET /v1/languages` and `/healthz` stay open, so the portal and status checks work without a key.
-- The portal's own calls to data endpoints (P1-WEB-02's "Try it") need a key or the visitor's session; it will use a server-side key of its own.
-- Rate limiting (P1-API-12) can key on the caller's `KeyID`.
+- The portal's own calls for signed-out visitors go out with its own key (`WEB_API_KEY`), both because data endpoints need one and because all those calls come from the web server's one IP address. They then share that key's rate limit, which in production needs raising above the free one (paid tiers, DEV-3).
+- Rate limiting (P1-API-12) counts per key, per signed-in user, or per IP for anonymous calls. The client IP comes from `X-Forwarded-For` only through proxies listed in `TRUSTED_PROXIES`.

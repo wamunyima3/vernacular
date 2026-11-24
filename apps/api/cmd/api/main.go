@@ -20,6 +20,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
@@ -62,7 +63,13 @@ func run() error {
 	}
 	log.Info("language detector trained", "languages", detector.Languages())
 	handler := server.New(
-		server.Options{Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL},
+		server.Options{
+			Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL,
+			RateLimits: server.RateLimits{
+				PerKey: cfg.RateLimitPerKey, PerIP: cfg.RateLimitPerIP,
+				IP: httpx.ClientIP{Trusted: cfg.TrustedProxies},
+			},
+		},
 		server.Deps{
 			DB:            pool,
 			Accounts:      accounts.NewStore(pool),
