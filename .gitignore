@@ -29,3 +29,9 @@ apps/api/bin/
 !.vscode/extensions.json
 .tmp/
 .data/
+
+# Python client
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

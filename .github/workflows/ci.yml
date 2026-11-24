@@ -60,8 +60,10 @@ jobs:
           path: .turbo/cache
           key: turbo-${{ github.sha }}
           restore-keys: turbo-
+      - uses: astral-sh/setup-uv@v6
       - run: pnpm install --frozen-lockfile
       - run: make gen-check
+      - run: make test-python
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

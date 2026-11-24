@@ -39,6 +39,17 @@ const vernacular = createVernacular({ apiKey: VERNACULAR_KEY, baseUrl: VERNACULA
 const { data } = await vernacular.search({ language: "bem", q: "amenshi" })
 ```
 
+### From Python
+
+The `vernacular-client` package does the same in Python:
+
+```python
+from vernacular import Vernacular
+
+with Vernacular(api_key=VERNACULAR_KEY, base_url=VERNACULAR_URL) as v:
+    hits = v.search("bem", "amenshi").data
+```
+
 ## 3. Ask for less-checked data only when you mean to
 
 Results are `verified` unless you ask otherwise with `min_status`. Early on, few words are

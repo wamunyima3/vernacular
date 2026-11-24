@@ -1,0 +1,58 @@
+from collections.abc import Mapping
+from typing import Any, TypeVar, TYPE_CHECKING
+
+from attrs import define as _attrs_define
+from attrs import field as _attrs_field
+
+
+if TYPE_CHECKING:
+    from ..models.kind_counts import KindCounts
+
+
+T = TypeVar("T", bound="ReleaseLanguages")
+
+
+@_attrs_define
+class ReleaseLanguages:
+    """Counts per language code"""
+
+    additional_properties: dict[str, "KindCounts"] = _attrs_field(init=False, factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        field_dict: dict[str, Any] = {}
+        for prop_name, prop in self.additional_properties.items():
+            field_dict[prop_name] = prop.to_dict()
+
+        return field_dict
+
+    @classmethod
+    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.kind_counts import KindCounts
+
+        d = dict(src_dict)
+        release_languages = cls()
+
+        additional_properties = {}
+        for prop_name, prop_dict in d.items():
+            additional_property = KindCounts.from_dict(prop_dict)
+
+            additional_properties[prop_name] = additional_property
+
+        release_languages.additional_properties = additional_properties
+        return release_languages
+
+    @property
+    def additional_keys(self) -> list[str]:
+        return list(self.additional_properties.keys())
+
+    def __getitem__(self, key: str) -> "KindCounts":
+        return self.additional_properties[key]
+
+    def __setitem__(self, key: str, value: "KindCounts") -> None:
+        self.additional_properties[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self.additional_properties[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.additional_properties

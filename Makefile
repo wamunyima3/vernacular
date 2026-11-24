@@ -16,7 +16,7 @@ GOOSE        := $(GO_TOOL) goose -dir db/migrations postgres "$(DATABASE_URL)"
 # River (background jobs) owns its tables and migrations.
 RIVER        := $(GO_TOOL) river migrate-up --line main --database-url "$(DATABASE_URL)"
 # Everything `make gen` writes. Never edited by hand.
-GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts packages/client/src/schema.ts
+GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts packages/client/src/schema.ts clients/python/vernacular/_api
 
 .PHONY: help
 help: ## Show this help
@@ -89,6 +89,9 @@ gen: ## Regenerate code from the OpenAPI contract and SQL queries
 	cd $(API_DIR) && $(GO_TOOL) oapi-codegen -config oapi-codegen.yaml ../../contracts/openapi.yaml
 	cd $(API_DIR) && $(GO_TOOL) sqlc generate
 	pnpm --filter @vernacular/api-client --filter @vernacular/client gen
+	@# PYTHONHASHSEED keeps the generator's import order the same on every run
+	PYTHONHASHSEED=0 uvx --from openapi-python-client==0.26.1 openapi-python-client generate --path contracts/openapi.yaml \
+		--output-path clients/python/vernacular/_api --meta none --overwrite --config clients/python/openapi-python-client.yaml
 
 .PHONY: gen-check
 gen-check: gen ## Fail if generated code is out of date
@@ -121,8 +124,12 @@ dev-web:
 	pnpm --filter @vernacular/web dev
 
 .PHONY: test
-test: test-api ## Run Go and web tests
+test: test-api test-python ## Run Go, web and Python client tests
 	pnpm test
+
+.PHONY: test-python
+test-python: ## Lint and test the Python client
+	cd clients/python && uv run --locked sh -c "ruff check . && ruff format --check . && pytest -q"
 
 .PHONY: test-api
 test-api:

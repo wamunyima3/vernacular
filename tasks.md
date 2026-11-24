@@ -191,9 +191,9 @@ Done when: four languages are live and the dictionary and phrase API has launche
 - [x] **P2-03** Open dataset export in open formats and the download page (M) → NFR-9, US-17
 - [x] **P2-04** `GET /v1/phrases/export` in JSON, PO and XLIFF (M) → PHR-3, US-12
 - [x] **P2-05** Phrase placeholders with grammar notes (M) → PHR-2, US-32
-- [ ] **P2-06** JavaScript and Python client libraries (M) → DEV-4, US-14
+- [x] **P2-06** JavaScript and Python client libraries (M) → DEV-4, US-14
   - [x] **P2-06a** `@vernacular/client` (`packages/client`): openapi-fetch typed from the contract, the key sent for you, named methods for the public reads that throw `VernacularError`, built to `dist` (S)
-  - [ ] **P2-06b** Python client, generated from the contract, with the same methods (M)
+  - [x] **P2-06b** `vernacular-client` (`clients/python`): openapi-python-client output in `vernacular/_api` from `make gen`, and a `Vernacular` class with the same named methods raising `VernacularError`; pytest and ruff in CI through uv (M)
   - [ ] **P2-06c** Publish both to npm and PyPI under the project's accounts 👤
 - [ ] **P2-07** Usage dashboard per key (M) → DEV-5, US-13
 - [ ] **P2-08** Pronunciation audio with consent records (L, split) → LEX-8, NFR-6, US-33
