@@ -9,6 +9,12 @@ export default function PortalLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <SiteHeader>
+        <Link href="/try" className="text-muted-foreground hover:text-foreground">
+          Try it
+        </Link>
+        <Link href="/docs/api" className="text-muted-foreground hover:text-foreground">
+          API reference
+        </Link>
         <Link href="/docs/errors" className="text-muted-foreground hover:text-foreground">
           Docs
         </Link>

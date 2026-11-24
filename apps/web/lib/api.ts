@@ -2,7 +2,8 @@ import "server-only"
 
 import { createApiClient } from "@vernacular/api-client"
 
-const baseUrl = process.env.API_URL ?? "http://localhost:8080"
+/** The API as the web server reaches it. */
+export const baseUrl = process.env.API_URL ?? "http://localhost:8080"
 
 const portalKey = process.env.WEB_API_KEY
 

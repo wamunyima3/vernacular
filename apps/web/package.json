@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@scalar/nextjs-api-reference": "^0.12.22",
     "@vernacular/api-client": "workspace:*",
     "better-auth": "1.7.27",
     "class-variance-authority": "^0.7.1",
