@@ -2,6 +2,7 @@ import type { Schemas } from "@vernacular/api-client"
 
 import { cn } from "cn"
 
+import { minStatuses } from "@/lib/min-status"
 import { LanguageField } from "@/components/language-field"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -13,13 +14,6 @@ export type TryQuery = { language: string; q: string; minStatus: Schemas["MinSta
 /** The URL query of a search, as the form sends it and the API reads it. */
 export const searchParamsOf = (q: TryQuery) =>
   new URLSearchParams({ language: q.language, q: q.q, min_status: q.minStatus })
-
-export const minStatuses: { value: Schemas["MinStatus"]; label: string }[] = [
-  { value: "verified", label: "Verified only" },
-  { value: "reviewed", label: "Reviewed once or more" },
-  { value: "sourced", label: "Include unchecked sources" },
-  { value: "machine", label: "Include machine output" },
-]
 
 /**
  * The search form of "Try it" (US-02). A plain GET form to /try, so a search is a link

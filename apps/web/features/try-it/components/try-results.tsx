@@ -2,6 +2,7 @@ import type { Schemas } from "@vernacular/api-client"
 import Link from "next/link"
 
 import { ErrorCard } from "@/components/error-card"
+import { SignInNotice } from "@/components/sign-in-notice"
 import { NoticeCard } from "@/components/notice-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -38,16 +39,9 @@ export async function TryResults({
   })
   if (response.status === 401) {
     return (
-      <NoticeCard
-        title="Sign in to try the API"
-        actions={
-          <Button nativeButton={false} render={<Link href="/sign-in?next=/try" />}>
-            Sign in
-          </Button>
-        }
-      >
+      <SignInNotice title="Sign in to try the API" next="/try">
         Searching here calls the live API, which needs an account or an API key.
-      </NoticeCard>
+      </SignInNotice>
     )
   }
   if (!data) return <ErrorCard title="Search failed" message={apiErrorMessage(error)} />
@@ -60,7 +54,7 @@ export async function TryResults({
     ) : (
       <ol className="flex flex-col gap-3">
         {data.data.map((hit) => (
-          <Hit key={hit.entry.id} hit={hit} />
+          <Hit key={hit.entry.id} hit={hit} minStatus={query.minStatus} />
         ))}
       </ol>
     )
@@ -83,14 +77,24 @@ export async function TryResults({
   )
 }
 
-function Hit({ hit: { match, entry } }: { hit: Schemas["EntryHit"] }) {
+function Hit({
+  hit: { match, entry },
+  minStatus,
+}: {
+  hit: Schemas["EntryHit"]
+  minStatus: Schemas["MinStatus"]
+}) {
   const wordClass = wordClassLabel(entry)
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-4">
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-xl font-semibold" lang={entry.language}>
+        <Link
+          href={`/entries/${entry.id}?${new URLSearchParams({ min_status: minStatus })}`}
+          className="text-xl font-semibold underline-offset-4 hover:underline"
+          lang={entry.language}
+        >
           {entry.headword}
-        </span>
+        </Link>
         {wordClass && <span className="text-sm text-muted-foreground">{wordClass}</span>}
       </div>
       <ul className="flex flex-col gap-1">

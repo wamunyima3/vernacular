@@ -20,6 +20,9 @@ import (
 // reporter may be signed out.
 func (s *Service) Report(ctx context.Context, senseID uuid.UUID, reason string) (uuid.UUID, error) {
 	me, _ := accounts.FromContext(ctx)
+	if me.ByKey() { // a key names an app, such as the portal, not a person
+		me = accounts.Principal{}
+	}
 	if reason = strings.TrimSpace(reason); reason == "" {
 		return uuid.Nil, httpx.BadRequest("Say what is wrong")
 	}

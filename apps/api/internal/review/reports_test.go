@@ -37,7 +37,7 @@ func reported(t *testing.T) (svc *review.Service, status func() items.Status, wa
 }
 
 func TestReportInbox(t *testing.T) {
-	svc, _, _, _, _ := reported(t)
+	svc, _, water, _, _ := reported(t)
 	if _, err := svc.Report(t.Context(), uuid.New(), "x"); httpx.Status(err) != 404 {
 		t.Errorf("reporting nothing: %v, want 404", err)
 	}
@@ -46,6 +46,14 @@ func TestReportInbox(t *testing.T) {
 	}
 	if inbox, err := svc.Reports(reviewer(t), "tst"); err != nil || len(inbox) != 2 {
 		t.Errorf("inbox = %d, %v; want 2", len(inbox), err)
+	}
+	// A report sent with r1's API key (say, from the portal) is anonymous, so r1 may decide it.
+	viaKey, err := svc.Report(accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "r1", KeyID: uuid.New()}), water, "via an app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.DecideReport(reviewer(t), viaKey, false, "fine"); err != nil {
+		t.Errorf("r1 deciding a report sent with their key: %v", err)
 	}
 }
 

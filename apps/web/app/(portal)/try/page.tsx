@@ -2,15 +2,14 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
-import { isOneOf } from "@/lib/form-data"
+import { parseMinStatus } from "@/lib/min-status"
 import { ErrorCard } from "@/components/error-card"
 import { getLanguages, isActive } from "@/features/languages/get-languages"
-import { minStatuses, TryForm, type TryQuery } from "@/features/try-it/components/try-form"
+import { TryForm, type TryQuery } from "@/features/try-it/components/try-form"
 import { TryResults, TryResultsSkeleton } from "@/features/try-it/components/try-results"
 
 export const metadata: Metadata = { title: "Try it" }
 
-const statuses = minStatuses.map((s) => s.value)
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v.trim() : "")
 
 /** The form, filled from the URL, and the results of the search it describes. */
@@ -20,11 +19,10 @@ async function Search({ searchParams }: PageProps<"/try">) {
     return <ErrorCard title="Languages could not be loaded" message={result.message} />
   const languages = result.languages.filter(isActive)
   const language = one(params.language)
-  const minStatus = one(params.min_status)
   const query: TryQuery = {
     language: languages.some((l) => l.code === language) ? language : (languages[0]?.code ?? ""),
     q: one(params.q).slice(0, 100),
-    minStatus: isOneOf(statuses, minStatus) ? minStatus : "verified",
+    minStatus: parseMinStatus(params.min_status),
   }
   const key = JSON.stringify(query)
   const name = languages.find((l) => l.code === query.language)?.name ?? query.language
