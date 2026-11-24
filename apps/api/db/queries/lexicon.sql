@@ -64,6 +64,15 @@ LEFT JOIN entries oe ON oe.id = os.entry_id
 WHERE s.id = ANY(@ids::uuid[])
 ORDER BY array_position(@ids::uuid[], s.id);
 
+-- name: ListExampleCards :many
+-- Examples for review, with the word and meaning each illustrates.
+SELECT x.id, x.sense_id, s.concept_id, c.gloss_en, e.headword, x.text, x.translation_en
+FROM examples x JOIN senses s ON s.id = x.sense_id
+JOIN entries e ON e.id = s.entry_id
+LEFT JOIN concepts c ON c.id = s.concept_id
+WHERE x.id = ANY(@ids::uuid[])
+ORDER BY array_position(@ids::uuid[], x.id);
+
 -- name: CountEntries :many
 -- Per language: entries with a verified sense, and entries with any sense that
 -- can be served (US-03, P1-API-01).

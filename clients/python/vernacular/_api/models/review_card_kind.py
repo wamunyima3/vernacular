@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class ReviewCardKind(str, Enum):
+    EXAMPLE = "example"
     PHRASE = "phrase"
     SENSE = "sense"
 

@@ -23,8 +23,10 @@ class ReviewInput:
         comment (Union[Unset, str]): Why, for rejections
         correction (Union[Unset, ReviewInputCorrection]): The reviewer's own word for the card's meaning, or on a phrase
             card their own
-            phrase, required with `correct` decisions. It becomes a new candidate that other
-            reviewers check; the candidates it replaces keep their history (US-22).
+            phrase, or on an example card their own sentence (at most 200 characters) with
+            `translation_en`, required
+            with `correct` decisions. It becomes a new candidate that other reviewers check;
+            the candidates it replaces keep their history (US-22).
     """
 
     decisions: list["ReviewInputDecisionsItem"]

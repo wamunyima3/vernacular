@@ -46,6 +46,7 @@ func (h *Handler) CreateReviews(ctx context.Context, req gen.CreateReviewsReques
 	if c := req.Body.Correction; c != nil {
 		correction = &Correction{
 			Headword: c.Headword, PartOfSpeech: string(httpx.Deref(c.PartOfSpeech)), NounClass: httpx.Deref(c.NounClass),
+			TranslationEn: httpx.Deref(c.TranslationEn),
 		}
 	}
 	recorded, err := h.svc.Decide(ctx, decisions, httpx.Deref(req.Body.Comment), correction)
@@ -73,7 +74,7 @@ func candidate(c Candidate) gen.ReviewCandidate {
 	return gen.ReviewCandidate{
 		ItemId: c.ID, Headword: c.Text, PartOfSpeech: httpx.Optional(gen.PartOfSpeech(c.PartOfSpeech)),
 		NounClass: httpx.Optional(c.NounClass), Plural: httpx.Optional(c.Plural), Notes: httpx.Optional(c.Notes),
-		Corrects: correctedMeaning(c.Corrects),
+		Word: httpx.Optional(c.Word), TranslationEn: httpx.Optional(c.TranslationEn), Corrects: correctedMeaning(c.Corrects),
 	}
 }
 

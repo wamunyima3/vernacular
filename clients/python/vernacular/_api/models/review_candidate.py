@@ -21,8 +21,10 @@ T = TypeVar("T", bound="ReviewCandidate")
 class ReviewCandidate:
     """
     Attributes:
-        item_id (UUID): The candidate's item, a sense or, on a phrase card, a phrase
-        headword (str): The word, or on a phrase card the phrase Example: amenshi.
+        item_id (UUID): The candidate's item, a sense, phrase or example
+        headword (str): The word, or on a phrase card the phrase, or on an example card the sentence Example: amenshi.
+        word (Union[Unset, str]): On an example card, the word the sentence illustrates
+        translation_en (Union[Unset, str]): On an example card, the sentence's English translation
         notes (Union[Unset, str]): On a phrase card, when to use this form
         part_of_speech (Union[Unset, PartOfSpeech]):
         noun_class (Union[Unset, str]):  Example: 6.
@@ -33,6 +35,8 @@ class ReviewCandidate:
 
     item_id: UUID
     headword: str
+    word: Union[Unset, str] = UNSET
+    translation_en: Union[Unset, str] = UNSET
     notes: Union[Unset, str] = UNSET
     part_of_speech: Union[Unset, PartOfSpeech] = UNSET
     noun_class: Union[Unset, str] = UNSET
@@ -44,6 +48,10 @@ class ReviewCandidate:
         item_id = str(self.item_id)
 
         headword = self.headword
+
+        word = self.word
+
+        translation_en = self.translation_en
 
         notes = self.notes
 
@@ -67,6 +75,10 @@ class ReviewCandidate:
                 "headword": headword,
             }
         )
+        if word is not UNSET:
+            field_dict["word"] = word
+        if translation_en is not UNSET:
+            field_dict["translation_en"] = translation_en
         if notes is not UNSET:
             field_dict["notes"] = notes
         if part_of_speech is not UNSET:
@@ -88,6 +100,10 @@ class ReviewCandidate:
         item_id = UUID(d.pop("item_id"))
 
         headword = d.pop("headword")
+
+        word = d.pop("word", UNSET)
+
+        translation_en = d.pop("translation_en", UNSET)
 
         notes = d.pop("notes", UNSET)
 
@@ -112,6 +128,8 @@ class ReviewCandidate:
         review_candidate = cls(
             item_id=item_id,
             headword=headword,
+            word=word,
+            translation_en=translation_en,
             notes=notes,
             part_of_speech=part_of_speech,
             noun_class=noun_class,

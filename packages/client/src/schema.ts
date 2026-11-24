@@ -1352,14 +1352,18 @@ export interface components {
         ReviewCandidate: {
             /**
              * Format: uuid
-             * @description The candidate's item, a sense or, on a phrase card, a phrase
+             * @description The candidate's item, a sense, phrase or example
              */
             item_id: string;
             /**
-             * @description The word, or on a phrase card the phrase
+             * @description The word, or on a phrase card the phrase, or on an example card the sentence
              * @example amenshi
              */
             headword: string;
+            /** @description On an example card, the word the sentence illustrates */
+            word?: string;
+            /** @description On an example card, the sentence's English translation */
+            translation_en?: string;
             /** @description On a phrase card, when to use this form */
             notes?: string;
             /** @description Absent when the source did not give one */
@@ -1510,10 +1514,11 @@ export interface components {
             language: components["schemas"]["LanguageCode"];
             /**
              * @description `sense`: candidate words for the meaning. `phrase`: candidate phrases for a line
-             *     of a phrase pack, whose English is `gloss_en`. A card never mixes them.
+             *     of a phrase pack, whose English is `gloss_en`. `example`: sentences using words
+             *     for the meaning, each judged on its own. A card never mixes kinds.
              * @enum {string}
              */
-            kind: "sense" | "phrase";
+            kind: "sense" | "phrase" | "example";
             /** Format: uuid */
             concept_id: string;
             /** @example water */
@@ -1536,11 +1541,15 @@ export interface components {
             comment?: string;
             /**
              * @description The reviewer's own word for the card's meaning, or on a phrase card their own
-             *     phrase, required with `correct` decisions. It becomes a new candidate that other
-             *     reviewers check; the candidates it replaces keep their history (US-22).
+             *     phrase, or on an example card their own sentence (at most 200 characters) with
+             *     `translation_en`, required
+             *     with `correct` decisions. It becomes a new candidate that other reviewers check;
+             *     the candidates it replaces keep their history (US-22).
              */
             correction?: {
                 headword: string;
+                /** @description The English of a corrected example sentence */
+                translation_en?: string;
                 part_of_speech?: components["schemas"]["PartOfSpeech"];
                 noun_class?: string;
             };

@@ -19,9 +19,11 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
 
-// Correction is a reviewer's own word for a card's meaning (US-22).
+// Correction is a reviewer's own word for a card's meaning, phrase for its
+// line, or sentence for its examples (US-22).
 type Correction struct {
 	Headword, PartOfSpeech, NounClass string
+	TranslationEn                     string // an example sentence's English
 }
 
 // replacement is the candidate a correction created, and the review detail
@@ -32,7 +34,7 @@ type replacement struct {
 }
 
 // correctionDetail is what a `correct` review stores: the candidate it
-// created, a sense or a phrase (the name predates phrases).
+// created, a sense, phrase or example (the name predates the others).
 type correctionDetail struct {
 	ItemID uuid.UUID `json:"sense_id"` // the key predates phrases; stored reviews keep it
 }
@@ -47,6 +49,17 @@ func correctedTo(detail []byte) uuid.UUID {
 }
 
 func isCorrection(d Decision) bool { return d.Decision == dbgen.ReviewDecisionCorrect }
+
+// correctedIDs are the items the decisions correct.
+func correctedIDs(decisions []Decision) []uuid.UUID {
+	var ids []uuid.UUID
+	for _, d := range decisions {
+		if isCorrection(d) {
+			ids = append(ids, d.ItemID)
+		}
+	}
+	return ids
+}
 
 // replacePhrase adds the reviewer's phrase as their contribution to the line
 // the corrected phrases translate, so only others review it.
@@ -84,6 +97,36 @@ func replacePhrase(ctx context.Context, tx pgx.Tx, reviewerID, language string, 
 	return correctedBy(id)
 }
 
+// replaceExample adds the reviewer's sentence as their example of the meaning
+// the corrected examples illustrate, so only others review it.
+func replaceExample(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisions []Decision, c Correction) (*replacement, error) {
+	lex := newLexicon(tx)
+	cards, err := lex.ExampleCards(ctx, correctedIDs(decisions))
+	if err != nil {
+		return nil, err
+	}
+	for _, card := range cards {
+		if card.SenseID != cards[0].SenseID {
+			return nil, httpx.BadRequest("A correction applies to the examples of one word")
+		}
+		if card.Text == textnorm.Squash(textnorm.NFC(c.Headword)) {
+			return nil, httpx.BadRequest("That sentence is one of the candidates; accept it instead")
+		}
+	}
+	sourceID, err := sources.Lookup(ctx, tx, contributions.SourceName)
+	if err != nil {
+		return nil, err
+	}
+	id, err := lex.AddExample(ctx, language, cards[0].SenseID, c.Headword, c.TranslationEn, items.Contributed(sourceID, reviewerID))
+	if errors.Is(err, lexicon.ErrInvalid) {
+		return nil, httpx.BadRequest("Write the sentence and its English translation")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return correctedBy(id)
+}
+
 // correctedBy is the replacement pointing corrected candidates at id.
 func correctedBy(id uuid.UUID) (*replacement, error) {
 	detail, err := json.Marshal(correctionDetail{ItemID: id})
@@ -97,14 +140,8 @@ func correctedBy(id uuid.UUID) (*replacement, error) {
 // the corrected senses, so only others review it; the corrected senses keep
 // their history untouched.
 func replace(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisions []Decision, c Correction) (*replacement, error) {
-	var ids []uuid.UUID
-	for _, d := range decisions {
-		if isCorrection(d) {
-			ids = append(ids, d.ItemID)
-		}
-	}
 	lex := newLexicon(tx)
-	cards, err := lex.SenseCards(ctx, ids)
+	cards, err := lex.SenseCards(ctx, correctedIDs(decisions))
 	if err != nil {
 		return nil, err
 	}

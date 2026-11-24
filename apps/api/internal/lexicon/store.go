@@ -259,6 +259,30 @@ type SenseCard struct {
 	Corrects                                  *Corrected // the meaning this sense would replace
 }
 
+// ExampleCard is an example for review, with the word and meaning it illustrates.
+type ExampleCard struct {
+	ID, SenseID         uuid.UUID
+	ConceptID           uuid.NullUUID
+	GlossEn, Headword   string
+	Text, TranslationEn string
+}
+
+// ExampleCards reads the given examples, in the order of ids.
+func (s *Store) ExampleCards(ctx context.Context, ids []uuid.UUID) ([]ExampleCard, error) {
+	rows, err := s.q.ListExampleCards(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list example cards: %w", err)
+	}
+	out := make([]ExampleCard, len(rows))
+	for i, r := range rows {
+		out[i] = ExampleCard{
+			ID: r.ID, SenseID: r.SenseID, ConceptID: r.ConceptID, GlossEn: r.GlossEn.String,
+			Headword: r.Headword, Text: r.Text, TranslationEn: r.TranslationEn,
+		}
+	}
+	return out, nil
+}
+
 // Corrected is the meaning a correction would replace.
 type Corrected struct {
 	ID              uuid.UUID

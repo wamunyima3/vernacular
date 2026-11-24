@@ -22,7 +22,8 @@ class ReviewCard:
     Attributes:
         language (str): ISO 639-3 code Example: bem.
         kind (ReviewCardKind): `sense`: candidate words for the meaning. `phrase`: candidate phrases for a line
-            of a phrase pack, whose English is `gloss_en`. A card never mixes them.
+            of a phrase pack, whose English is `gloss_en`. `example`: sentences using words
+            for the meaning, each judged on its own. A card never mixes kinds.
         concept_id (UUID):
         gloss_en (str):  Example: water.
         priority (ReviewPriority): `quick`: every source agrees. `standard`: at least two agree. `full`: no agreement

@@ -2046,11 +2046,17 @@ components:
         item_id:
           type: string
           format: uuid
-          description: The candidate's item, a sense or, on a phrase card, a phrase
+          description: The candidate's item, a sense, phrase or example
         headword:
           type: string
-          description: The word, or on a phrase card the phrase
+          description: The word, or on a phrase card the phrase, or on an example card the sentence
           example: amenshi
+        word:
+          type: string
+          description: On an example card, the word the sentence illustrates
+        translation_en:
+          type: string
+          description: On an example card, the sentence's English translation
         notes:
           type: string
           description: On a phrase card, when to use this form
@@ -2244,8 +2250,9 @@ components:
           type: string
           description: |
             `sense`: candidate words for the meaning. `phrase`: candidate phrases for a line
-            of a phrase pack, whose English is `gloss_en`. A card never mixes them.
-          enum: [sense, phrase]
+            of a phrase pack, whose English is `gloss_en`. `example`: sentences using words
+            for the meaning, each judged on its own. A card never mixes kinds.
+          enum: [sense, phrase, example]
         concept_id: { type: string, format: uuid }
         gloss_en:
           type: string
@@ -2284,11 +2291,17 @@ components:
           additionalProperties: false
           description: |
             The reviewer's own word for the card's meaning, or on a phrase card their own
-            phrase, required with `correct` decisions. It becomes a new candidate that other
-            reviewers check; the candidates it replaces keep their history (US-22).
+            phrase, or on an example card their own sentence (at most 200 characters) with
+            `translation_en`, required
+            with `correct` decisions. It becomes a new candidate that other reviewers check;
+            the candidates it replaces keep their history (US-22).
           required: [headword]
           properties:
             headword: { type: string, minLength: 1, maxLength: 200 }
+            translation_en:
+              type: string
+              maxLength: 500
+              description: The English of a corrected example sentence
             part_of_speech: { $ref: "#/components/schemas/PartOfSpeech" }
             noun_class:
               type: string

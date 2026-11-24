@@ -29,35 +29,44 @@ type Card struct {
 	ConceptID  uuid.UUID
 	GlossEn    string // the concept's gloss, or on a phrase card the phrase's English line
 	Priority   dbgen.ReviewPriority
-	Kind       dbgen.ItemKind // a card holds senses or phrases, never both
+	Kind       dbgen.ItemKind // a card holds one kind: senses, phrases or examples
 	Candidates []Candidate
 }
 
-// Candidate is one item reviewers judge: a sense or a phrase.
+// Candidate is one item reviewers judge: a sense, a phrase or an example.
 type Candidate struct {
 	ID                                     uuid.UUID
 	Kind                                   dbgen.ItemKind
 	ConceptID                              uuid.NullUUID
 	English                                string // the concept's gloss, or a phrase's English line
-	Text                                   string // the headword, or the phrase
+	Text                                   string // the headword, the phrase, or the example sentence
+	Word, TranslationEn                    string // for an example: the word it uses, and its English
 	PartOfSpeech, NounClass, Plural, Notes string
 	Corrects                               *lexicon.Corrected // the meaning a correction would replace
 }
 
-// loadCandidates reads senses and phrases by ID, in the order of ids;
+// loadCandidates reads senses, phrases and examples by ID, in the order of ids;
 // unknown IDs are left out.
 func loadCandidates(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) ([]Candidate, error) {
 	senses, err := newLexicon(tx).SenseCards(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	var phr []phrases.Phrase
-	if len(senses) < len(ids) { // the rest may be phrases
+	var (
+		phr []phrases.Phrase
+		exs []lexicon.ExampleCard
+	)
+	if len(senses) < len(ids) { // the rest may be phrases or examples
 		if phr, err = newPhrases(tx).Cards(ctx, ids); err != nil {
 			return nil, err
 		}
 	}
-	byID := make(map[uuid.UUID]Candidate, len(senses)+len(phr))
+	if len(senses)+len(phr) < len(ids) {
+		if exs, err = newLexicon(tx).ExampleCards(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
+	byID := make(map[uuid.UUID]Candidate, len(ids))
 	for _, c := range senses {
 		byID[c.ID] = Candidate{
 			ID: c.ID, Kind: dbgen.ItemKindSense, ConceptID: c.ConceptID, English: c.GlossEn, Text: c.Headword,
@@ -66,6 +75,12 @@ func loadCandidates(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) ([]Candidat
 	}
 	for _, p := range phr {
 		byID[p.ID] = Candidate{ID: p.ID, Kind: dbgen.ItemKindPhrase, ConceptID: p.ConceptID, English: p.SourceEn, Text: p.Text, Notes: p.Notes}
+	}
+	for _, x := range exs {
+		byID[x.ID] = Candidate{
+			ID: x.ID, Kind: dbgen.ItemKindExample, ConceptID: x.ConceptID, English: x.GlossEn, Text: x.Text,
+			Word: x.Headword, TranslationEn: x.TranslationEn,
+		}
 	}
 	out := make([]Candidate, 0, len(ids))
 	for _, id := range ids {
@@ -92,6 +107,8 @@ type Recorded struct {
 // Lexicon is what the queue needs from the lexicon module.
 type Lexicon interface {
 	SenseCards(ctx context.Context, ids []uuid.UUID) ([]lexicon.SenseCard, error)
+	ExampleCards(ctx context.Context, ids []uuid.UUID) ([]lexicon.ExampleCard, error)
+	AddExample(ctx context.Context, language string, senseID uuid.UUID, text, translationEn string, origin items.Origin) (uuid.UUID, error)
 }
 
 // Phrases is what the queue needs from the phrases module.
@@ -172,7 +189,7 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 				return err
 			}
 			if locked[i].Kind != locked[0].Kind {
-				return httpx.BadRequest("Decide on one card's candidates together: words and phrases are never on one card")
+				return httpx.BadRequest("Decide on one card's candidates together: a card holds one kind of item")
 			}
 		}
 		fix, err := correct(ctx, tx, me.ID, locked, sorted, correction)
@@ -263,8 +280,11 @@ func correct(ctx context.Context, tx pgx.Tx, reviewerID string, locked []items.L
 	if c == nil {
 		return nil, nil
 	}
-	if locked[0].Kind == items.KindPhrase {
+	switch locked[0].Kind {
+	case items.KindPhrase:
 		return replacePhrase(ctx, tx, reviewerID, locked[0].Language, sorted, *c)
+	case items.KindExample:
+		return replaceExample(ctx, tx, reviewerID, locked[0].Language, sorted, *c)
 	}
 	return replace(ctx, tx, reviewerID, locked[0].Language, sorted, *c)
 }

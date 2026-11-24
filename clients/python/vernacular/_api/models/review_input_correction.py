@@ -15,21 +15,27 @@ T = TypeVar("T", bound="ReviewInputCorrection")
 @_attrs_define
 class ReviewInputCorrection:
     """The reviewer's own word for the card's meaning, or on a phrase card their own
-    phrase, required with `correct` decisions. It becomes a new candidate that other
-    reviewers check; the candidates it replaces keep their history (US-22).
+    phrase, or on an example card their own sentence (at most 200 characters) with
+    `translation_en`, required
+    with `correct` decisions. It becomes a new candidate that other reviewers check;
+    the candidates it replaces keep their history (US-22).
 
         Attributes:
             headword (str):
+            translation_en (Union[Unset, str]): The English of a corrected example sentence
             part_of_speech (Union[Unset, PartOfSpeech]):
             noun_class (Union[Unset, str]):
     """
 
     headword: str
+    translation_en: Union[Unset, str] = UNSET
     part_of_speech: Union[Unset, PartOfSpeech] = UNSET
     noun_class: Union[Unset, str] = UNSET
 
     def to_dict(self) -> dict[str, Any]:
         headword = self.headword
+
+        translation_en = self.translation_en
 
         part_of_speech: Union[Unset, str] = UNSET
         if not isinstance(self.part_of_speech, Unset):
@@ -44,6 +50,8 @@ class ReviewInputCorrection:
                 "headword": headword,
             }
         )
+        if translation_en is not UNSET:
+            field_dict["translation_en"] = translation_en
         if part_of_speech is not UNSET:
             field_dict["part_of_speech"] = part_of_speech
         if noun_class is not UNSET:
@@ -56,6 +64,8 @@ class ReviewInputCorrection:
         d = dict(src_dict)
         headword = d.pop("headword")
 
+        translation_en = d.pop("translation_en", UNSET)
+
         _part_of_speech = d.pop("part_of_speech", UNSET)
         part_of_speech: Union[Unset, PartOfSpeech]
         if isinstance(_part_of_speech, Unset):
@@ -67,6 +77,7 @@ class ReviewInputCorrection:
 
         review_input_correction = cls(
             headword=headword,
+            translation_en=translation_en,
             part_of_speech=part_of_speech,
             noun_class=noun_class,
         )

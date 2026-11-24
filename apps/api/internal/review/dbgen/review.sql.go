@@ -251,7 +251,7 @@ SELECT i.id, i.language_code,
             WHERE p.item_id = i.id AND p.state = 'confirmed' AND p.settled_by IS NULL)
        )::timestamptz AS disputed_since
 FROM items i
-WHERE i.status = 'disputed' AND i.kind IN ('sense', 'phrase')
+WHERE i.status = 'disputed' AND i.kind IN ('sense', 'phrase', 'example')
   AND i.language_code = ANY($1::text[])
 ORDER BY disputed_since, i.id
 LIMIT 50

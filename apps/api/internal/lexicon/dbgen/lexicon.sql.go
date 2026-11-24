@@ -399,6 +399,54 @@ func (q *Queries) ListEntries(ctx context.Context, ids []uuid.UUID) ([]ListEntri
 	return items, nil
 }
 
+const listExampleCards = `-- name: ListExampleCards :many
+SELECT x.id, x.sense_id, s.concept_id, c.gloss_en, e.headword, x.text, x.translation_en
+FROM examples x JOIN senses s ON s.id = x.sense_id
+JOIN entries e ON e.id = s.entry_id
+LEFT JOIN concepts c ON c.id = s.concept_id
+WHERE x.id = ANY($1::uuid[])
+ORDER BY array_position($1::uuid[], x.id)
+`
+
+type ListExampleCardsRow struct {
+	ID            uuid.UUID
+	SenseID       uuid.UUID
+	ConceptID     uuid.NullUUID
+	GlossEn       pgtype.Text
+	Headword      string
+	Text          string
+	TranslationEn string
+}
+
+// Examples for review, with the word and meaning each illustrates.
+func (q *Queries) ListExampleCards(ctx context.Context, ids []uuid.UUID) ([]ListExampleCardsRow, error) {
+	rows, err := q.db.Query(ctx, listExampleCards, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListExampleCardsRow
+	for rows.Next() {
+		var i ListExampleCardsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenseID,
+			&i.ConceptID,
+			&i.GlossEn,
+			&i.Headword,
+			&i.Text,
+			&i.TranslationEn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExamples = `-- name: ListExamples :many
 SELECT x.id, x.sense_id, x.text, x.translation_en
 FROM examples x JOIN items i ON i.id = x.id

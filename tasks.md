@@ -204,6 +204,9 @@ Done when: four languages are live and the dictionary and phrase API has launche
   - [x] **P2-08c** web: entry pages play an entry's clips (streamed through `/audio/[id]`) and give a consenting speaker of the language a MediaRecorder recorder; a speaker deletes their own clip, and the account page shows their consent with a withdraw button (M)
   - [ ] **P2-08d** Take legal advice, register as a data controller, decide where audio is hosted, then set `AUDIO_ENABLED` 👤
 - [ ] **P2-09** Example sentences for every sense in the core list (M) → LEX-5
+  - [x] **P2-09a** api: examples go through the review queue like meanings and phrases (cards per concept, two accepts verify; a correction adds a new example to the same meaning) (M)
+  - [ ] **P2-09b** web: review cards show an example with the word and meaning it illustrates (S)
+  - [ ] **P2-09c** api + web: add an example to an existing meaning from its entry page, and a "Needs examples" page listing core meanings in a language without a verified example, with coverage (M)
 - [ ] **P2-10** Quarterly 5% re-check sampling job (S) → DQ-6, US-28
 
 ---

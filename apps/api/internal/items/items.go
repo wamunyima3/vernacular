@@ -23,9 +23,11 @@ const (
 	KindPhrase  = dbgen.ItemKindPhrase
 )
 
-// Reviewable reports whether reviewers judge items of this kind: senses and
-// phrases.
-func Reviewable(kind dbgen.ItemKind) bool { return kind == KindSense || kind == KindPhrase }
+// Reviewable reports whether reviewers judge items of this kind: senses,
+// phrases and examples.
+func Reviewable(kind dbgen.ItemKind) bool {
+	return kind == KindSense || kind == KindPhrase || kind == KindExample
+}
 
 // Origin says where a new item came from and how far it is trusted.
 type Origin struct {
