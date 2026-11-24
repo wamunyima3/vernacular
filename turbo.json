@@ -4,7 +4,7 @@
   "tasks": {
     "gen": {
       "inputs": ["$TURBO_ROOT$/contracts/openapi.yaml"],
-      "outputs": ["src/schema.d.ts"]
+      "outputs": ["src/schema.d.ts", "src/schema.ts"]
     },
     "build": {
       "dependsOn": ["^build", "^gen"],

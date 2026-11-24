@@ -16,7 +16,7 @@ GOOSE        := $(GO_TOOL) goose -dir db/migrations postgres "$(DATABASE_URL)"
 # River (background jobs) owns its tables and migrations.
 RIVER        := $(GO_TOOL) river migrate-up --line main --database-url "$(DATABASE_URL)"
 # Everything `make gen` writes. Never edited by hand.
-GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts
+GENERATED    := $(API_DIR)/internal/gen $(API_DIR)/internal/*/dbgen packages/api-client/src/schema.d.ts packages/client/src/schema.ts
 
 .PHONY: help
 help: ## Show this help
@@ -88,7 +88,7 @@ admin: ## Give a signed-up user a role, e.g. make admin EMAIL=you@example.org [R
 gen: ## Regenerate code from the OpenAPI contract and SQL queries
 	cd $(API_DIR) && $(GO_TOOL) oapi-codegen -config oapi-codegen.yaml ../../contracts/openapi.yaml
 	cd $(API_DIR) && $(GO_TOOL) sqlc generate
-	pnpm --filter @vernacular/api-client gen
+	pnpm --filter @vernacular/api-client --filter @vernacular/client gen
 
 .PHONY: gen-check
 gen-check: gen ## Fail if generated code is out of date

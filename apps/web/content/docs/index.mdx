@@ -27,6 +27,18 @@ Each hit says what matched (the headword, a spelling variant, the root, or a sim
 and carries a `trust` object: its [verification level](/docs/verification-levels), its sources
 and its review counts.
 
+### From JavaScript or TypeScript
+
+The `@vernacular/client` package sends the key for you, types every response from the API
+contract, and throws a `VernacularError` when a call fails:
+
+```ts
+import { createVernacular } from "@vernacular/client"
+
+const vernacular = createVernacular({ apiKey: VERNACULAR_KEY, baseUrl: VERNACULAR_URL })
+const { data } = await vernacular.search({ language: "bem", q: "amenshi" })
+```
+
 ## 3. Ask for less-checked data only when you mean to
 
 Results are `verified` unless you ask otherwise with `min_status`. Early on, few words are

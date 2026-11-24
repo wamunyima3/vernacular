@@ -13,6 +13,7 @@
     "**/dbgen/**",
     "**/db/migrations/**",
     "**/schema.d.ts",
+    "packages/client/src/schema.ts",
     "**/components/ui/**",
     "**/*_test.go",
     "**/*.test.ts",
