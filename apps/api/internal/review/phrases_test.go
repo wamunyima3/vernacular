@@ -23,7 +23,7 @@ func TestPhraseCards(t *testing.T) {
 	phraseFixture(t, tx)
 	svc := review.NewService(tx)
 	card, ok, err := svc.Next(reviewer(t), "tst", nil)
-	if err != nil || !ok || card.Kind != dbgen.ItemKindPhrase || len(card.Phrases) != 2 || len(card.Candidates) != 0 || card.GlossEn != "Zz good night" {
+	if err != nil || !ok || card.Kind != dbgen.ItemKindPhrase || len(card.Candidates) != 2 || card.GlossEn != "Zz good night" {
 		t.Fatalf("next = %+v %v %v; want the phrase card with 2 phrases", card, ok, err)
 	}
 
@@ -31,7 +31,7 @@ func TestPhraseCards(t *testing.T) {
 
 	// Another reviewer sees the reviewer's phrase with the others.
 	card, ok, err = svc.Next(reviewer(t, "r2"), "tst", nil)
-	if err != nil || !ok || card.Kind != dbgen.ItemKindPhrase || len(card.Phrases) != 3 {
+	if err != nil || !ok || card.Kind != dbgen.ItemKindPhrase || len(card.Candidates) != 3 {
 		t.Errorf("r2 next = %+v %v %v; want the 3 phrases", card, ok, err)
 	}
 }
@@ -74,17 +74,17 @@ func checkPhraseCorrection(t *testing.T, tx pgx.Tx, svc *review.Service, card re
 	t.Helper()
 	ctx := t.Context()
 	all := func(d dbgen.ReviewDecision) []review.Decision {
-		return []review.Decision{{SenseID: card.Phrases[0].ID, Decision: d}, {SenseID: card.Phrases[1].ID, Decision: d}}
+		return []review.Decision{{ItemID: card.Candidates[0].ID, Decision: d}, {ItemID: card.Candidates[1].ID, Decision: d}}
 	}
 	if _, err := svc.Decide(reviewer(t), all(dbgen.ReviewDecisionCorrect), "", &review.Correction{Headword: "zz MUSHILENI"}); httpx.Status(err) != 400 {
 		t.Errorf("correcting to a candidate: err = %v, want 400", err)
 	}
 	got, err := svc.Decide(reviewer(t), all(dbgen.ReviewDecisionCorrect), "", &review.Correction{Headword: "Zz mwalale"})
-	if err != nil || len(got) != 2 || got[0].CorrectionSenseID == nil {
+	if err != nil || len(got) != 2 || got[0].CorrectionItemID == nil {
 		t.Fatalf("correct = %+v, %v", got, err)
 	}
 	var text, pack string
-	if err := tx.QueryRow(ctx, "SELECT text, pack FROM phrases WHERE id = $1", *got[0].CorrectionSenseID).Scan(&text, &pack); err != nil || text != "Zz mwalale" || pack != "zz-greet" {
+	if err := tx.QueryRow(ctx, "SELECT text, pack FROM phrases WHERE id = $1", *got[0].CorrectionItemID).Scan(&text, &pack); err != nil || text != "Zz mwalale" || pack != "zz-greet" {
 		t.Errorf("correction = %q in %q, %v; want a new phrase in the line's pack", text, pack, err)
 	}
 }

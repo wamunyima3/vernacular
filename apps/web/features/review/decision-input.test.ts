@@ -24,7 +24,7 @@ describe("decisionInput", () => {
       ),
     ).toEqual({
       ok: true,
-      body: { decisions: [{ sense_id: b, decision: "accept" }] },
+      body: { decisions: [{ item_id: b, decision: "accept" }] },
     })
   })
 
@@ -60,8 +60,8 @@ describe("decisionInput", () => {
       ok: true,
       body: {
         decisions: [
-          { sense_id: a, decision: "reject" },
-          { sense_id: b, decision: "reject" },
+          { item_id: a, decision: "reject" },
+          { item_id: b, decision: "reject" },
         ],
         comment: "Misspelled: amenshi",
       },
@@ -89,8 +89,8 @@ describe("decisionInput", () => {
       ok: true,
       body: {
         decisions: [
-          { sense_id: a, decision: "correct" },
-          { sense_id: b, decision: "correct" },
+          { item_id: a, decision: "correct" },
+          { item_id: b, decision: "correct" },
         ],
         correction: { headword: "ilibwe", part_of_speech: "verb" },
       },

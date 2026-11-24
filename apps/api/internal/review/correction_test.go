@@ -58,7 +58,7 @@ func cardFor(ctx context.Context, t *testing.T, svc *review.Service, gloss strin
 func corrections(ids []uuid.UUID) []review.Decision {
 	out := make([]review.Decision, len(ids))
 	for i, id := range ids {
-		out[i] = review.Decision{SenseID: id, Decision: correct}
+		out[i] = review.Decision{ItemID: id, Decision: correct}
 	}
 	return out
 }
@@ -73,8 +73,8 @@ func TestCorrection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fix := got[0].CorrectionSenseID
-	if fix == nil || got[1].CorrectionSenseID == nil || *got[1].CorrectionSenseID != *fix {
+	fix := got[0].CorrectionItemID
+	if fix == nil || got[1].CorrectionItemID == nil || *got[1].CorrectionItemID != *fix {
 		t.Fatalf("recorded = %+v, want both pointing at one new candidate", got)
 	}
 	if got := describe(t, tx, *fix); got != "ilibwe 5/6 by r1" {
@@ -118,7 +118,7 @@ func TestCorrectionRefused(t *testing.T) {
 	}{
 		{"one of the candidates", corrections(stone), &review.Correction{Headword: candidate}},
 		{"correct without a correction", corrections(stone), nil},
-		{"a correction without correct", []review.Decision{{SenseID: stone[0], Decision: reject}}, &review.Correction{Headword: "ilibwe"}},
+		{"a correction without correct", []review.Decision{{ItemID: stone[0], Decision: reject}}, &review.Correction{Headword: "ilibwe"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

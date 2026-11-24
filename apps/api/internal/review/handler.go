@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
-	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
 )
@@ -26,12 +25,9 @@ func (h *Handler) GetNextReview(ctx context.Context, req gen.GetNextReviewReques
 	if !ok {
 		return gen.GetNextReview204Response{}, nil
 	}
-	candidates := make([]gen.ReviewCandidate, 0, len(card.Candidates)+len(card.Phrases))
-	for _, c := range card.Candidates {
-		candidates = append(candidates, candidate(c))
-	}
-	for _, p := range card.Phrases {
-		candidates = append(candidates, gen.ReviewCandidate{SenseId: p.ID, Headword: p.Text, Notes: httpx.Optional(p.Notes)})
+	candidates := make([]gen.ReviewCandidate, len(card.Candidates))
+	for i, c := range card.Candidates {
+		candidates[i] = candidate(c)
 	}
 	return gen.GetNextReview200JSONResponse{
 		Language: card.Language, ConceptId: card.ConceptID, GlossEn: card.GlossEn, Kind: gen.ReviewCardKind(card.Kind),
@@ -43,7 +39,7 @@ func (h *Handler) GetNextReview(ctx context.Context, req gen.GetNextReviewReques
 func (h *Handler) CreateReviews(ctx context.Context, req gen.CreateReviewsRequestObject) (gen.CreateReviewsResponseObject, error) {
 	decisions := make([]Decision, len(req.Body.Decisions))
 	for i, d := range req.Body.Decisions {
-		decisions[i] = Decision{SenseID: d.SenseId, Decision: dbgen.ReviewDecision(d.Decision)}
+		decisions[i] = Decision{ItemID: d.ItemId, Decision: dbgen.ReviewDecision(d.Decision)}
 	}
 	var correction *Correction
 	if c := req.Body.Correction; c != nil {
@@ -58,7 +54,7 @@ func (h *Handler) CreateReviews(ctx context.Context, req gen.CreateReviewsReques
 	out := make([]gen.Review, len(recorded))
 	for i, r := range recorded {
 		out[i] = gen.Review{
-			Id: r.ID, SenseId: r.SenseID, Decision: gen.ReviewDecision(r.Decision.Decision), CorrectionSenseId: r.CorrectionSenseID,
+			Id: r.ID, ItemId: r.ItemID, Decision: gen.ReviewDecision(r.Decision.Decision), CorrectionItemId: r.CorrectionItemID,
 		}
 	}
 	return gen.CreateReviews201JSONResponse{Data: out}, nil
@@ -72,10 +68,10 @@ func (h *Handler) DeleteReviews(ctx context.Context, req gen.DeleteReviewsReques
 	return gen.DeleteReviews204Response{}, nil
 }
 
-func candidate(c lexicon.SenseCard) gen.ReviewCandidate {
+func candidate(c Candidate) gen.ReviewCandidate {
 	return gen.ReviewCandidate{
-		SenseId: c.ID, Headword: c.Headword, PartOfSpeech: httpx.Optional(gen.PartOfSpeech(c.PartOfSpeech)),
-		NounClass: httpx.Optional(c.NounClass), Plural: httpx.Optional(c.Plural),
+		ItemId: c.ID, Headword: c.Text, PartOfSpeech: httpx.Optional(gen.PartOfSpeech(c.PartOfSpeech)),
+		NounClass: httpx.Optional(c.NounClass), Plural: httpx.Optional(c.Plural), Notes: httpx.Optional(c.Notes),
 	}
 }
 
@@ -95,21 +91,21 @@ func (h *Handler) ListDisputes(ctx context.Context, _ gen.ListDisputesRequestObj
 			}
 		}
 		out[i] = gen.Dispute{
-			Language: d.Language, GlossEn: d.Candidate.GlossEn, Candidate: candidate(d.Candidate),
+			Language: d.Language, GlossEn: d.Candidate.English, Candidate: candidate(d.Candidate),
 			DisputedSince: d.DisputedSince, Reviews: reviews,
 		}
 	}
 	return gen.ListDisputes200JSONResponse{Disputes: out}, nil
 }
 
-// ResolveDispute implements POST /v1/disputes/{sense_id}/resolution.
+// ResolveDispute implements POST /v1/disputes/{item_id}/resolution.
 func (h *Handler) ResolveDispute(ctx context.Context, req gen.ResolveDisputeRequestObject) (gen.ResolveDisputeResponseObject, error) {
 	outcome := dbgen.ResolutionOutcome(req.Body.Outcome)
-	status, err := h.svc.Resolve(ctx, req.SenseId, outcome, req.Body.Note)
+	status, err := h.svc.Resolve(ctx, req.ItemId, outcome, req.Body.Note)
 	if err != nil {
 		return nil, err
 	}
-	return gen.ResolveDispute200JSONResponse{SenseId: req.SenseId, Outcome: req.Body.Outcome, Status: gen.TrustStatus(status)}, nil
+	return gen.ResolveDispute200JSONResponse{ItemId: req.ItemId, Outcome: req.Body.Outcome, Status: gen.TrustStatus(status)}, nil
 }
 
 // GetProviderQuality implements GET /v1/provider-quality.

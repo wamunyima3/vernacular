@@ -750,7 +750,7 @@ paths:
               schema: { $ref: "#/components/schemas/DisputeList" }
         default:
           $ref: "#/components/responses/Error"
-  /v1/disputes/{sense_id}/resolution:
+  /v1/disputes/{item_id}/resolution:
     post:
       operationId: resolveDispute
       summary: Settle a dispute (senior reviewers)
@@ -761,9 +761,10 @@ paths:
       security:
         - session: []
       parameters:
-        - name: sense_id
+        - name: item_id
           in: path
           required: true
+          description: The disputed sense or phrase
           schema: { type: string, format: uuid }
       requestBody:
         required: true
@@ -1716,12 +1717,12 @@ components:
       enum: [quick, standard, full]
     ReviewCandidate:
       type: object
-      required: [sense_id, headword]
+      required: [item_id, headword]
       properties:
-        sense_id:
+        item_id:
           type: string
           format: uuid
-          description: The candidate's item ID, a sense or, on a phrase card, a phrase
+          description: The candidate's item, a sense or, on a phrase card, a phrase
         headword:
           type: string
           description: The word, or on a phrase card the phrase
@@ -1781,9 +1782,9 @@ components:
         note: { type: string, minLength: 1, maxLength: 1000 }
     Resolution:
       type: object
-      required: [sense_id, outcome, status]
+      required: [item_id, outcome, status]
       properties:
-        sense_id: { type: string, format: uuid }
+        item_id: { type: string, format: uuid }
         outcome: { $ref: "#/components/schemas/ResolutionOutcome" }
         status: { $ref: "#/components/schemas/TrustStatus" }
     ReviewCard:
@@ -1822,9 +1823,9 @@ components:
           items:
             type: object
             additionalProperties: false
-            required: [sense_id, decision]
+            required: [item_id, decision]
             properties:
-              sense_id: { type: string, format: uuid }
+              item_id: { type: string, format: uuid }
               decision: { $ref: "#/components/schemas/ReviewDecision" }
         comment:
           type: string
@@ -1846,12 +1847,12 @@ components:
               pattern: "^[0-9]{1,2}(/[0-9]{1,2})?$"
     Review:
       type: object
-      required: [id, sense_id, decision]
+      required: [id, item_id, decision]
       properties:
         id: { type: string, format: uuid }
-        sense_id: { type: string, format: uuid }
+        item_id: { type: string, format: uuid }
         decision: { $ref: "#/components/schemas/ReviewDecision" }
-        correction_sense_id:
+        correction_item_id:
           type: string
           format: uuid
           description: The new candidate a correction created

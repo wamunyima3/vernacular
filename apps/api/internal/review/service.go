@@ -25,19 +25,59 @@ import (
 
 // Card is one English meaning with every candidate still open to the reviewer.
 type Card struct {
-	Language  string
-	ConceptID uuid.UUID
-	GlossEn   string
-	Priority  dbgen.ReviewPriority
-	Kind      dbgen.ItemKind
-	// The candidates: senses on a word card, phrases on a phrase card.
-	Candidates []lexicon.SenseCard
-	Phrases    []phrases.Phrase
+	Language   string
+	ConceptID  uuid.UUID
+	GlossEn    string // the concept's gloss, or on a phrase card the phrase's English line
+	Priority   dbgen.ReviewPriority
+	Kind       dbgen.ItemKind // a card holds senses or phrases, never both
+	Candidates []Candidate
+}
+
+// Candidate is one item reviewers judge: a sense or a phrase.
+type Candidate struct {
+	ID                                     uuid.UUID
+	Kind                                   dbgen.ItemKind
+	ConceptID                              uuid.NullUUID
+	English                                string // the concept's gloss, or a phrase's English line
+	Text                                   string // the headword, or the phrase
+	PartOfSpeech, NounClass, Plural, Notes string
+}
+
+// loadCandidates reads senses and phrases by ID, in the order of ids;
+// unknown IDs are left out.
+func loadCandidates(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) ([]Candidate, error) {
+	senses, err := newLexicon(tx).SenseCards(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	var phr []phrases.Phrase
+	if len(senses) < len(ids) { // the rest may be phrases
+		if phr, err = newPhrases(tx).Cards(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
+	byID := make(map[uuid.UUID]Candidate, len(senses)+len(phr))
+	for _, c := range senses {
+		byID[c.ID] = Candidate{
+			ID: c.ID, Kind: dbgen.ItemKindSense, ConceptID: c.ConceptID, English: c.GlossEn, Text: c.Headword,
+			PartOfSpeech: c.PartOfSpeech, NounClass: c.NounClass, Plural: c.Plural,
+		}
+	}
+	for _, p := range phr {
+		byID[p.ID] = Candidate{ID: p.ID, Kind: dbgen.ItemKindPhrase, ConceptID: p.ConceptID, English: p.SourceEn, Text: p.Text, Notes: p.Notes}
+	}
+	out := make([]Candidate, 0, len(ids))
+	for _, id := range ids {
+		if c, ok := byID[id]; ok {
+			out = append(out, c)
+		}
+	}
+	return out, nil
 }
 
 // Decision is a reviewer's verdict on one candidate.
 type Decision struct {
-	SenseID  uuid.UUID
+	ItemID   uuid.UUID
 	Decision dbgen.ReviewDecision
 }
 
@@ -45,12 +85,11 @@ type Decision struct {
 type Recorded struct {
 	ID uuid.UUID
 	Decision
-	CorrectionSenseID *uuid.UUID // the new candidate, for corrections
+	CorrectionItemID *uuid.UUID // the new candidate, for corrections
 }
 
 // Lexicon is what the queue needs from the lexicon module.
 type Lexicon interface {
-	Concept(ctx context.Context, id uuid.UUID) (lexicon.Concept, error)
 	SenseCards(ctx context.Context, ids []uuid.UUID) ([]lexicon.SenseCard, error)
 }
 
@@ -98,22 +137,15 @@ func (s *Service) Next(ctx context.Context, language string, skip []uuid.UUID) (
 		for i, r := range rows {
 			ids[i] = r.ItemID
 		}
-		card = Card{Language: language, ConceptID: rows[0].ConceptID, Priority: rows[0].Priority, Kind: rows[0].Kind}
-		if card.Kind == dbgen.ItemKindPhrase {
-			// A phrase card shows the English as the pack writes it.
-			if card.Phrases, err = newPhrases(tx).Cards(ctx, ids); err == nil && len(card.Phrases) > 0 {
-				card.GlossEn = card.Phrases[0].SourceEn
-			}
+		cands, err := loadCandidates(ctx, tx, ids)
+		if err != nil || len(cands) == 0 {
 			return err
 		}
-		lex := newLexicon(tx)
-		concept, err := lex.Concept(ctx, card.ConceptID)
-		if err != nil {
-			return err
+		card = Card{
+			Language: language, ConceptID: rows[0].ConceptID, GlossEn: cands[0].English,
+			Priority: rows[0].Priority, Kind: rows[0].Kind, Candidates: cands,
 		}
-		card.GlossEn = concept.GlossEn
-		card.Candidates, err = lex.SenseCards(ctx, ids)
-		return err
+		return nil
 	})
 	return card, card.Kind != "", err
 }
@@ -129,13 +161,13 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 		return nil, httpx.BadRequest("A correction needs `correct` decisions, and `correct` decisions need a correction")
 	}
 	// Lock items in one order everywhere, so concurrent decisions and undos cannot deadlock.
-	sorted := slices.SortedFunc(slices.Values(decisions), bySense)
+	sorted := slices.SortedFunc(slices.Values(decisions), byItem)
 	out := make([]Recorded, 0, len(decisions))
 	err = database.InTx(ctx, s.db, me.ID, func(tx pgx.Tx) error {
 		store, its := NewStore(tx), newItems(tx)
 		locked := make([]items.Locked, len(sorted))
 		for i, d := range sorted {
-			if locked[i], err = checkTarget(ctx, its, me, d.SenseID); err != nil {
+			if locked[i], err = checkTarget(ctx, its, me, d.ItemID); err != nil {
 				return err
 			}
 			if locked[i].Kind != locked[0].Kind {
@@ -150,14 +182,14 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 			r := Recorded{Decision: d}
 			var detail []byte
 			if isCorrection(d) {
-				r.CorrectionSenseID, detail = &fix.senseID, fix.detail
+				r.CorrectionItemID, detail = &fix.itemID, fix.detail
 			}
-			if r.ID, err = store.create(ctx, d.SenseID, me.ID, d.Decision, comment, detail); errors.Is(err, errAlreadyReviewed) {
-				return httpx.Conflict("You have already reviewed " + d.SenseID.String())
+			if r.ID, err = store.create(ctx, d.ItemID, me.ID, d.Decision, comment, detail); errors.Is(err, errAlreadyReviewed) {
+				return httpx.Conflict("You have already reviewed " + d.ItemID.String())
 			} else if err != nil {
 				return err
 			}
-			if _, err := promote(ctx, store, its, d.SenseID, locked[i].Origin); err != nil {
+			if _, err := promote(ctx, store, its, d.ItemID, locked[i].Origin); err != nil {
 				return err
 			}
 			out = append(out, r)
@@ -222,7 +254,7 @@ func (s *Service) Undo(ctx context.Context, ids []uuid.UUID) error {
 
 func compareIDs(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) }
 
-func bySense(a, b Decision) int { return compareIDs(a.SenseID, b.SenseID) }
+func byItem(a, b Decision) int { return compareIDs(a.ItemID, b.ItemID) }
 
 // correct records the reviewer's own word or phrase when the decisions
 // include corrections; nil when they do not.

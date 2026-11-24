@@ -518,7 +518,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/disputes/{sense_id}/resolution": {
+    "/v1/disputes/{item_id}/resolution": {
         parameters: {
             query?: never;
             header?: never;
@@ -1161,9 +1161,9 @@ export interface components {
         ReviewCandidate: {
             /**
              * Format: uuid
-             * @description The candidate's item ID, a sense or, on a phrase card, a phrase
+             * @description The candidate's item, a sense or, on a phrase card, a phrase
              */
-            sense_id: string;
+            item_id: string;
             /**
              * @description The word, or on a phrase card the phrase
              * @example amenshi
@@ -1208,7 +1208,7 @@ export interface components {
         };
         Resolution: {
             /** Format: uuid */
-            sense_id: string;
+            item_id: string;
             outcome: components["schemas"]["ResolutionOutcome"];
             status: components["schemas"]["TrustStatus"];
         };
@@ -1235,7 +1235,7 @@ export interface components {
         ReviewInput: {
             decisions: {
                 /** Format: uuid */
-                sense_id: string;
+                item_id: string;
                 decision: components["schemas"]["ReviewDecision"];
             }[];
             /** @description Why, for rejections */
@@ -1255,13 +1255,13 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
-            sense_id: string;
+            item_id: string;
             decision: components["schemas"]["ReviewDecision"];
             /**
              * Format: uuid
              * @description The new candidate a correction created
              */
-            correction_sense_id?: string;
+            correction_item_id?: string;
         };
         ReviewList: {
             data: components["schemas"]["Review"][];
@@ -2167,7 +2167,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                sense_id: string;
+                /** @description The disputed sense or phrase */
+                item_id: string;
             };
             cookie?: never;
         };

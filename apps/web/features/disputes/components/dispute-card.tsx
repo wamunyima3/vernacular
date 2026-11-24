@@ -69,7 +69,7 @@ export function DisputeCard({
             </li>
           ))}
         </ul>
-        <ResolveForm senseId={candidate.sense_id} />
+        <ResolveForm itemId={candidate.item_id} />
       </CardContent>
     </Card>
   )

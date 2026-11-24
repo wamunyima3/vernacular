@@ -27,7 +27,7 @@ export function decisionInput(
     return {
       ok: true,
       body: {
-        decisions: candidates.map((sense_id) => ({ sense_id, decision: "reject" as const })),
+        decisions: candidates.map((item_id) => ({ item_id, decision: "reject" as const })),
         comment: note ? `${reason}: ${note}` : reason,
       },
     }
@@ -38,7 +38,7 @@ export function decisionInput(
     return {
       ok: true,
       body: {
-        decisions: candidates.map((sense_id) => ({ sense_id, decision: "correct" as const })),
+        decisions: candidates.map((item_id) => ({ item_id, decision: "correct" as const })),
         correction: { headword, ...wordClassInput(form, "correction_") },
       },
     }
@@ -46,5 +46,5 @@ export function decisionInput(
   const choice = text("choice")
   if (!candidates.includes(choice))
     return { ok: false, error: "Choose the right word, or reject them all." }
-  return { ok: true, body: { decisions: [{ sense_id: choice, decision: "accept" }] } }
+  return { ok: true, body: { decisions: [{ item_id: choice, decision: "accept" }] } }
 }

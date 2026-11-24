@@ -47,7 +47,7 @@ export async function DisputeList() {
   const names = await languages
   return data.disputes.map((d) => (
     <DisputeCard
-      key={d.candidate.sense_id}
+      key={d.candidate.item_id}
       dispute={d}
       languageName={languageName(names, d.language)}
       daysOpen={daysSince(d.disputed_since)}

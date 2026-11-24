@@ -11,7 +11,6 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
-	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
@@ -20,7 +19,7 @@ import (
 // Dispute is a candidate reviewers disagree on, for a senior reviewer (CON-4).
 type Dispute struct {
 	Language      string
-	Candidate     lexicon.SenseCard
+	Candidate     Candidate
 	DisputedSince time.Time
 	Reviews       []DisputeReview
 }
@@ -29,7 +28,7 @@ type Dispute struct {
 type DisputeReview struct {
 	Decision   dbgen.ReviewDecision
 	Comment    string
-	Correction string // the word the reviewer wrote instead
+	Correction string // the word or phrase the reviewer wrote instead
 	CreatedAt  time.Time
 }
 
@@ -59,18 +58,18 @@ func (s *Service) Disputes(ctx context.Context) ([]Dispute, error) {
 		if err != nil {
 			return err
 		}
-		// Corrections name the candidate they created; show its word.
+		// Corrections name the candidate they created; show its text.
 		wanted := slices.Clone(ids)
 		for _, r := range reviews {
 			if id := correctedTo(r.Correction); id != uuid.Nil {
 				wanted = append(wanted, id)
 			}
 		}
-		cards, err := newLexicon(tx).SenseCards(ctx, wanted)
+		cards, err := loadCandidates(ctx, tx, wanted)
 		if err != nil {
 			return err
 		}
-		byID := make(map[uuid.UUID]lexicon.SenseCard, len(cards))
+		byID := make(map[uuid.UUID]Candidate, len(cards))
 		for _, c := range cards {
 			byID[c.ID] = c
 		}
@@ -78,7 +77,7 @@ func (s *Service) Disputes(ctx context.Context) ([]Dispute, error) {
 		for _, r := range reviews {
 			byItem[r.ItemID] = append(byItem[r.ItemID], DisputeReview{
 				Decision: r.Decision, Comment: r.Comment, CreatedAt: r.CreatedAt,
-				Correction: byID[correctedTo(r.Correction)].Headword,
+				Correction: byID[correctedTo(r.Correction)].Text,
 			})
 		}
 		out = make([]Dispute, len(rows))
@@ -92,11 +91,11 @@ func (s *Service) Disputes(ctx context.Context) ([]Dispute, error) {
 
 // Resolve settles a dispute: `keep` verifies the item and `send_back`
 // returns it to the queue. Seniors cannot settle what they wrote or reviewed.
-func (s *Service) Resolve(ctx context.Context, senseID uuid.UUID, outcome dbgen.ResolutionOutcome, note string) (items.Status, error) {
+func (s *Service) Resolve(ctx context.Context, itemID uuid.UUID, outcome dbgen.ResolutionOutcome, note string) (items.Status, error) {
 	var status items.Status
 	err := s.withNote(ctx, &note, func(tx pgx.Tx, me accounts.Principal) error {
 		store, its := NewStore(tx), newItems(tx)
-		item, ok, err := its.Lock(ctx, senseID)
+		item, ok, err := its.Lock(ctx, itemID)
 		switch {
 		case err != nil:
 			return err
@@ -107,17 +106,17 @@ func (s *Service) Resolve(ctx context.Context, senseID uuid.UUID, outcome dbgen.
 		case item.Status != items.StatusDisputed:
 			return httpx.Conflict("This item is " + string(item.Status) + ", not disputed")
 		}
-		reviewed, err := store.hasReviewed(ctx, senseID, me.ID)
+		reviewed, err := store.hasReviewed(ctx, itemID, me.ID)
 		if err != nil {
 			return err
 		}
 		if reviewed || item.AuthorID == me.ID {
 			return httpx.Forbidden("You wrote or reviewed this item; another senior reviewer settles it")
 		}
-		if err := store.resolve(ctx, senseID, me.ID, outcome, note); err != nil {
+		if err := store.resolve(ctx, itemID, me.ID, outcome, note); err != nil {
 			return err
 		}
-		status, err = promote(ctx, store, its, senseID, item.Origin)
+		status, err = promote(ctx, store, its, itemID, item.Origin)
 		return err
 	})
 	return status, err

@@ -75,20 +75,17 @@ export function ReviewCard({
         <input type="hidden" name="done" value={session.done} />
         <input type="hidden" name="concept" value={card.concept_id} />
         {card.candidates.map((c) => (
-          <input key={c.sense_id} type="hidden" name="candidate" value={c.sense_id} />
+          <input key={c.item_id} type="hidden" name="candidate" value={c.item_id} />
         ))}
         <FieldSet>
           <FieldLegend variant="label">
             {single ? "Candidate" : "Candidates, in random order"}
           </FieldLegend>
-          <RadioGroup
-            name="choice"
-            defaultValue={single ? card.candidates[0]?.sense_id : undefined}
-          >
+          <RadioGroup name="choice" defaultValue={single ? card.candidates[0]?.item_id : undefined}>
             {card.candidates.map((c) => (
-              <FieldLabel key={c.sense_id} htmlFor={c.sense_id}>
+              <FieldLabel key={c.item_id} htmlFor={c.item_id}>
                 <Field orientation="horizontal">
-                  <RadioGroupItem id={c.sense_id} value={c.sense_id} />
+                  <RadioGroupItem id={c.item_id} value={c.item_id} />
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span
                       className={cn("text-lg font-medium", phrase ? "text-pretty" : "truncate")}

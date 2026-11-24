@@ -45,7 +45,7 @@ func disputed(t *testing.T) (svc *review.Service, status func(uuid.UUID) items.S
 
 func decide(t *testing.T, svc *review.Service, who string, id uuid.UUID, d dbgen.ReviewDecision) {
 	t.Helper()
-	if _, err := svc.Decide(reviewer(t, who), []review.Decision{{SenseID: id, Decision: d}}, "why", nil); err != nil {
+	if _, err := svc.Decide(reviewer(t, who), []review.Decision{{ItemID: id, Decision: d}}, "why", nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -56,7 +56,7 @@ func TestDisputes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(disputes) != 2 || len(disputes[0].Reviews) != 2 || disputes[0].Candidate.GlossEn == "" {
+	if len(disputes) != 2 || len(disputes[0].Reviews) != 2 || disputes[0].Candidate.English == "" {
 		t.Fatalf("disputes = %+v, want 2 with 2 reviews and a gloss", disputes)
 	}
 	tests := []struct {

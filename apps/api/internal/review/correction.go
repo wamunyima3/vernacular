@@ -26,14 +26,14 @@ type Correction struct {
 // replacement is the candidate a correction created, and the review detail
 // that points the corrected candidates at it.
 type replacement struct {
-	senseID uuid.UUID
-	detail  []byte
+	itemID uuid.UUID
+	detail []byte
 }
 
 // correctionDetail is what a `correct` review stores: the candidate it
 // created, a sense or a phrase (the name predates phrases).
 type correctionDetail struct {
-	SenseID uuid.UUID `json:"sense_id"`
+	ItemID uuid.UUID `json:"sense_id"` // the key predates phrases; stored reviews keep it
 }
 
 // correctedTo reads the candidate a `correct` review created; Nil otherwise.
@@ -42,7 +42,7 @@ func correctedTo(detail []byte) uuid.UUID {
 	if detail == nil || json.Unmarshal(detail, &c) != nil {
 		return uuid.Nil
 	}
-	return c.SenseID
+	return c.ItemID
 }
 
 func isCorrection(d Decision) bool { return d.Decision == dbgen.ReviewDecisionCorrect }
@@ -56,7 +56,7 @@ func replacePhrase(ctx context.Context, tx pgx.Tx, reviewerID, language string, 
 		if !isCorrection(d) {
 			continue
 		}
-		l, err := phr.LineOf(ctx, d.SenseID)
+		l, err := phr.LineOf(ctx, d.ItemID)
 		if err != nil {
 			return nil, err
 		}
@@ -83,11 +83,11 @@ func replacePhrase(ctx context.Context, tx pgx.Tx, reviewerID, language string, 
 
 // correctedBy is the replacement pointing corrected candidates at id.
 func correctedBy(id uuid.UUID) (*replacement, error) {
-	detail, err := json.Marshal(correctionDetail{SenseID: id})
+	detail, err := json.Marshal(correctionDetail{ItemID: id})
 	if err != nil {
 		return nil, fmt.Errorf("encode correction: %w", err)
 	}
-	return &replacement{senseID: id, detail: detail}, nil
+	return &replacement{itemID: id, detail: detail}, nil
 }
 
 // replace adds the reviewer's word as their contribution to the meaning of
@@ -97,7 +97,7 @@ func replace(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisi
 	var ids []uuid.UUID
 	for _, d := range decisions {
 		if isCorrection(d) {
-			ids = append(ids, d.SenseID)
+			ids = append(ids, d.ItemID)
 		}
 	}
 	lex := newLexicon(tx)
@@ -116,13 +116,9 @@ func replace(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisi
 			return nil, httpx.BadRequest("That word is one of the candidates; accept it instead")
 		}
 	}
-	meaning, err := lex.Concept(ctx, concept.UUID)
-	if err != nil {
-		return nil, err
-	}
 	added, err := contributions.Add(ctx, tx, reviewerID, contributions.Input{
 		Language: language, Headword: c.Headword, PartOfSpeech: c.PartOfSpeech, NounClass: c.NounClass,
-		GlossEn: meaning.GlossEn, ConceptID: concept,
+		GlossEn: cards[0].GlossEn, ConceptID: concept,
 	})
 	if err != nil {
 		return nil, err

@@ -133,7 +133,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
   - [ ] **P1-REV-05b** Qualification: a short test set from verified items for new reviewers, confirmed by a senior reviewer (M). Needs verified items in the language
 - [x] **P1-REV-06** Admin: approve reviewers, acceptance rates per provider and language (M) → AI-5, US-26
 - [x] **P1-REV-07** Public contributor credit page (S) → CON-5, US-19
-- [ ] **P1-REV-08** Rename the review API's `sense_id` to `item_id` (decisions, candidates, reviews, corrections) now that phrases are reviewed too, and give the review package one candidate type for senses and phrases (S)
+- [x] **P1-REV-08** Rename the review API's `sense_id` to `item_id` (decisions, candidates, reviews, corrections) now that phrases are reviewed too, and give the review package one candidate type for senses and phrases (S)
 
 ### Public API (each task is a slice: contract → api → portal "Try it" → test)
 
