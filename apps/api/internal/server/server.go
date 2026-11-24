@@ -80,7 +80,7 @@ type Deps struct {
 func New(opts Options, deps Deps) http.Handler {
 	errs := httpx.Errors{DocsBaseURL: opts.DocsBaseURL, Log: opts.Log}
 	r := httpx.NewRouter(httpx.RouterOptions{Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs})
-	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), validateRequests(errs))
+	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), httpx.ETag(cacheControl), validateRequests(errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
 		accountsOps:  accounts.NewHandler(deps.Reviewers),
@@ -143,3 +143,14 @@ func authenticate(_ context.Context, in *openapi3filter.AuthenticationInput) err
 }
 
 var errNoCredentials = errors.New("no credentials for this scheme")
+
+// cacheControl lets clients reuse data for five minutes, then revalidate
+// with the ETag; what a signed-in user sees about their own account is
+// always revalidated. Private either way, so a shared cache cannot hand data
+// fetched with a key to a caller without one.
+func cacheControl(r *http.Request) string {
+	if p, ok := accounts.FromContext(r.Context()); ok && !p.ByKey() {
+		return "private, no-cache"
+	}
+	return "private, max-age=300"
+}

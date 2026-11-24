@@ -166,7 +166,7 @@ Change the contract first, run `make gen`, then implement. CI fails if the gener
 | Logging     | `log/slog` JSON with a request ID on every line.                                                               |
 | Security    | API keys hashed at rest (ADR-0011), TLS at the edge, rate limits per key and per IP (NFR-5).                   |
 | Versioning  | `/v1` in the path. Breaking changes get `/v2` and six months of overlap (NFR-4).                               |
-| Caching     | `ETag` tied to the release number, gzip/br compression (NFR-3).                                                |
+| Caching     | `ETag` (body hash; release number in Phase 2), gzip (NFR-3).                                                   |
 | Portability | Containers, PostgreSQL and S3-compatible storage only, so the system runs anywhere (§12 hosting decision).     |
 
 ## 10. Technology

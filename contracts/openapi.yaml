@@ -15,6 +15,12 @@ info:
     response says where you stand in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and
     `X-RateLimit-Reset` (Unix seconds). Over the limit, the API answers `429` with
     `Retry-After`.
+
+    ## Caching
+
+    Responses are compressed when you send `Accept-Encoding`. Successful `GET` responses
+    carry an `ETag`; send it back in `If-None-Match` and an unchanged response is a bodyless
+    `304`. Data may be reused for five minutes (`Cache-Control: private, max-age=300`).
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
