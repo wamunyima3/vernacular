@@ -2,9 +2,18 @@ import Link from "next/link"
 import { Suspense } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
+import { getLanguages, isActive } from "@/features/languages/get-languages"
+import { TryForm } from "@/features/try-it/components/try-form"
 import { LanguageList } from "@/features/languages/components/language-list"
 import { LanguageListSkeleton } from "@/features/languages/components/language-list-skeleton"
+
+/** The home page's search box; LanguageList below reports a loading failure. */
+async function TryBox() {
+  const result = await getLanguages()
+  return result.ok ? <TryForm languages={result.languages.filter(isActive)} compact /> : null
+}
 
 export default function HomePage() {
   return (
@@ -26,6 +35,18 @@ export default function HomePage() {
             See who checks the words
           </Button>
         </div>
+      </section>
+
+      <section
+        aria-labelledby="try-heading"
+        className="flex max-w-3xl flex-col gap-4 rounded-xl border p-4 sm:p-6"
+      >
+        <h2 id="try-heading" className="text-xl font-semibold text-balance">
+          Try it
+        </h2>
+        <Suspense fallback={<Skeleton className="h-16 w-full" />}>
+          <TryBox />
+        </Suspense>
       </section>
 
       <section aria-labelledby="languages-heading" className="flex flex-col gap-6">

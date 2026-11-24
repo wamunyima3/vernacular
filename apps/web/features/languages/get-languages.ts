@@ -29,3 +29,6 @@ export async function getLanguages(): Promise<LanguagesResult> {
 export function languageName(result: LanguagesResult, code: string): string {
   return (result.ok ? result.languages.find((l) => l.code === code)?.name : undefined) ?? code
 }
+
+/** Whether the API serves the language yet, as opposed to planned. */
+export const isActive = (l: Language) => l.status === "active"

@@ -4,7 +4,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { cache } from "react"
 
-import { apiAs } from "@/lib/api"
+import { api, apiAs } from "@/lib/api"
 import { auth } from "@/lib/auth"
 
 /** The current session, read once per request. */
@@ -21,4 +21,13 @@ export async function requireSession(from: string) {
 export async function apiForSession(from: string) {
   const { session } = await requireSession(from)
   return apiAs(session.token)
+}
+
+/**
+ * An API client for public pages: as the visitor when signed in, so their calls count
+ * against their own limit, otherwise as the portal (WEB_API_KEY, ADR-0011).
+ */
+export async function apiForVisitor() {
+  const session = await getSession()
+  return session ? apiAs(session.session.token) : api
 }

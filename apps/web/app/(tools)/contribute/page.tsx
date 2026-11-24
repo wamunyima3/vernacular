@@ -5,7 +5,7 @@ import { ErrorCard } from "@/components/error-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { requireSession } from "@/features/auth/session"
 import { ContributeForm } from "@/features/contribute/components/contribute-form"
-import { getLanguages } from "@/features/languages/get-languages"
+import { getLanguages, isActive } from "@/features/languages/get-languages"
 
 export const metadata: Metadata = { title: "Contribute" }
 
@@ -16,7 +16,7 @@ async function Contribute() {
   const result = await languages
   if (!result.ok)
     return <ErrorCard title="Languages could not be loaded" message={result.message} />
-  return <ContributeForm languages={result.languages.filter((l) => l.status === "active")} />
+  return <ContributeForm languages={result.languages.filter(isActive)} />
 }
 
 export default function ContributePage() {

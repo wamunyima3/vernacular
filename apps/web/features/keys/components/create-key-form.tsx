@@ -1,7 +1,8 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState } from "react"
 
+import { CopyButton } from "@/components/copy-button"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -11,7 +12,6 @@ import { createKey } from "../actions"
 /** Names and creates a key, then shows its secret once, with a copy button (US-01). */
 export function CreateKeyForm() {
   const [state, action, pending] = useActionState(createKey, {})
-  const [copied, setCopied] = useState<string>()
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,15 +40,7 @@ export function CreateKeyForm() {
           <FieldLabel htmlFor="new-key">Your new key, {state.name}</FieldLabel>
           <div className="flex gap-2">
             <Input id="new-key" readOnly value={state.secret} className="font-mono" />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                navigator.clipboard.writeText(state.secret!).then(() => setCopied(state.secret))
-              }
-            >
-              {copied === state.secret ? "Copied" : "Copy"}
-            </Button>
+            <CopyButton text={state.secret} label="Copy key" />
           </div>
           <FieldDescription>
             Copy it now and keep it secret. It is not shown again; if you lose it, revoke it and

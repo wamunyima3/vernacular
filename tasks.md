@@ -151,7 +151,9 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 ### Portal
 
 - [x] **P1-WEB-01** Home with live verified counts (S)
-- [ ] **P1-WEB-02** Try it: search box with JSON beside the result, and a "Report a problem" button on each meaning (M) → US-02, US-15
+- [x] **P1-WEB-02a** Try it: `/try` search with the formatted result and its JSON side by side (tabs on phones), and a search box on the home page (S) → US-02
+  - Signed-out visitors search with the portal's key (`WEB_API_KEY`); without one they are asked to sign in.
+- [ ] **P1-WEB-02b** Entry page `/entries/[id]` with senses, examples, variants and sources, linked from the search results, and a "Report a problem" dialog on each meaning; the portal header shows "Account" when signed in (M) → US-16, US-15
 - [ ] **P1-WEB-03** Interactive API reference from the contract (S) → DEV-2
 - [ ] **P1-WEB-04** Docs: concepts, verification levels, varieties, licences (M) → DEV-2
 - [ ] **P1-WEB-05** Tutorial and copy-ready examples (JS, Go, Python, curl) (M) → DEV-2

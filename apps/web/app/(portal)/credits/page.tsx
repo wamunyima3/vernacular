@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { ErrorCard } from "@/components/error-card"
 import { LanguageTabs } from "@/components/language-tabs"
 import { CreditList, CreditListSkeleton } from "@/features/credits/components/credit-list"
-import { getLanguages } from "@/features/languages/get-languages"
+import { getLanguages, isActive } from "@/features/languages/get-languages"
 
 export const metadata: Metadata = {
   title: "Contributors",
@@ -16,7 +16,7 @@ async function Credits({ searchParams }: PageProps<"/credits">) {
   const [{ language: asked }, languages] = await Promise.all([searchParams, getLanguages()])
   if (!languages.ok)
     return <ErrorCard title="Languages could not be loaded" message={languages.message} />
-  const active = languages.languages.filter((l) => l.status === "active")
+  const active = languages.languages.filter(isActive)
   const current = active.find((l) => l.code === asked) ?? active[0]
   if (!current) return null
   return (
