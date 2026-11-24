@@ -44,6 +44,15 @@ func Status(origin items.Status, resolution dbgen.ResolutionOutcome, reported bo
 	}
 }
 
+// sendBack returns a locked item to the review queue, as a senior's
+// send-back resolution does: reviews so far are set aside.
+func sendBack(ctx context.Context, store *Store, its Items, itemID uuid.UUID, origin items.Status, actorID, note string) (items.Status, error) {
+	if err := store.resolve(ctx, itemID, actorID, dbgen.ResolutionOutcomeSendBack, note); err != nil {
+		return "", err
+	}
+	return promote(ctx, store, its, itemID, origin)
+}
+
 // promote recomputes an item's status after its reviews or resolutions
 // change. The caller holds the item's lock, which is where origin comes from.
 func promote(ctx context.Context, store *Store, its Items, itemID uuid.UUID, origin items.Status) (items.Status, error) {

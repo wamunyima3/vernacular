@@ -1,6 +1,8 @@
 package review_test
 
 import (
+	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
 
 const quarter = "2099-Q1" // a quarter no real sample uses
@@ -27,6 +30,10 @@ func TestQuarter(t *testing.T) {
 	}
 }
 
+func admin(t *testing.T) context.Context {
+	return accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "a1", Role: gen.RoleAdmin})
+}
+
 // sampled returns a service where water, verified by r1 and r2, has been
 // drawn for a re-check, as the only verified item in "tst".
 func sampled(t *testing.T) (*review.Service, pgx.Tx, uuid.UUID) {
@@ -38,7 +45,7 @@ func sampled(t *testing.T) (*review.Service, pgx.Tx, uuid.UUID) {
 	if _, err := svc.Sample(reviewer(t), quarter); httpx.Status(err) != 403 {
 		t.Fatalf("a reviewer draws a sample: %v, want 403", err)
 	}
-	admin := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "a1", Role: gen.RoleAdmin})
+	admin := admin(t)
 	if n, err := svc.Sample(admin, quarter); err != nil || n == 0 {
 		t.Fatalf("Sample = %d, %v; want at least water", n, err)
 	}
@@ -98,5 +105,56 @@ func TestRecordRecheck(t *testing.T) {
 	decide(t, svc, "r3", water, accept)
 	if item, _, err := items.NewStore(tx).Lock(t.Context(), water); err != nil || item.Status != items.StatusReviewed {
 		t.Fatalf("after one new accept: %s, %v; want reviewed", item.Status, err)
+	}
+}
+
+// TestSendBackBatch fails water, from Claude model "m", then sends the rest
+// of that batch back: fire, verified after the sample was drawn.
+func TestSendBackBatch(t *testing.T) {
+	svc, tx, water := sampled(t)
+	var fire uuid.UUID
+	if err := tx.QueryRow(t.Context(), `SELECT s.item_id FROM item_sources s JOIN items i ON i.id = s.item_id WHERE s.reference = 'c2' AND i.kind = 'sense'`).Scan(&fire); err != nil {
+		t.Fatal(err)
+	}
+	decide(t, svc, "r1", fire, accept)
+	decide(t, svc, "r2", fire, accept)
+	claude, err := sources.Lookup(t.Context(), tx, "Claude")
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch := review.Batch{Language: "tst", SourceID: claude, Model: "m"}
+	if _, err := svc.SendBackBatch(admin(t), quarter, batch); httpx.Status(err) != 409 {
+		t.Fatalf("a batch with no failed checks: %v, want 409", err)
+	}
+	if _, err := svc.RecordRecheck(senior(t, "s1"), water, dbgen.RecheckOutcomeFail, "Wrong"); err != nil {
+		t.Fatal(err)
+	}
+	checkBatches(t, svc, claude)
+	if _, err := svc.SendBackBatch(senior(t, "s1"), quarter, batch); httpx.Status(err) != 403 {
+		t.Fatalf("a senior reviewer sends back: %v, want 403", err)
+	}
+	if n, err := svc.SendBackBatch(admin(t), quarter, batch); err != nil || n != 1 {
+		t.Fatalf("SendBackBatch = %d, %v; want fire", n, err)
+	}
+	if item, _, err := items.NewStore(tx).Lock(t.Context(), fire); err != nil || item.Status == items.StatusVerified {
+		t.Fatalf("fire is %s, %v; want it back in review", item.Status, err)
+	}
+	if _, err := svc.SendBackBatch(admin(t), quarter, batch); httpx.Status(err) != 409 {
+		t.Fatalf("sending back twice: %v, want 409", err)
+	}
+}
+
+func checkBatches(t *testing.T, svc *review.Service, claude uuid.UUID) {
+	t.Helper()
+	rows, err := svc.Batches(admin(t), quarter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := slices.IndexFunc(rows, func(r dbgen.RecheckBatchesRow) bool { return r.LanguageCode == "tst" })
+	if i < 0 || rows[i].SourceID != claude || rows[i].Model != "m" || rows[i].Checked != 1 || rows[i].Failed != 1 {
+		t.Fatalf("batches = %+v, want tst Claude m with 1 of 1 failed", rows)
+	}
+	if !review.Fails(1, 1) || review.Fails(100, 2) || !review.Fails(100, 3) {
+		t.Fatal("Fails should mean more than 2%")
 	}
 }

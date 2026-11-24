@@ -126,7 +126,7 @@ WHERE id = @id;
 -- Draws a quarter's sample once: in each language, 5% of the verified items
 -- (at least one), each with the batch it came from (DQ-6).
 INSERT INTO rechecks (quarter, item_id, language_code, source_id, model)
-SELECT @quarter::text, v.id, v.language_code, src.source_id, coalesce(src.model, '')
+SELECT @quarter::text, v.id, v.language_code, b.source_id, b.model
 FROM (
     SELECT i.id, i.language_code,
            row_number() OVER (PARTITION BY i.language_code ORDER BY random()) AS n,
@@ -134,10 +134,7 @@ FROM (
     FROM items i
     WHERE i.status = 'verified' AND i.kind IN ('sense', 'phrase', 'example') AND NOT retired(i.id)
 ) v
-CROSS JOIN LATERAL ( -- the batch: the item's first source, looked up for the sample only
-    SELECT s.source_id, s.model FROM item_sources s
-    WHERE s.item_id = v.id ORDER BY s.created_at, s.source_id LIMIT 1
-) src
+JOIN item_batches b ON b.item_id = v.id -- looked up for the sample only
 WHERE v.n <= ceil(v.total * 0.05)
   AND NOT EXISTS (SELECT 1 FROM rechecks r WHERE r.quarter = @quarter::text);
 
@@ -162,3 +159,43 @@ FOR UPDATE;
 -- name: RecordRecheck :exec
 UPDATE rechecks SET outcome = @outcome, note = sqlc.narg(note), checked_by = @checked_by, checked_at = now()
 WHERE quarter = @quarter AND item_id = @item_id;
+
+-- name: RecheckBatches :many
+-- A quarter's re-checks per batch, worst first, and whether it was sent back.
+SELECT r.language_code, r.source_id, src.name AS source, r.model,
+       count(*)::int AS sampled,
+       count(r.outcome)::int AS checked,
+       count(*) FILTER (WHERE r.outcome = 'fail')::int AS failed,
+       b.items AS sent_back_items, b.created_at AS sent_back_at
+FROM rechecks r
+JOIN sources src ON src.id = r.source_id
+LEFT JOIN recheck_batches b USING (quarter, language_code, source_id, model)
+WHERE r.quarter = @quarter::text
+GROUP BY r.language_code, r.source_id, src.name, r.model, b.items, b.created_at
+ORDER BY count(*) FILTER (WHERE r.outcome = 'fail')::float / greatest(count(r.outcome), 1) DESC,
+         r.language_code, src.name, r.model;
+
+-- name: RecheckBatch :one
+SELECT count(r.outcome)::int AS checked,
+       count(*) FILTER (WHERE r.outcome = 'fail')::int AS failed
+FROM rechecks r
+WHERE r.quarter = @quarter::text AND r.language_code = @language::text
+  AND r.source_id = @source_id AND r.model = @model::text;
+
+-- name: BatchItems :many
+-- The batch's verified items, locked in one order.
+SELECT i.id FROM items i JOIN item_batches b ON b.item_id = i.id
+WHERE i.language_code = @language::text AND i.status = 'verified'
+  AND i.kind IN ('sense', 'phrase', 'example') AND NOT retired(i.id)
+  AND b.source_id = @source_id AND b.model = @model::text
+ORDER BY i.id;
+
+-- name: SendBackBatch :execrows
+-- Claims the send-back first, so a repeat is refused before any work.
+INSERT INTO recheck_batches (quarter, language_code, source_id, model, sent_back_by, items)
+VALUES (@quarter::text, @language::text, @source_id, @model::text, @sent_back_by::text, 0)
+ON CONFLICT DO NOTHING;
+
+-- name: SetBatchItems :exec
+UPDATE recheck_batches SET items = @items::int
+WHERE quarter = @quarter::text AND language_code = @language::text AND source_id = @source_id AND model = @model::text;

@@ -13,6 +13,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const batchItems = `-- name: BatchItems :many
+SELECT i.id FROM items i JOIN item_batches b ON b.item_id = i.id
+WHERE i.language_code = $1::text AND i.status = 'verified'
+  AND i.kind IN ('sense', 'phrase', 'example') AND NOT retired(i.id)
+  AND b.source_id = $2 AND b.model = $3::text
+ORDER BY i.id
+`
+
+type BatchItemsParams struct {
+	Language string
+	SourceID uuid.UUID
+	Model    string
+}
+
+// The batch's verified items, locked in one order.
+func (q *Queries) BatchItems(ctx context.Context, arg BatchItemsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, batchItems, arg.Language, arg.SourceID, arg.Model)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createReport = `-- name: CreateReport :one
 INSERT INTO reports (item_id, reason, reporter_id)
 SELECT i.id, $1, $2 FROM items i WHERE i.id = $3 AND i.kind = 'sense'
@@ -539,6 +574,96 @@ func (q *Queries) NextReviewCard(ctx context.Context, arg NextReviewCardParams) 
 	return items, nil
 }
 
+const recheckBatch = `-- name: RecheckBatch :one
+SELECT count(r.outcome)::int AS checked,
+       count(*) FILTER (WHERE r.outcome = 'fail')::int AS failed
+FROM rechecks r
+WHERE r.quarter = $1::text AND r.language_code = $2::text
+  AND r.source_id = $3 AND r.model = $4::text
+`
+
+type RecheckBatchParams struct {
+	Quarter  string
+	Language string
+	SourceID uuid.UUID
+	Model    string
+}
+
+type RecheckBatchRow struct {
+	Checked int32
+	Failed  int32
+}
+
+func (q *Queries) RecheckBatch(ctx context.Context, arg RecheckBatchParams) (RecheckBatchRow, error) {
+	row := q.db.QueryRow(ctx, recheckBatch,
+		arg.Quarter,
+		arg.Language,
+		arg.SourceID,
+		arg.Model,
+	)
+	var i RecheckBatchRow
+	err := row.Scan(&i.Checked, &i.Failed)
+	return i, err
+}
+
+const recheckBatches = `-- name: RecheckBatches :many
+SELECT r.language_code, r.source_id, src.name AS source, r.model,
+       count(*)::int AS sampled,
+       count(r.outcome)::int AS checked,
+       count(*) FILTER (WHERE r.outcome = 'fail')::int AS failed,
+       b.items AS sent_back_items, b.created_at AS sent_back_at
+FROM rechecks r
+JOIN sources src ON src.id = r.source_id
+LEFT JOIN recheck_batches b USING (quarter, language_code, source_id, model)
+WHERE r.quarter = $1::text
+GROUP BY r.language_code, r.source_id, src.name, r.model, b.items, b.created_at
+ORDER BY count(*) FILTER (WHERE r.outcome = 'fail')::float / greatest(count(r.outcome), 1) DESC,
+         r.language_code, src.name, r.model
+`
+
+type RecheckBatchesRow struct {
+	LanguageCode  string
+	SourceID      uuid.UUID
+	Source        string
+	Model         string
+	Sampled       int32
+	Checked       int32
+	Failed        int32
+	SentBackItems pgtype.Int4
+	SentBackAt    pgtype.Timestamptz
+}
+
+// A quarter's re-checks per batch, worst first, and whether it was sent back.
+func (q *Queries) RecheckBatches(ctx context.Context, quarter string) ([]RecheckBatchesRow, error) {
+	rows, err := q.db.Query(ctx, recheckBatches, quarter)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RecheckBatchesRow
+	for rows.Next() {
+		var i RecheckBatchesRow
+		if err := rows.Scan(
+			&i.LanguageCode,
+			&i.SourceID,
+			&i.Source,
+			&i.Model,
+			&i.Sampled,
+			&i.Checked,
+			&i.Failed,
+			&i.SentBackItems,
+			&i.SentBackAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordRecheck = `-- name: RecordRecheck :exec
 UPDATE rechecks SET outcome = $1, note = $2, checked_by = $3, checked_at = now()
 WHERE quarter = $4 AND item_id = $5
@@ -565,7 +690,7 @@ func (q *Queries) RecordRecheck(ctx context.Context, arg RecordRecheckParams) er
 
 const sampleRechecks = `-- name: SampleRechecks :execrows
 INSERT INTO rechecks (quarter, item_id, language_code, source_id, model)
-SELECT $1::text, v.id, v.language_code, src.source_id, coalesce(src.model, '')
+SELECT $1::text, v.id, v.language_code, b.source_id, b.model
 FROM (
     SELECT i.id, i.language_code,
            row_number() OVER (PARTITION BY i.language_code ORDER BY random()) AS n,
@@ -573,10 +698,7 @@ FROM (
     FROM items i
     WHERE i.status = 'verified' AND i.kind IN ('sense', 'phrase', 'example') AND NOT retired(i.id)
 ) v
-CROSS JOIN LATERAL ( -- the batch: the item's first source, looked up for the sample only
-    SELECT s.source_id, s.model FROM item_sources s
-    WHERE s.item_id = v.id ORDER BY s.created_at, s.source_id LIMIT 1
-) src
+JOIN item_batches b ON b.item_id = v.id -- looked up for the sample only
 WHERE v.n <= ceil(v.total * 0.05)
   AND NOT EXISTS (SELECT 1 FROM rechecks r WHERE r.quarter = $1::text)
 `
@@ -589,6 +711,59 @@ func (q *Queries) SampleRechecks(ctx context.Context, quarter string) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const sendBackBatch = `-- name: SendBackBatch :execrows
+INSERT INTO recheck_batches (quarter, language_code, source_id, model, sent_back_by, items)
+VALUES ($1::text, $2::text, $3, $4::text, $5::text, 0)
+ON CONFLICT DO NOTHING
+`
+
+type SendBackBatchParams struct {
+	Quarter    string
+	Language   string
+	SourceID   uuid.UUID
+	Model      string
+	SentBackBy string
+}
+
+// Claims the send-back first, so a repeat is refused before any work.
+func (q *Queries) SendBackBatch(ctx context.Context, arg SendBackBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, sendBackBatch,
+		arg.Quarter,
+		arg.Language,
+		arg.SourceID,
+		arg.Model,
+		arg.SentBackBy,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setBatchItems = `-- name: SetBatchItems :exec
+UPDATE recheck_batches SET items = $1::int
+WHERE quarter = $2::text AND language_code = $3::text AND source_id = $4 AND model = $5::text
+`
+
+type SetBatchItemsParams struct {
+	Items    int32
+	Quarter  string
+	Language string
+	SourceID uuid.UUID
+	Model    string
+}
+
+func (q *Queries) SetBatchItems(ctx context.Context, arg SetBatchItemsParams) error {
+	_, err := q.db.Exec(ctx, setBatchItems,
+		arg.Items,
+		arg.Quarter,
+		arg.Language,
+		arg.SourceID,
+		arg.Model,
+	)
+	return err
 }
 
 const setReviewsAside = `-- name: SetReviewsAside :exec

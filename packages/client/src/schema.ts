@@ -642,6 +642,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/rechecks/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A quarter's re-checks per batch (admins)
+         * @description Each batch, the source and model its items came from in a language, with how many
+         *     of its items were drawn, checked and failed, worst first. A batch failing more than
+         *     2% of its checks can be sent back to review (DQ-6).
+         */
+        get: operations["listRecheckBatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rechecks/batches/send-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a failing batch back to review (admins)
+         * @description Every verified item of the batch goes back to the review queue, where only reviews
+         *     made after this count. Refused (`conflict`) unless more than 2% of the batch's
+         *     checks that quarter failed, or when it was already sent back.
+         */
+        post: operations["sendBackRecheckBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/rechecks/next": {
         parameters: {
             query?: never;
@@ -1659,6 +1703,39 @@ export interface components {
             quarter: components["schemas"]["Quarter"];
             language: components["schemas"]["LanguageCode"];
             candidate: components["schemas"]["ReviewCandidate"];
+        };
+        RecheckBatchInput: {
+            quarter: components["schemas"]["Quarter"];
+            language: components["schemas"]["LanguageCode"];
+            /** Format: uuid */
+            source_id: string;
+            /** @description The model version; empty for sources that are not machine */
+            model: string;
+        };
+        RecheckBatch: {
+            language: components["schemas"]["LanguageCode"];
+            /** Format: uuid */
+            source_id: string;
+            /** @description The source's name */
+            source: string;
+            model: string;
+            sampled: number;
+            checked: number;
+            failed: number;
+            /** @description More than 2% of the checks failed */
+            fails: boolean;
+            /** Format: date-time */
+            sent_back_at?: string;
+            /** @description Items sent back to review */
+            sent_back_items?: number;
+        };
+        RecheckBatchList: {
+            quarter: components["schemas"]["Quarter"];
+            batches: components["schemas"]["RecheckBatch"][];
+        };
+        RecheckBatchSentBack: {
+            /** @description Verified items sent back to review */
+            items: number;
         };
         /** @enum {string} */
         RecheckOutcome: "pass" | "fail";
@@ -2817,6 +2894,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecheckSample"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listRecheckBatches: {
+        parameters: {
+            query?: {
+                /** @description The current quarter when left out */
+                quarter?: components["schemas"]["Quarter"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quarter's batches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecheckBatchList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    sendBackRecheckBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecheckBatchInput"];
+            };
+        };
+        responses: {
+            /** @description Sent back */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecheckBatchSentBack"];
                 };
             };
             default: components["responses"]["Error"];

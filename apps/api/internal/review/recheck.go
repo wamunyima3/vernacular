@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
-	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
@@ -34,7 +33,7 @@ func quarterStart(t time.Time) time.Time {
 // language's verified items, at least one. A quarter is drawn once; later
 // calls return 0. An admin starts it by hand, the worker each quarter.
 func (s *Service) Sample(ctx context.Context, quarter string) (int64, error) {
-	me, err := accounts.Require(ctx, func(p accounts.Principal) bool { return p.HasRole(gen.RoleAdmin) })
+	me, err := accounts.RequireAdmin(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -136,10 +135,7 @@ func (s *Service) RecordRecheck(ctx context.Context, itemID uuid.UUID, outcome d
 		if outcome == dbgen.RecheckOutcomePass {
 			return nil
 		}
-		if err := store.resolve(ctx, itemID, me.ID, dbgen.ResolutionOutcomeSendBack, "Re-check "+open.Quarter+": "+note); err != nil {
-			return err
-		}
-		out.Status, err = promote(ctx, store, its, itemID, item.Origin)
+		out.Status, err = sendBack(ctx, store, its, itemID, item.Origin, me.ID, "Re-check "+open.Quarter+": "+note)
 		return err
 	})
 	return out, err

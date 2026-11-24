@@ -211,3 +211,31 @@ func (h *Handler) RecordRecheck(ctx context.Context, req gen.RecordRecheckReques
 	}
 	return gen.RecordRecheck200JSONResponse{ItemId: req.ItemId, Quarter: c.Quarter, Outcome: req.Body.Outcome, Status: gen.TrustStatus(c.Status)}, nil
 }
+
+// ListRecheckBatches implements GET /v1/rechecks/batches.
+func (h *Handler) ListRecheckBatches(ctx context.Context, req gen.ListRecheckBatchesRequestObject) (gen.ListRecheckBatchesResponseObject, error) {
+	quarter := httpx.DerefOr(req.Params.Quarter, Quarter(time.Now()))
+	rows, err := h.svc.Batches(ctx, quarter)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.RecheckBatch, len(rows))
+	for i, r := range rows {
+		out[i] = gen.RecheckBatch{
+			Language: r.LanguageCode, SourceId: r.SourceID, Source: r.Source, Model: r.Model,
+			Sampled: int(r.Sampled), Checked: int(r.Checked), Failed: int(r.Failed), Fails: Fails(int(r.Checked), int(r.Failed)),
+			SentBackAt: httpx.OptionalTime(r.SentBackAt), SentBackItems: httpx.OptionalInt(r.SentBackItems),
+		}
+	}
+	return gen.ListRecheckBatches200JSONResponse{Quarter: quarter, Batches: out}, nil
+}
+
+// SendBackRecheckBatch implements POST /v1/rechecks/batches/send-back.
+func (h *Handler) SendBackRecheckBatch(ctx context.Context, req gen.SendBackRecheckBatchRequestObject) (gen.SendBackRecheckBatchResponseObject, error) {
+	in := req.Body
+	n, err := h.svc.SendBackBatch(ctx, in.Quarter, Batch{Language: in.Language, SourceID: in.SourceId, Model: in.Model})
+	if err != nil {
+		return nil, err
+	}
+	return gen.SendBackRecheckBatch200JSONResponse{Items: n}, nil
+}

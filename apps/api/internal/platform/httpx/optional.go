@@ -50,6 +50,15 @@ func OptionalTime(t pgtype.Timestamptz) *time.Time {
 	return &t.Time
 }
 
+// OptionalInt returns nil for a NULL integer, so it is left out of JSON.
+func OptionalInt(n pgtype.Int4) *int {
+	if !n.Valid {
+		return nil
+	}
+	v := int(n.Int32)
+	return &v
+}
+
 // Attachment is a Content-Disposition value that downloads as filename.
 func Attachment(filename string) *string {
 	v := fmt.Sprintf("attachment; filename=%q", filename)

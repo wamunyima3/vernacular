@@ -69,6 +69,10 @@ from .qualification_question import QualificationQuestion
 from .qualification_result import QualificationResult
 from .qualification_test import QualificationTest
 from .recheck import Recheck
+from .recheck_batch import RecheckBatch
+from .recheck_batch_input import RecheckBatchInput
+from .recheck_batch_list import RecheckBatchList
+from .recheck_batch_sent_back import RecheckBatchSentBack
 from .recheck_input import RecheckInput
 from .recheck_outcome import RecheckOutcome
 from .recheck_result import RecheckResult
@@ -189,6 +193,10 @@ __all__ = (
     "QualificationResult",
     "QualificationTest",
     "Recheck",
+    "RecheckBatch",
+    "RecheckBatchInput",
+    "RecheckBatchList",
+    "RecheckBatchSentBack",
     "RecheckInput",
     "RecheckOutcome",
     "RecheckResult",

@@ -602,6 +602,12 @@ type Item struct {
 	Corrects     uuid.NullUUID
 }
 
+type ItemBatch struct {
+	ItemID   uuid.UUID
+	SourceID uuid.UUID
+	Model    string
+}
+
 type ItemSource struct {
 	ItemID    uuid.UUID
 	SourceID  uuid.UUID
@@ -684,6 +690,17 @@ type Recheck struct {
 	Note         pgtype.Text
 	CheckedBy    pgtype.Text
 	CheckedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type RecheckBatch struct {
+	Quarter      string
+	LanguageCode string
+	SourceID     uuid.UUID
+	Model        string
+	SentBackBy   string
+	Items        int32
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
