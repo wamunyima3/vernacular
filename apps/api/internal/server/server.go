@@ -60,6 +60,7 @@ type Options struct {
 	AllowedOrigins []string
 	RateLimits     RateLimits
 	DocsBaseURL    string
+	Metrics        *httpx.Metrics // optional; see httpx.NewMetrics
 }
 
 // Deps are the module dependencies the server wires together.
@@ -79,7 +80,9 @@ type Deps struct {
 // New returns the full HTTP handler for the API.
 func New(opts Options, deps Deps) http.Handler {
 	errs := httpx.Errors{DocsBaseURL: opts.DocsBaseURL, Log: opts.Log}
-	r := httpx.NewRouter(httpx.RouterOptions{Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs})
+	r := httpx.NewRouter(httpx.RouterOptions{
+		Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs, Metrics: opts.Metrics,
+	})
 	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), httpx.ETag(cacheControl), validateRequests(errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{

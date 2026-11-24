@@ -15,15 +15,16 @@ type RouterOptions struct {
 	Log            *slog.Logger
 	AllowedOrigins []string
 	Errors         Errors
+	Metrics        *Metrics // nil turns request metrics off
 }
 
-// NewRouter returns a chi router with request IDs, logging, panic recovery,
-// CORS and compression (NFR-3) applied to every route.
+// NewRouter returns a chi router with request timing (NFR-1), request IDs, logging,
+// panic recovery, CORS and compression (NFR-3) applied to every route.
 func NewRouter(opts RouterOptions) chi.Router {
 	r := chi.NewRouter()
 	r.Use(
 		middleware.RequestID,
-		requestLogger(opts.Log),
+		requestLogger(opts.Log, opts.Metrics, r),
 		opts.Errors.Recover,
 		cors.Handler(cors.Options{
 			AllowedOrigins: opts.AllowedOrigins,
@@ -39,17 +40,22 @@ func NewRouter(opts RouterOptions) chi.Router {
 	return r
 }
 
-func requestLogger(log *slog.Logger) func(http.Handler) http.Handler {
+// requestLogger logs every request and, when metrics is set, records its duration.
+func requestLogger(log *slog.Logger, metrics *Metrics, routes chi.Routes) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 			start := time.Now()
 			next.ServeHTTP(ww, r)
+			d := time.Since(start)
+			if metrics != nil {
+				metrics.observe(routes, r, ww.Status(), d)
+			}
 			log.InfoContext(r.Context(), "request",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", ww.Status(),
-				"duration_ms", time.Since(start).Milliseconds(),
+				"duration_ms", d.Milliseconds(),
 				"request_id", middleware.GetReqID(r.Context()),
 			)
 		})

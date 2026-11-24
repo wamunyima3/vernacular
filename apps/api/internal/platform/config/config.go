@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Env                string     `env:"APP_ENV"              envDefault:"development"`
 	HTTPAddr           string     `env:"HTTP_ADDR"            envDefault:":8080"`
+	MetricsAddr        string     `env:"METRICS_ADDR"         envDefault:":9090"` // Prometheus; never public. Empty turns it off.
 	LogLevel           slog.Level `env:"LOG_LEVEL"            envDefault:"info"`
 	DatabaseURL        string     `env:"DATABASE_URL,required"`
 	CORSAllowedOrigins []string   `env:"CORS_ALLOWED_ORIGINS" envDefault:"http://localhost:3000" envSeparator:","`

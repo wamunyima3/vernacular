@@ -61,6 +61,10 @@ images: ## Build the API and web container images (docs/deploy.md)
 	docker build -f apps/api/Dockerfile -t vernacular-api .
 	docker build -f apps/web/Dockerfile -t vernacular-web .
 
+.PHONY: p95
+p95: ## p95 latency per read endpoint, from the running API's metrics (NFR-1)
+	./scripts/p95.sh http://localhost$(or $(METRICS_ADDR),:9090)/metrics
+
 .PHONY: examples
 examples: ## Run the docs' examples against the API (needs VERNACULAR_KEY)
 	./scripts/run-examples.sh

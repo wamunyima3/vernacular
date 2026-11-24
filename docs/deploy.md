@@ -76,6 +76,34 @@ docker compose exec -T postgres pg_dump -U vernacular -Fc vernacular > vernacula
 Back up the `blobs` volume too: it holds the source permission documents (PRV-3). Restore
 with `pg_restore --clean -d vernacular` into a fresh `postgres` service.
 
+## Latency (NFR-1)
+
+Lookup and phrase requests must answer in under 200 ms at the 95th percentile, measured at the
+server. The API records every request's duration by route in a Prometheus histogram, served on
+port 9090 inside the compose network only (`METRICS_ADDR`). For a quick reading since the API
+started:
+
+```bash
+docker compose exec api wget -qO- localhost:9090/metrics | scripts/p95.sh
+```
+
+```text
+route                              requests  p95 (ms) under 200ms
+/v1/lookup                               56         9      100.0%
+/v1/phrases                              28         5      100.0%
+```
+
+With Prometheus scraping `api:9090`, the p95 over five minutes is:
+
+```promql
+histogram_quantile(0.95, sum by (le, route) (
+  rate(vernacular_http_request_duration_seconds_bucket{method="GET", route=~"/v1/(lookup|phrases.*|entries.*)"}[5m])
+))
+```
+
+The histogram has a bucket edge at exactly 0.2 s, so the share of requests under the target is
+exact: the `le="0.2"` bucket divided by the count.
+
 ## Notes
 
 - A CDN in front (NFR-10) is optional at launch. If you add one, proxy both domains through it

@@ -11,6 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
 	"github.com/wamunyima3/vernacular/apps/api/internal/detect"
@@ -62,9 +66,12 @@ func run() error {
 		return err
 	}
 	log.Info("language detector trained", "languages", detector.Languages())
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	handler := server.New(
 		server.Options{
 			Log: log, AllowedOrigins: cfg.CORSAllowedOrigins, DocsBaseURL: cfg.DocsBaseURL,
+			Metrics: httpx.NewMetrics(reg),
 			RateLimits: server.RateLimits{
 				PerKey: cfg.RateLimitPerKey, PerIP: cfg.RateLimitPerIP,
 				IP: httpx.ClientIP{Trusted: cfg.TrustedProxies},
@@ -93,11 +100,18 @@ func run() error {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 	go func() {
 		log.Info("listening", "addr", cfg.HTTPAddr, "env", cfg.Env)
 		errCh <- srv.ListenAndServe()
 	}()
+	metrics := metricsServer(cfg.MetricsAddr, reg)
+	if metrics != nil {
+		go func() {
+			log.Info("metrics listening", "addr", cfg.MetricsAddr)
+			errCh <- metrics.ListenAndServe()
+		}()
+	}
 
 	select {
 	case err := <-errCh:
@@ -110,5 +124,18 @@ func run() error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	if metrics != nil {
+		_ = metrics.Shutdown(shutdownCtx)
+	}
 	return srv.Shutdown(shutdownCtx)
+}
+
+// metricsServer serves Prometheus metrics on their own port, or nil when addr is empty.
+func metricsServer(addr string, reg *prometheus.Registry) *http.Server {
+	if addr == "" {
+		return nil
+	}
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	return &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 }
