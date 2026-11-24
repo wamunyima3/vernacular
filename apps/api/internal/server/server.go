@@ -21,6 +21,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/health"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/machine"
 	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/releases"
@@ -85,6 +86,7 @@ type Deps struct {
 	Releases      *releases.Service
 	Usage         *accounts.Usage // optional: counts calls per key
 	Audio         *audio.Service
+	Machine       machine.Translator // optional: machine translation (TRN-3)
 }
 
 // countUsage records calls per key when deps has a recorder.
@@ -115,7 +117,7 @@ func New(opts Options, deps Deps) http.Handler {
 		contribOps:   contributions.NewHandler(deps.Contributions),
 		reviewOps:    review.NewHandler(deps.Review),
 		lexiconOps:   lexicon.NewHandler(deps.Lexicon),
-		phrasesOps:   phrases.NewHandler(deps.Phrases),
+		phrasesOps:   phrases.NewHandler(deps.Phrases, deps.Machine),
 		detectOps:    detect.NewHandler(deps.Detector),
 		releasesOps:  releases.NewHandler(deps.Releases),
 		audioOps:     audio.NewHandler(deps.Audio),

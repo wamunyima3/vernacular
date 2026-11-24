@@ -353,7 +353,10 @@ paths:
       description: |
         Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
         Each match has `method: verified_phrase`. No match returns an empty list, never a
-        guess; labelled machine translation comes in a later phase (TRN-3).
+        guess in `data`. With `machine: true` and no verified match, `machine` may hold a
+        machine translation, marked `status: machine` with a confidence score (TRN-3,
+        US-31). It is left out when the server has no translation service or the service
+        cannot translate the pair.
       tags: [phrases]
       security:
         - apiKey: []
@@ -372,6 +375,10 @@ paths:
                 text: { type: string, minLength: 1, maxLength: 500, example: Good morning }
                 from: { $ref: "#/components/schemas/LanguageCode" }
                 to: { $ref: "#/components/schemas/LanguageCode" }
+                machine:
+                  type: boolean
+                  default: false
+                  description: When nothing verified matches, also ask for a machine translation
       responses:
         "200":
           description: Matches, possibly none
@@ -2028,6 +2035,24 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Translation"
+        machine: { $ref: "#/components/schemas/MachineTranslation" }
+    MachineTranslation:
+      type: object
+      description: Output of a translation model, not checked by any person (TRN-3)
+      required: [translation, status, confidence, model]
+      properties:
+        translation: { type: string, example: Mulale bwino }
+        status:
+          type: string
+          enum: [machine]
+          description: Always `machine`; never treat it as verified
+        confidence: { type: number, minimum: 0, maximum: 1, description: The model's own score }
+        model:
+          {
+            type: string,
+            description: The model and version that produced it,
+            example: vernacular-mt-0.1,
+          }
     Translation:
       type: object
       required: [method, translation, phrase]

@@ -88,7 +88,10 @@ def sync_detailed(
 
      Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
     Each match has `method: verified_phrase`. No match returns an empty list, never a
-    guess; labelled machine translation comes in a later phase (TRN-3).
+    guess in `data`. With `machine: true` and no verified match, `machine` may hold a
+    machine translation, marked `status: machine` with a confidence score (TRN-3,
+    US-31). It is left out when the server has no translation service or the service
+    cannot translate the pair.
 
     Args:
         release (Union[Unset, str]):  Example: 2027.1.
@@ -124,7 +127,10 @@ def sync(
 
      Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
     Each match has `method: verified_phrase`. No match returns an empty list, never a
-    guess; labelled machine translation comes in a later phase (TRN-3).
+    guess in `data`. With `machine: true` and no verified match, `machine` may hold a
+    machine translation, marked `status: machine` with a confidence score (TRN-3,
+    US-31). It is left out when the server has no translation service or the service
+    cannot translate the pair.
 
     Args:
         release (Union[Unset, str]):  Example: 2027.1.
@@ -155,7 +161,10 @@ async def asyncio_detailed(
 
      Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
     Each match has `method: verified_phrase`. No match returns an empty list, never a
-    guess; labelled machine translation comes in a later phase (TRN-3).
+    guess in `data`. With `machine: true` and no verified match, `machine` may hold a
+    machine translation, marked `status: machine` with a confidence score (TRN-3,
+    US-31). It is left out when the server has no translation service or the service
+    cannot translate the pair.
 
     Args:
         release (Union[Unset, str]):  Example: 2027.1.
@@ -189,7 +198,10 @@ async def asyncio(
 
      Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
     Each match has `method: verified_phrase`. No match returns an empty list, never a
-    guess; labelled machine translation comes in a later phase (TRN-3).
+    guess in `data`. With `machine: true` and no verified match, `machine` may hold a
+    machine translation, marked `status: machine` with a confidence score (TRN-3,
+    US-31). It is left out when the server has no translation service or the service
+    cannot translate the pair.
 
     Args:
         release (Union[Unset, str]):  Example: 2027.1.

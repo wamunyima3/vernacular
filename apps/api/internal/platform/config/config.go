@@ -24,6 +24,9 @@ type Config struct {
 	// Pronunciation audio (LEX-8). Voice is personal data: keep this off until
 	// the legal steps in tasks.md P2-08d are done.
 	AudioEnabled bool `env:"AUDIO_ENABLED" envDefault:"false"`
+	// The machine translation service (TRN-3, docs/translation-service.md).
+	// Empty means none: /v1/translate returns verified phrases only.
+	TranslationServiceURL string `env:"TRANSLATION_SERVICE_URL"`
 	// Proxies whose X-Forwarded-For is believed, as CIDRs (NFR-5).
 	TrustedProxies []netip.Prefix `env:"TRUSTED_PROXIES" envSeparator:","`
 }

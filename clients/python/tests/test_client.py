@@ -40,4 +40,21 @@ def test_translate_posts_from_and_to() -> None:
     seen: list[httpx.Request] = []
     with client(200, {"data": []}, seen) as v:
         v.translate("Good morning", "en", "bem")
-    assert json.loads(seen[0].content) == {"text": "Good morning", "from": "en", "to": "bem"}
+    assert json.loads(seen[0].content) == {
+        "text": "Good morning",
+        "from": "en",
+        "to": "bem",
+        "machine": False,
+    }
+
+
+def test_translate_reads_a_machine_translation() -> None:
+    seen: list[httpx.Request] = []
+    answer = {
+        "data": [],
+        "machine": {"translation": "Mulale bwino", "status": "machine", "confidence": 0.4, "model": "m-1"},
+    }
+    with client(200, answer, seen) as v:
+        result = v.translate("Good night", "eng", "bem", machine=True)
+    assert json.loads(seen[0].content)["machine"] is True
+    assert (result.machine.translation, result.machine.model) == ("Mulale bwino", "m-1")

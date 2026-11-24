@@ -21,6 +21,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/detect"
 	"github.com/wamunyima3/vernacular/apps/api/internal/languages"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/machine"
 	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/blob"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
@@ -97,6 +98,7 @@ func run() error {
 			Releases:      releases.NewService(pool),
 			Usage:         usage,
 			Audio:         audio.NewService(pool, bucket, cfg.AudioEnabled),
+			Machine:       machine.New(cfg.TranslationServiceURL),
 		},
 	)
 

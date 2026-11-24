@@ -4,9 +4,13 @@ from typing import Any, TypeVar, TYPE_CHECKING
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..types import UNSET, Unset
+
+from typing import Union
 
 if TYPE_CHECKING:
     from ..models.translation import Translation
+    from ..models.machine_translation import MachineTranslation
 
 
 T = TypeVar("T", bound="TranslationResults")
@@ -17,9 +21,11 @@ class TranslationResults:
     """
     Attributes:
         data (list['Translation']):
+        machine (Union[Unset, MachineTranslation]): Output of a translation model, not checked by any person (TRN-3)
     """
 
     data: list["Translation"]
+    machine: Union[Unset, "MachineTranslation"] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -28,6 +34,10 @@ class TranslationResults:
             data_item = data_item_data.to_dict()
             data.append(data_item)
 
+        machine: Union[Unset, dict[str, Any]] = UNSET
+        if not isinstance(self.machine, Unset):
+            machine = self.machine.to_dict()
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -35,12 +45,15 @@ class TranslationResults:
                 "data": data,
             }
         )
+        if machine is not UNSET:
+            field_dict["machine"] = machine
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.translation import Translation
+        from ..models.machine_translation import MachineTranslation
 
         d = dict(src_dict)
         data = []
@@ -50,8 +63,16 @@ class TranslationResults:
 
             data.append(data_item)
 
+        _machine = d.pop("machine", UNSET)
+        machine: Union[Unset, MachineTranslation]
+        if isinstance(_machine, Unset):
+            machine = UNSET
+        else:
+            machine = MachineTranslation.from_dict(_machine)
+
         translation_results = cls(
             data=data,
+            machine=machine,
         )
 
         translation_results.additional_properties = d

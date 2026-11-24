@@ -213,7 +213,10 @@ export interface paths {
          * Translate a short text between English and a Zambian language
          * @description Exact match, ignoring case and accents, against verified phrases (TRN-2, US-10).
          *     Each match has `method: verified_phrase`. No match returns an empty list, never a
-         *     guess; labelled machine translation comes in a later phase (TRN-3).
+         *     guess in `data`. With `machine: true` and no verified match, `machine` may hold a
+         *     machine translation, marked `status: machine` with a confidence score (TRN-3,
+         *     US-31). It is left out when the server has no translation service or the service
+         *     cannot translate the pair.
          */
         post: operations["translate"];
         delete?: never;
@@ -1344,6 +1347,24 @@ export interface components {
         };
         TranslationResults: {
             data: components["schemas"]["Translation"][];
+            machine?: components["schemas"]["MachineTranslation"];
+        };
+        /** @description Output of a translation model, not checked by any person (TRN-3) */
+        MachineTranslation: {
+            /** @example Mulale bwino */
+            translation: string;
+            /**
+             * @description Always `machine`; never treat it as verified
+             * @enum {string}
+             */
+            status: "machine";
+            /** @description The model's own score */
+            confidence: number;
+            /**
+             * @description The model and version that produced it
+             * @example vernacular-mt-0.1
+             */
+            model: string;
         };
         Translation: {
             /**
@@ -2298,6 +2319,11 @@ export interface operations {
                     text: string;
                     from: components["schemas"]["LanguageCode"];
                     to: components["schemas"]["LanguageCode"];
+                    /**
+                     * @description When nothing verified matches, also ask for a machine translation
+                     * @default false
+                     */
+                    machine?: boolean;
                 };
             };
         };

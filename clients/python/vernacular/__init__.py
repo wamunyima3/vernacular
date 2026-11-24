@@ -127,9 +127,12 @@ class Vernacular:
         """A phrase pack in one language (GET /v1/phrases)."""
         return self._call(get_phrase_pack.sync_detailed, pack=pack, lang=lang, **options)
 
-    def translate(self, text: str, from_: str, to: str, **options: Any) -> models.TranslationResults:
-        """Verified phrase translations (POST /v1/translate)."""
-        body = models.TranslateBody.from_dict({"text": text, "from": from_, "to": to})
+    def translate(
+        self, text: str, from_: str, to: str, *, machine: bool = False, **options: Any
+    ) -> models.TranslationResults:
+        """Verified phrase translations (POST /v1/translate). With machine=True and no verified
+        match, ``machine`` may hold a machine translation, marked as such with a confidence."""
+        body = models.TranslateBody.from_dict({"text": text, "from": from_, "to": to, "machine": machine})
         return self._call(translate.sync_detailed, body=body, **options)
 
     def detect(self, text: str) -> models.Detection:

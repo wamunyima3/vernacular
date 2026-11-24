@@ -3,6 +3,10 @@ from typing import Any, TypeVar
 
 from attrs import define as _attrs_define
 
+from ..types import UNSET, Unset
+
+from typing import Union
+
 
 T = TypeVar("T", bound="TranslateBody")
 
@@ -14,11 +18,13 @@ class TranslateBody:
         text (str):  Example: Good morning.
         from_ (str): ISO 639-3 code Example: bem.
         to (str): ISO 639-3 code Example: bem.
+        machine (Union[Unset, bool]): When nothing verified matches, also ask for a machine translation Default: False.
     """
 
     text: str
     from_: str
     to: str
+    machine: Union[Unset, bool] = False
 
     def to_dict(self) -> dict[str, Any]:
         text = self.text
@@ -26,6 +32,8 @@ class TranslateBody:
         from_ = self.from_
 
         to = self.to
+
+        machine = self.machine
 
         field_dict: dict[str, Any] = {}
 
@@ -36,6 +44,8 @@ class TranslateBody:
                 "to": to,
             }
         )
+        if machine is not UNSET:
+            field_dict["machine"] = machine
 
         return field_dict
 
@@ -48,10 +58,13 @@ class TranslateBody:
 
         to = d.pop("to")
 
+        machine = d.pop("machine", UNSET)
+
         translate_body = cls(
             text=text,
             from_=from_,
             to=to,
+            machine=machine,
         )
 
         return translate_body

@@ -3,10 +3,13 @@ package phrases
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
+	"github.com/wamunyima3/vernacular/apps/api/internal/machine"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
@@ -22,11 +25,12 @@ const english = "eng"
 // Handler implements the phrase operations of the generated strict server.
 type Handler struct {
 	svc Reader
+	mt  machine.Translator // nil: no machine translation
 }
 
 // NewHandler returns a phrases handler.
-func NewHandler(svc Reader) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Reader, mt machine.Translator) *Handler {
+	return &Handler{svc: svc, mt: mt}
 }
 
 // GetPhrasePack implements GET /v1/phrases.
@@ -66,7 +70,30 @@ func (h *Handler) Translate(ctx context.Context, req gen.TranslateRequestObject)
 		}
 		data[i] = gen.Translation{Method: gen.TranslationMethodVerifiedPhrase, Translation: translation, Phrase: phrase(ph)}
 	}
-	return gen.Translate200JSONResponse{Data: data}, nil
+	out := gen.Translate200JSONResponse{Data: data}
+	if len(data) == 0 && httpx.Deref(b.Machine) {
+		out.Machine = h.fallback(ctx, b.Text, b.From, b.To)
+	}
+	return out, nil
+}
+
+// fallback asks the translation service, if there is one (TRN-3). A failure
+// leaves the machine translation out rather than failing the call: verified
+// results never depend on the service.
+func (h *Handler) fallback(ctx context.Context, text, from, to string) *gen.MachineTranslation {
+	if h.mt == nil {
+		return nil
+	}
+	r, err := h.mt.Translate(ctx, text, from, to)
+	if err != nil {
+		if !errors.Is(err, machine.ErrUnsupported) {
+			slog.WarnContext(ctx, "machine translation", "err", err)
+		}
+		return nil
+	}
+	return &gen.MachineTranslation{
+		Translation: r.Translation, Status: gen.MachineTranslationStatusMachine, Confidence: float32(r.Confidence), Model: r.Model,
+	}
 }
 
 func phrase(ph Phrase) gen.Phrase {

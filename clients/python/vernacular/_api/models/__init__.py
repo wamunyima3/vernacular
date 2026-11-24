@@ -51,6 +51,8 @@ from .language_status import LanguageStatus
 from .lookup_hit import LookupHit
 from .lookup_hit_concept import LookupHitConcept
 from .lookup_results import LookupResults
+from .machine_translation import MachineTranslation
+from .machine_translation_status import MachineTranslationStatus
 from .mark_retrained_body import MarkRetrainedBody
 from .match import Match
 from .me import Me
@@ -175,6 +177,8 @@ __all__ = (
     "LookupHit",
     "LookupHitConcept",
     "LookupResults",
+    "MachineTranslation",
+    "MachineTranslationStatus",
     "MarkRetrainedBody",
     "Match",
     "Me",
