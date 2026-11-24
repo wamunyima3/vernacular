@@ -1,6 +1,11 @@
 package httpx
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 // Optional returns nil for an empty string, so optional response fields are
 // left out of the JSON instead of sent empty.
@@ -34,4 +39,12 @@ func OptionalUUID(id uuid.NullUUID) *uuid.UUID {
 		return nil
 	}
 	return &id.UUID
+}
+
+// OptionalTime returns nil for a NULL timestamp, so it is left out of JSON.
+func OptionalTime(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }

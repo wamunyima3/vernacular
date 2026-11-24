@@ -3,6 +3,8 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -77,7 +79,7 @@ type Deps struct {
 func New(opts Options, deps Deps) http.Handler {
 	errs := httpx.Errors{DocsBaseURL: opts.DocsBaseURL, Log: opts.Log}
 	r := httpx.NewRouter(httpx.RouterOptions{Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs})
-	r.Use(validateRequests(errs), accounts.Middleware(deps.Accounts, errs))
+	r.Use(accounts.Middleware(deps.Accounts, errs), validateRequests(errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
 		accountsOps:  accounts.NewHandler(deps.Reviewers),
@@ -109,13 +111,17 @@ func validateRequests(errs httpx.Errors) func(http.Handler) http.Handler {
 	}
 	spec.Servers = nil // match any host
 	codes := map[int]gen.ErrorCode{
+		http.StatusUnauthorized:          gen.ErrorCodeUnauthorized,
 		http.StatusNotFound:              gen.ErrorCodeNotFound,
 		http.StatusMethodNotAllowed:      gen.ErrorCodeMethodNotAllowed,
 		http.StatusRequestEntityTooLarge: gen.ErrorCodePayloadTooLarge,
 	}
 	return validator.OapiRequestValidatorWithOptions(spec, &validator.Options{
-		Options: openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc},
+		Options: openapi3filter.Options{AuthenticationFunc: authenticate},
 		ErrorHandler: func(w http.ResponseWriter, message string, status int) {
+			if status == http.StatusUnauthorized {
+				message = "Send an API key in the X-API-Key header, or sign in"
+			}
 			code, ok := codes[status]
 			if !ok {
 				code, status = gen.ErrorCodeBadRequest, http.StatusBadRequest
@@ -124,3 +130,15 @@ func validateRequests(errs httpx.Errors) func(http.Handler) http.Handler {
 		},
 	})
 }
+
+// authenticate checks a security scheme of the contract against the caller
+// accounts.Middleware found: apiKey needs a key, session a signed-in user.
+func authenticate(_ context.Context, in *openapi3filter.AuthenticationInput) error {
+	p, ok := accounts.FromContext(in.RequestValidationInput.Request.Context())
+	if ok && p.ByKey() == (in.SecuritySchemeName == "apiKey") {
+		return nil
+	}
+	return errNoCredentials
+}
+
+var errNoCredentials = errors.New("no credentials for this scheme")

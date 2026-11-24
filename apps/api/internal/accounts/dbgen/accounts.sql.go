@@ -7,9 +7,43 @@ package dbgen
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createKey = `-- name: CreateKey :one
+INSERT INTO api_keys (user_id, name, prefix, hash)
+SELECT $1, $2, $3, $4
+WHERE (SELECT count(*) FROM api_keys WHERE user_id = $1 AND revoked_at IS NULL) < 10
+RETURNING id, created_at
+`
+
+type CreateKeyParams struct {
+	UserID string
+	Name   string
+	Prefix string
+	Hash   []byte
+}
+
+type CreateKeyRow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+// At most 10 live keys per user; no row means the user has that many.
+func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (CreateKeyRow, error) {
+	row := q.db.QueryRow(ctx, createKey,
+		arg.UserID,
+		arg.Name,
+		arg.Prefix,
+		arg.Hash,
+	)
+	var i CreateKeyRow
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}
 
 const deleteApproval = `-- name: DeleteApproval :execrows
 DELETE FROM reviewer_approvals WHERE user_id = $1 AND language_code = $2
@@ -26,6 +60,26 @@ func (q *Queries) DeleteApproval(ctx context.Context, arg DeleteApprovalParams) 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getKeyOwner = `-- name: GetKeyOwner :one
+SELECT k.id, k.user_id, k.last_used_at
+FROM api_keys k JOIN users u ON u.id = k.user_id
+WHERE k.hash = $1 AND k.revoked_at IS NULL AND NOT coalesce(u.banned, false)
+`
+
+type GetKeyOwnerRow struct {
+	ID         uuid.UUID
+	UserID     string
+	LastUsedAt pgtype.Timestamptz
+}
+
+// The live key with this hash, and its owner unless banned.
+func (q *Queries) GetKeyOwner(ctx context.Context, hash []byte) (GetKeyOwnerRow, error) {
+	row := q.db.QueryRow(ctx, getKeyOwner, hash)
+	var i GetKeyOwnerRow
+	err := row.Scan(&i.ID, &i.UserID, &i.LastUsedAt)
+	return i, err
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
@@ -120,6 +174,49 @@ func (q *Queries) ListApprovals(ctx context.Context) ([]ListApprovalsRow, error)
 	return items, nil
 }
 
+const listKeys = `-- name: ListKeys :many
+SELECT id, name, prefix, last_used_at, revoked_at, created_at
+FROM api_keys WHERE user_id = $1
+ORDER BY revoked_at IS NOT NULL, created_at DESC
+LIMIT 50
+`
+
+type ListKeysRow struct {
+	ID         uuid.UUID
+	Name       string
+	Prefix     string
+	LastUsedAt pgtype.Timestamptz
+	RevokedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+}
+
+func (q *Queries) ListKeys(ctx context.Context, userID string) ([]ListKeysRow, error) {
+	rows, err := q.db.Query(ctx, listKeys, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeysRow
+	for rows.Next() {
+		var i ListKeysRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Prefix,
+			&i.LastUsedAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReviewers = `-- name: ListReviewers :many
 SELECT u.id, u.name, a.level, g.decided, g.agreed,
        below_agreement(g.decided, g.agreed) AS suspended, a.retrained_at
@@ -186,6 +283,24 @@ func (q *Queries) MarkRetrained(ctx context.Context, arg MarkRetrainedParams) (i
 	return result.RowsAffected(), nil
 }
 
+const revokeKey = `-- name: RevokeKey :execrows
+UPDATE api_keys SET revoked_at = now(), updated_at = now()
+WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+`
+
+type RevokeKeyParams struct {
+	ID     uuid.UUID
+	UserID string
+}
+
+func (q *Queries) RevokeKey(ctx context.Context, arg RevokeKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeKey, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setCreditConsent = `-- name: SetCreditConsent :exec
 UPDATE users SET credit_consent_at = CASE WHEN $1::boolean THEN coalesce(credit_consent_at, now()) END
 WHERE id = $2
@@ -217,6 +332,17 @@ func (q *Queries) SetRole(ctx context.Context, arg SetRoleParams) (int64, error)
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const touchKey = `-- name: TouchKey :exec
+UPDATE api_keys SET last_used_at = now()
+WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 hour')
+`
+
+// last_used_at is kept to the hour, so busy keys do not write on every call.
+func (q *Queries) TouchKey(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, touchKey, id)
+	return err
 }
 
 const upsertApproval = `-- name: UpsertApproval :one

@@ -567,6 +567,18 @@ type Account struct {
 	UpdatedAt             time.Time
 }
 
+type ApiKey struct {
+	ID         uuid.UUID
+	UserID     string
+	Name       string
+	Prefix     string
+	Hash       []byte
+	LastUsedAt pgtype.Timestamptz
+	RevokedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type AuditLog struct {
 	ID        int64
 	TableName string

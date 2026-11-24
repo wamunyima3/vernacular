@@ -164,7 +164,7 @@ Change the contract first, run `make gen`, then implement. CI fails if the gener
 | Storage     | Files go through `internal/platform/blob` (gocloud.dev): S3-compatible in production, a folder in development. |
 | Config      | Environment variables only, parsed once at startup into a typed struct. Documented in `.env.example`.          |
 | Logging     | `log/slog` JSON with a request ID on every line.                                                               |
-| Security    | API keys hashed at rest, TLS at the edge, rate limits per key and per IP (NFR-5).                              |
+| Security    | API keys hashed at rest (ADR-0011), TLS at the edge, rate limits per key and per IP (NFR-5).                   |
 | Versioning  | `/v1` in the path. Breaking changes get `/v2` and six months of overlap (NFR-4).                               |
 | Caching     | `ETag` tied to the release number, gzip/br compression (NFR-3).                                                |
 | Portability | Containers, PostgreSQL and S3-compatible storage only, so the system runs anywhere (§12 hosting decision).     |

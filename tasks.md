@@ -143,7 +143,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 - [x] **P1-API-09** Exact-match translation against verified phrases (S) → TRN-2, US-10
 - [x] **P1-API-10** `POST /v1/reports` and the report inbox for reviewers; a confirmed report is an input to `review.Status` (→ `disputed`) and shows on `/disputes` (M) → PRV-3, US-15
   - The portal's "Report a problem" button comes with the search results in P1-WEB-02, which calls `POST /v1/reports`.
-- [ ] **P1-API-11** API keys slice: create and revoke keys in the portal; keys hashed at rest (M) → DEV-1, NFR-5, US-01
+- [x] **P1-API-11** API keys slice: create and revoke keys in the portal; keys hashed at rest (M) → DEV-1, NFR-5, US-01
 - [ ] **P1-API-12** Rate limiting per key and per IP, with rate-limit headers; derive client IP only from trusted proxy headers, not chi RealIP (S) → DEV-3, NFR-5, US-13
 - [ ] **P1-API-13** Compression, `ETag` tied to the release, cache headers (S) → NFR-3, US-11
 

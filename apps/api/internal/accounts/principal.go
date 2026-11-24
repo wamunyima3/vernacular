@@ -7,6 +7,8 @@ import (
 	"context"
 	"slices"
 
+	"github.com/google/uuid"
+
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
@@ -29,8 +31,13 @@ type Principal struct {
 	Email     string
 	Role      gen.Role
 	Approvals []Approval
-	Credited  bool // chose public credit by name (NFR-6)
+	Credited  bool      // chose public credit by name (NFR-6)
+	KeyID     uuid.UUID // set when the caller sent an API key rather than a session
 }
+
+// ByKey reports whether the caller is a program using an API key. Such
+// callers may read the data, but not act as the account (Require).
+func (p Principal) ByKey() bool { return p.KeyID != uuid.Nil }
 
 // HasRole reports whether the caller has any of the roles. Admins have every role.
 func (p Principal) HasRole(roles ...gen.Role) bool {
@@ -83,10 +90,10 @@ func RequireAdmin(ctx context.Context) (Principal, error) {
 
 // Require returns the caller if they pass allow, or an error the server turns
 // into 401 (not signed in) or 403 (signed in, not allowed). A nil allow only
-// requires sign-in.
+// requires sign-in. An API key is not a sign-in.
 func Require(ctx context.Context, allow func(Principal) bool) (Principal, error) {
 	p, ok := FromContext(ctx)
-	if !ok {
+	if !ok || p.ByKey() {
 		return Principal{}, httpx.ErrUnauthorized
 	}
 	if allow != nil && !allow(p) {

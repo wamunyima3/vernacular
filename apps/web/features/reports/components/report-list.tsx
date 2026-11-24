@@ -7,13 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { apiErrorMessage } from "@/lib/api-error"
+import { formatDate } from "@/lib/format-date"
 
 import { apiForSession } from "../../auth/session"
 import { getLanguages, languageName } from "../../languages/get-languages"
 import { TrustBadge } from "../../trust/components/trust-badge"
 import { DecideForm } from "./decide-form"
-
-const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" })
 
 /** The report inbox for one of the reviewer's languages, oldest first (PRV-3, US-15). */
 export async function ReportList({ asked }: { asked?: string }) {
@@ -80,7 +79,7 @@ export async function ReportList({ asked }: { asked?: string }) {
                   {languageName(names, r.language)} · {r.gloss}
                 </span>
                 <time dateTime={r.created_at} className="tabular-nums">
-                  {dateFormat.format(new Date(r.created_at))}
+                  {formatDate(r.created_at)}
                 </time>
               </CardDescription>
               <CardTitle className="flex flex-wrap items-center gap-2 text-2xl text-balance">

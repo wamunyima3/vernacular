@@ -2,11 +2,12 @@ package accounts
 
 import (
 	"context"
-	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
+	"github.com/wamunyima3/vernacular/apps/api/internal/accounts/dbgen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
 // Handler implements the account operations of the generated strict server.
@@ -40,13 +41,9 @@ func (h *Handler) ListReviewers(ctx context.Context, req gen.ListReviewersReques
 	}
 	out := make([]gen.Reviewer, len(rows))
 	for i, r := range rows {
-		var retrained *time.Time
-		if r.RetrainedAt.Valid {
-			retrained = &r.RetrainedAt.Time
-		}
 		out[i] = gen.Reviewer{
 			UserId: r.ID, Name: r.Name, Level: gen.ReviewerLevel(r.Level), Decided: int(r.Decided), Agreed: int(r.Agreed),
-			Suspended: r.Suspended, RetrainedAt: retrained,
+			Suspended: r.Suspended, RetrainedAt: httpx.OptionalTime(r.RetrainedAt),
 		}
 	}
 	return gen.ListReviewers200JSONResponse{Reviewers: out}, nil
@@ -99,4 +96,41 @@ func (h *Handler) SetCredit(ctx context.Context, req gen.SetCreditRequestObject)
 		return nil, err
 	}
 	return gen.SetCredit204Response{}, nil
+}
+
+func key(k dbgen.ListKeysRow) gen.Key {
+	return gen.Key{
+		Id: k.ID, Name: k.Name, Prefix: k.Prefix, CreatedAt: k.CreatedAt,
+		LastUsedAt: httpx.OptionalTime(k.LastUsedAt), RevokedAt: httpx.OptionalTime(k.RevokedAt),
+	}
+}
+
+// ListKeys implements GET /v1/keys.
+func (h *Handler) ListKeys(ctx context.Context, _ gen.ListKeysRequestObject) (gen.ListKeysResponseObject, error) {
+	rows, err := h.svc.Keys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gen.Key, len(rows))
+	for i, r := range rows {
+		out[i] = key(r)
+	}
+	return gen.ListKeys200JSONResponse{Data: out}, nil
+}
+
+// CreateKey implements POST /v1/keys.
+func (h *Handler) CreateKey(ctx context.Context, req gen.CreateKeyRequestObject) (gen.CreateKeyResponseObject, error) {
+	k, err := h.svc.CreateKey(ctx, req.Body.Name)
+	if err != nil {
+		return nil, err
+	}
+	return gen.CreateKey201JSONResponse{Key: key(k.ListKeysRow), Secret: k.Secret}, nil
+}
+
+// RevokeKey implements DELETE /v1/keys/{id}.
+func (h *Handler) RevokeKey(ctx context.Context, req gen.RevokeKeyRequestObject) (gen.RevokeKeyResponseObject, error) {
+	if err := h.svc.RevokeKey(ctx, req.Id); err != nil {
+		return nil, err
+	}
+	return gen.RevokeKey204Response{}, nil
 }

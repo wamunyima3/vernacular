@@ -61,3 +61,31 @@ DELETE FROM reviewer_approvals WHERE user_id = $1 AND language_code = $2;
 -- Records when the user chose to be credited by name, or clears it (NFR-6).
 UPDATE users SET credit_consent_at = CASE WHEN @credited::boolean THEN coalesce(credit_consent_at, now()) END
 WHERE id = @id;
+
+-- name: CreateKey :one
+-- At most 10 live keys per user; no row means the user has that many.
+INSERT INTO api_keys (user_id, name, prefix, hash)
+SELECT @user_id, @name, @prefix, @hash
+WHERE (SELECT count(*) FROM api_keys WHERE user_id = @user_id AND revoked_at IS NULL) < 10
+RETURNING id, created_at;
+
+-- name: ListKeys :many
+SELECT id, name, prefix, last_used_at, revoked_at, created_at
+FROM api_keys WHERE user_id = $1
+ORDER BY revoked_at IS NOT NULL, created_at DESC
+LIMIT 50;
+
+-- name: RevokeKey :execrows
+UPDATE api_keys SET revoked_at = now(), updated_at = now()
+WHERE id = @id AND user_id = @user_id AND revoked_at IS NULL;
+
+-- name: GetKeyOwner :one
+-- The live key with this hash, and its owner unless banned.
+SELECT k.id, k.user_id, k.last_used_at
+FROM api_keys k JOIN users u ON u.id = k.user_id
+WHERE k.hash = $1 AND k.revoked_at IS NULL AND NOT coalesce(u.banned, false);
+
+-- name: TouchKey :exec
+-- last_used_at is kept to the hour, so busy keys do not write on every call.
+UPDATE api_keys SET last_used_at = now()
+WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 hour');

@@ -8,7 +8,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
@@ -38,6 +41,14 @@ func (f fakeAuth) Authenticate(_ context.Context, token string) (accounts.Princi
 		return accounts.Principal{}, accounts.ErrNoSession
 	}
 	return p, nil
+}
+
+// AuthenticateKey knows one key, "vk_good", owned by u1.
+func (f fakeAuth) AuthenticateKey(_ context.Context, secret string) (accounts.Principal, error) {
+	if secret != "vk_good" {
+		return accounts.Principal{}, accounts.ErrNoKey
+	}
+	return accounts.Principal{ID: "u1", KeyID: uuid.MustParse("00000000-0000-0000-0000-000000000001")}, nil
 }
 
 func newServer(deps server.Deps) http.Handler {
@@ -171,11 +182,14 @@ func TestGetMe(t *testing.T) {
 		{"not a bearer token", "Basic abc", http.StatusUnauthorized, gen.ErrorCodeUnauthorized},
 		{"lookup failure", "Bearer boom", http.StatusInternalServerError, gen.ErrorCodeInternal},
 		{"valid session", "Bearer good", http.StatusOK, ""},
+		{"an API key is not a session", "key vk_good", http.StatusUnauthorized, gen.ErrorCodeUnauthorized},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/me", nil)
-			if tt.header != "" {
+			if key, ok := strings.CutPrefix(tt.header, "key "); ok {
+				req.Header.Set("X-API-Key", key)
+			} else if tt.header != "" {
 				req.Header.Set("Authorization", tt.header)
 			}
 			var body struct {
@@ -190,5 +204,21 @@ func TestGetMe(t *testing.T) {
 				t.Errorf("me = %+v", body.Me)
 			}
 		})
+	}
+}
+
+// TestDataNeedsCredentials: data endpoints answer 401 to anonymous callers
+// and to unknown keys, before reaching a handler (US-01).
+func TestDataNeedsCredentials(t *testing.T) {
+	h := newServer(server.Deps{Accounts: fakeAuth{}})
+	for _, key := range []string{"", "vk_revoked"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/v1/phrases?pack=greetings&language=bem", nil)
+		if key != "" {
+			req.Header.Set("X-API-Key", key)
+		}
+		var body gen.Error
+		if status := do(t, h, req, &body); status != http.StatusUnauthorized || body.Code != gen.ErrorCodeUnauthorized {
+			t.Errorf("key %q: %d %q, want 401 unauthorized", key, status, body.Code)
+		}
 	}
 }

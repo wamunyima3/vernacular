@@ -61,6 +61,9 @@ paths:
         the headword, a spelling variant, the root (an inflected or prefixed form) or a
         similar spelling. Best matches first. Disputed items are never returned.
       tags: [lexicon]
+      security:
+        - apiKey: []
+        - session: []
       parameters:
         - name: language
           in: query
@@ -84,6 +87,8 @@ paths:
               schema: { $ref: "#/components/schemas/EntrySearchResults" }
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/entries/{id}:
@@ -95,6 +100,9 @@ paths:
         concept and example sentences (LEX-1, LEX-3, LEX-5, US-16). Every item carries its
         trust fields. A disputed entry is not found.
       tags: [lexicon]
+      security:
+        - apiKey: []
+        - session: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/MinStatus"
@@ -106,6 +114,8 @@ paths:
               schema: { $ref: "#/components/schemas/Entry" }
         "404":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/concepts/{id}:
@@ -116,6 +126,9 @@ paths:
         The language-independent concept, and every servable entry in any language with a
         sense that expresses it (LEX-7, US-04). Each entry lists only those senses.
       tags: [lexicon]
+      security:
+        - apiKey: []
+        - session: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/MinStatus"
@@ -127,6 +140,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Concept" }
         "404":
+          $ref: "#/components/responses/Error"
+        "401":
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
@@ -140,6 +155,9 @@ paths:
         searches its entries as `/v1/entries/search` does and returns the English meaning of
         each, grouped by concept. Each result says what matched; best matches first.
       tags: [lexicon]
+      security:
+        - apiKey: []
+        - session: []
       parameters:
         - name: q
           in: query
@@ -177,6 +195,8 @@ paths:
               schema: { $ref: "#/components/schemas/LookupResults" }
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/phrases:
@@ -188,6 +208,9 @@ paths:
         health or money, each with its English source and trust fields (PHR-1, US-08).
         At most 1,000 phrases, in English order.
       tags: [phrases]
+      security:
+        - apiKey: []
+        - session: []
       parameters:
         - name: pack
           in: query
@@ -207,6 +230,8 @@ paths:
               schema: { $ref: "#/components/schemas/PhrasePack" }
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/detect:
@@ -220,6 +245,9 @@ paths:
         the text has no letters. Languages without enough data yet are not detected
         (ADR-0010).
       tags: [detect]
+      security:
+        - apiKey: []
+        - session: []
       requestBody:
         required: true
         content:
@@ -238,6 +266,8 @@ paths:
               schema: { $ref: "#/components/schemas/Detection" }
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/translate:
@@ -249,6 +279,9 @@ paths:
         Each match has `method: verified_phrase`. No match returns an empty list, never a
         guess; labelled machine translation comes in a later phase (TRN-3).
       tags: [phrases]
+      security:
+        - apiKey: []
+        - session: []
       requestBody:
         required: true
         content:
@@ -269,6 +302,8 @@ paths:
               schema: { $ref: "#/components/schemas/TranslationResults" }
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
   /v1/me:
@@ -286,6 +321,67 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Me" }
         "401":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/keys:
+    get:
+      operationId: listKeys
+      summary: Your API keys
+      tags: [accounts]
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Keys, live first, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyList" }
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createKey
+      summary: Create an API key
+      description: |
+        The key is in the response once and stored only as a hash (NFR-5, US-01). At most 10
+        live keys per account.
+      tags: [accounts]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100, example: My SMS app }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewKey" }
+        "409":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/keys/{id}:
+    delete:
+      operationId: revokeKey
+      summary: Revoke an API key
+      description: Calls with the key return 401 from then on.
+      tags: [accounts]
+      security:
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Revoked
+        "404":
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
@@ -845,6 +941,13 @@ components:
       required: true
       schema: { type: string, format: uuid }
   securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        A developer key from your account page (DEV-1). Data endpoints need a key, or a
+        signed-in session.
     session:
       type: http
       scheme: bearer
@@ -1273,6 +1376,37 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/Report" }
+    Key:
+      type: object
+      required: [id, name, prefix, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        prefix:
+          type: string
+          description: The key's first characters, to tell keys apart
+          example: vk_3fA9
+        last_used_at:
+          type: string
+          format: date-time
+          description: To the hour
+        revoked_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    KeyList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Key" }
+    NewKey:
+      type: object
+      required: [key, secret]
+      properties:
+        key: { $ref: "#/components/schemas/Key" }
+        secret:
+          type: string
+          description: The key itself. Shown only now; store it safely.
     Match:
       type: string
       description: |

@@ -14,3 +14,4 @@ One file per decision that is hard to reverse. Copy `0000-template.md`, take the
 | [0008](0008-fumadocs-and-scalar.md)         | Fumadocs for docs, Scalar for the API reference | Accepted |
 | [0009](0009-river-and-claude-candidates.md) | River for jobs; Claude candidates per concept   | Accepted |
 | [0010](0010-language-detection.md)          | Our own n-gram language detector                | Accepted |
+| [0011](0011-api-keys.md)                    | Our own API keys, hashed with SHA-256           | Accepted |

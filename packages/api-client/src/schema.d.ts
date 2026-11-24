@@ -218,6 +218,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your API keys */
+        get: operations["listKeys"];
+        put?: never;
+        /**
+         * Create an API key
+         * @description The key is in the response once and stored only as a hash (NFR-5, US-01). At most 10
+         *     live keys per account.
+         */
+        post: operations["createKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/keys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke an API key
+         * @description Calls with the key return 401 from then on.
+         */
+        delete: operations["revokeKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/credit": {
         parameters: {
             query?: never;
@@ -915,6 +957,33 @@ export interface components {
         ReportList: {
             data: components["schemas"]["Report"][];
         };
+        Key: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /**
+             * @description The key's first characters, to tell keys apart
+             * @example vk_3fA9
+             */
+            prefix: string;
+            /**
+             * Format: date-time
+             * @description To the hour
+             */
+            last_used_at?: string;
+            /** Format: date-time */
+            revoked_at?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        KeyList: {
+            data: components["schemas"]["Key"][];
+        };
+        NewKey: {
+            key: components["schemas"]["Key"];
+            /** @description The key itself. Shown only now; store it safely. */
+            secret: string;
+        };
         /**
          * @description What the query matched (US-05): the headword (or, from English, the gloss), a
          *     spelling variant, the root of an inflected or prefixed form, or a similar spelling.
@@ -1239,6 +1308,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -1270,6 +1340,7 @@ export interface operations {
                     "application/json": components["schemas"]["Entry"];
                 };
             };
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
@@ -1304,6 +1375,7 @@ export interface operations {
                     "application/json": components["schemas"]["Concept"];
                 };
             };
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
@@ -1352,6 +1424,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -1385,6 +1458,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -1414,6 +1488,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -1445,6 +1520,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -1467,6 +1543,78 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keys, live first, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example My SMS app */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewKey"];
+                };
+            };
+            409: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
