@@ -17,15 +17,17 @@ import {
   undoneSession,
 } from "./review-url"
 
-export type DecideState = { error?: string }
+/** `correcting`: the error belongs to the "Write my own" form, and shows there. */
+export type DecideState = { error?: string; correcting?: boolean }
 
 /** Records a decision on the current card, then moves to the next one. */
 export async function decide(_: DecideState, form: FormData): Promise<DecideState> {
+  const correcting = form.get("decision") === "correct"
   const input = decisionInput(form)
-  if (!input.ok) return { error: input.error }
+  if (!input.ok) return { error: input.error, correcting }
   const { session } = await requireSession("/review")
   const { data, error } = await apiAs(session.token).POST("/v1/reviews", { body: input.body })
-  if (!data) return { error: apiErrorMessage(error) }
+  if (!data) return { error: apiErrorMessage(error), correcting }
   const { language = "", skip, done } = readSession(keptValues(form))
   const last = { reviews: data.data.map((r) => r.id), decision: input.body.decisions[0]!.decision }
   redirect(reviewUrl(nextSession({ language, skip, done }, formText(form)("concept"), true), last))

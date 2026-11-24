@@ -752,6 +752,7 @@ type ReviewAgreement struct {
 	Agreement    int32
 	Answered     int32
 	Priority     ReviewPriority
+	Kind         ItemKind
 }
 
 type ReviewerAgreement struct {

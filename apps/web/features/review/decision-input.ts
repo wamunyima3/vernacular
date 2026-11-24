@@ -34,7 +34,7 @@ export function decisionInput(
   }
   if (form.get("decision") === "correct") {
     const headword = text("correction_headword")
-    if (!headword) return { ok: false, error: "Write the right word." }
+    if (!headword) return { ok: false, error: "Write the right word or phrase." }
     return {
       ok: true,
       body: {

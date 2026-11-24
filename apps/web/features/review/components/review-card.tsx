@@ -4,6 +4,8 @@ import type { Schemas } from "@vernacular/api-client"
 import Link from "next/link"
 import { useActionState } from "react"
 
+import { cn } from "cn"
+
 import { Button } from "@/components/ui/button"
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -23,6 +25,9 @@ import { decide } from "../actions"
 import { rejectReasons } from "../decision-input"
 import { nextSession, type ReviewSession, reviewUrl } from "../review-url"
 import { WriteMyOwn } from "./write-my-own"
+
+/** The line under a candidate: a phrase's notes, or a word's class. */
+const detail = (c: Schemas["ReviewCandidate"]) => c.notes ?? wordClassLabel(c)
 
 const priorityLabels: Record<Schemas["ReviewPriority"], string> = {
   quick: "Quick confirm",
@@ -46,6 +51,8 @@ export function ReviewCard({
 }) {
   const [state, action, pending] = useActionState(decide, {})
   const single = card.candidates.length === 1
+  const phrase = card.kind === "phrase"
+  const noun = phrase ? "phrase" : "word"
   const submitLabel = (label: string) => (pending ? "Sending…" : label)
 
   return (
@@ -58,7 +65,7 @@ export function ReviewCard({
       </p>
 
       <div className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">English</p>
+        <p className="text-sm text-muted-foreground">{phrase ? "English phrase" : "English"}</p>
         <h1 className="text-3xl font-semibold text-balance">{card.gloss_en}</h1>
       </div>
 
@@ -83,10 +90,14 @@ export function ReviewCard({
                 <Field orientation="horizontal">
                   <RadioGroupItem id={c.sense_id} value={c.sense_id} />
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate text-lg font-medium">{c.headword}</span>
-                    {wordClassLabel(c) && (
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {wordClassLabel(c)}
+                    <span
+                      className={cn("text-lg font-medium", phrase ? "text-pretty" : "truncate")}
+                    >
+                      {c.headword}
+                    </span>
+                    {detail(c) && (
+                      <span className="text-sm font-normal text-pretty text-muted-foreground">
+                        {detail(c)}
                       </span>
                     )}
                   </div>
@@ -95,12 +106,16 @@ export function ReviewCard({
             ))}
           </RadioGroup>
         </FieldSet>
-        <WriteMyOwn pending={pending} />
+        <WriteMyOwn
+          pending={pending}
+          phrase={phrase}
+          error={state.correcting ? state.error : undefined}
+        />
       </form>
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3">
-          {state.error && <FieldError>{state.error}</FieldError>}
+          {state.error && !state.correcting && <FieldError>{state.error}</FieldError>}
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -117,7 +132,7 @@ export function ReviewCard({
               </SheetTrigger>
               <SheetContent side="bottom" className="pb-[env(safe-area-inset-bottom)]">
                 <SheetHeader>
-                  <SheetTitle>Reject {single ? "this word" : "all candidates"}</SheetTitle>
+                  <SheetTitle>Reject {single ? `this ${noun}` : "all candidates"}</SheetTitle>
                   <SheetDescription>None of them means “{card.gloss_en}”. Why?</SheetDescription>
                 </SheetHeader>
                 <div className="flex flex-col gap-4 px-4">

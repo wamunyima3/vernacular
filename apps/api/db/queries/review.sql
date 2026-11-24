@@ -1,8 +1,9 @@
 -- name: NextReviewCard :many
--- The next card: the best-priority concept with senses still open to this
--- reviewer, and all of those senses in random order (AI-3, AI-4, CON-3).
+-- The next card: the best-priority concept with senses, or phrases, still
+-- open to this reviewer, and all of those items in random order (AI-3, AI-4,
+-- CON-3). A card never mixes senses and phrases.
 WITH open AS (
-    SELECT a.item_id, a.concept_id, a.priority, i.created_at
+    SELECT a.item_id, a.concept_id, a.kind, a.priority, i.created_at
     FROM review_agreement a
     JOIN items i ON i.id = a.item_id
     WHERE a.language_code = @language_code::text
@@ -10,15 +11,16 @@ WITH open AS (
       AND i.author_id IS DISTINCT FROM @reviewer_id::text
       AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.item_id = i.id AND r.reviewer_id = @reviewer_id::text)
 ), next AS (
-    SELECT o.concept_id, min(o.priority) AS priority
+    SELECT o.concept_id, o.kind, min(o.priority) AS priority
     FROM open o
     WHERE o.concept_id <> ALL (coalesce(@skip::uuid[], '{}'))
-    GROUP BY o.concept_id
-    ORDER BY min(o.priority), min(o.created_at), o.concept_id
+    GROUP BY o.concept_id, o.kind
+    ORDER BY min(o.priority), min(o.created_at), o.concept_id, o.kind
     LIMIT 1
 )
-SELECT o.item_id::uuid AS item_id, n.concept_id::uuid AS concept_id, n.priority::review_priority AS priority
-FROM open o JOIN next n ON n.concept_id = o.concept_id
+SELECT o.item_id::uuid AS item_id, n.concept_id::uuid AS concept_id, n.kind::item_kind AS kind,
+       n.priority::review_priority AS priority
+FROM open o JOIN next n ON n.concept_id = o.concept_id AND n.kind = o.kind
 ORDER BY random();
 
 -- name: CreateReview :one

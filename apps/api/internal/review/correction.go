@@ -9,10 +9,13 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
+	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/textnorm"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
 )
 
 // Correction is a reviewer's own word for a card's meaning (US-22).
@@ -27,7 +30,8 @@ type replacement struct {
 	detail  []byte
 }
 
-// correctionDetail is what a `correct` review stores: the candidate it created.
+// correctionDetail is what a `correct` review stores: the candidate it
+// created, a sense or a phrase (the name predates phrases).
 type correctionDetail struct {
 	SenseID uuid.UUID `json:"sense_id"`
 }
@@ -42,6 +46,49 @@ func correctedTo(detail []byte) uuid.UUID {
 }
 
 func isCorrection(d Decision) bool { return d.Decision == dbgen.ReviewDecisionCorrect }
+
+// replacePhrase adds the reviewer's phrase as their contribution to the line
+// the corrected phrases translate, so only others review it.
+func replacePhrase(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisions []Decision, c Correction) (*replacement, error) {
+	phr := newPhrases(tx)
+	var line phrases.Line
+	for _, d := range decisions {
+		if !isCorrection(d) {
+			continue
+		}
+		l, err := phr.LineOf(ctx, d.SenseID)
+		if err != nil {
+			return nil, err
+		}
+		if line.ID != uuid.Nil && l.ID != line.ID {
+			return nil, httpx.BadRequest("A correction applies to the candidates of one phrase")
+		}
+		line = l
+	}
+	sourceID, err := sources.Lookup(ctx, tx, contributions.SourceName)
+	if err != nil {
+		return nil, err
+	}
+	id, added, err := phr.Propose(ctx, language, line, c.Headword, "", items.Contributed(sourceID, reviewerID))
+	switch {
+	case err != nil:
+		return nil, err
+	case id == uuid.Nil:
+		return nil, httpx.BadRequest("Write the phrase")
+	case !added:
+		return nil, httpx.BadRequest("That phrase is one of the candidates; accept it instead")
+	}
+	return correctedBy(id)
+}
+
+// correctedBy is the replacement pointing corrected candidates at id.
+func correctedBy(id uuid.UUID) (*replacement, error) {
+	detail, err := json.Marshal(correctionDetail{SenseID: id})
+	if err != nil {
+		return nil, fmt.Errorf("encode correction: %w", err)
+	}
+	return &replacement{senseID: id, detail: detail}, nil
+}
 
 // replace adds the reviewer's word as their contribution to the meaning of
 // the corrected senses, so only others review it; the corrected senses keep
@@ -80,9 +127,5 @@ func replace(ctx context.Context, tx pgx.Tx, reviewerID, language string, decisi
 	if err != nil {
 		return nil, err
 	}
-	detail, err := json.Marshal(correctionDetail{SenseID: added.SenseID})
-	if err != nil {
-		return nil, fmt.Errorf("encode correction: %w", err)
-	}
-	return &replacement{senseID: added.SenseID, detail: detail}, nil
+	return correctedBy(added.SenseID)
 }

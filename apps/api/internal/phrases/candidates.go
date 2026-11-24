@@ -37,30 +37,40 @@ func (s *Store) Line(ctx context.Context, id uuid.UUID) (Line, error) {
 // Propose records text as a phrase for the line in a language, with origin
 // as one of its sources. When the same text, folded, was already proposed
 // for the line, the origin is linked to that item instead, so providers that
-// agree raise one candidate (AI-3). Give it a transaction. It reports
-// whether a new phrase was made.
-func (s *Store) Propose(ctx context.Context, language string, line Line, text, notes string, origin items.Origin) (bool, error) {
+// agree raise one candidate (AI-3). Give it a transaction. It returns the
+// phrase, and whether it is new; empty text is no phrase.
+func (s *Store) Propose(ctx context.Context, language string, line Line, text, notes string, origin items.Origin) (uuid.UUID, bool, error) {
 	text = textnorm.Squash(textnorm.NFC(text))
 	if text == "" {
-		return false, nil
+		return uuid.Nil, false, nil
 	}
 	if err := s.lock(ctx, language); err != nil {
-		return false, err
+		return uuid.Nil, false, err
 	}
 	id, err := s.q.FindPhrase(ctx, dbgen.FindPhraseParams{Language: language, Pack: line.Pack, SourceEn: line.SourceEn, Text: text})
 	if err == nil {
-		return false, s.items.Link(ctx, id, origin)
+		return id, false, s.items.Link(ctx, id, origin)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return false, fmt.Errorf("find phrase: %w", err)
+		return uuid.Nil, false, fmt.Errorf("find phrase: %w", err)
 	}
-	_, err = s.items.Create(ctx, items.KindPhrase, language, origin, func(id uuid.UUID) error {
+	id, err = s.items.Create(ctx, items.KindPhrase, language, origin, func(id uuid.UUID) error {
 		return s.q.InsertPhrase(ctx, dbgen.InsertPhraseParams{
 			ID: id, Language: language, ConceptID: uuid.NullUUID{UUID: line.ConceptID, Valid: true},
 			Pack: line.Pack, Text: text, SourceEn: line.SourceEn, Notes: textnorm.Squash(textnorm.NFC(notes)),
 		})
 	})
-	return err == nil, err
+	return id, err == nil, err
+}
+
+// LineOf is the source-list line a phrase translates: its pack, English and
+// concept.
+func (s *Store) LineOf(ctx context.Context, phraseID uuid.UUID) (Line, error) {
+	r, err := s.q.GetPhraseLine(ctx, phraseID)
+	if err != nil {
+		return Line{}, fmt.Errorf("get line of phrase %s: %w", phraseID, err)
+	}
+	return Line{ID: r.ID, Pack: r.Pack, SourceEn: r.SourceEn, Notes: r.Notes, ConceptID: r.ConceptID}, nil
 }
 
 // lock takes the language's candidate lock once per transaction.
@@ -73,4 +83,24 @@ func (s *Store) lock(ctx context.Context, language string) error {
 	}
 	s.locked[language] = true
 	return nil
+}
+
+// Cards reads the given phrases for review, in the order of ids, without
+// trust fields: reviewers judge them blind (CON-3).
+func (s *Store) Cards(ctx context.Context, ids []uuid.UUID) ([]Phrase, error) {
+	rows, err := s.q.ListPhrasesByID(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list phrases: %w", err)
+	}
+	byID := make(map[uuid.UUID]dbgen.ListPackRow, len(rows))
+	for _, r := range convert(rows) {
+		byID[r.ID] = r
+	}
+	out := make([]Phrase, 0, len(ids))
+	for _, id := range ids {
+		if r, ok := byID[id]; ok {
+			out = append(out, Phrase{ID: r.ID, Text: r.Text, SourceEn: r.SourceEn, Notes: r.Notes, ConceptID: r.ConceptID})
+		}
+	}
+	return out, nil
 }

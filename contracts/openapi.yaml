@@ -1718,10 +1718,17 @@ components:
       type: object
       required: [sense_id, headword]
       properties:
-        sense_id: { type: string, format: uuid }
+        sense_id:
+          type: string
+          format: uuid
+          description: The candidate's item ID, a sense or, on a phrase card, a phrase
         headword:
           type: string
+          description: The word, or on a phrase card the phrase
           example: amenshi
+        notes:
+          type: string
+          description: On a phrase card, when to use this form
         part_of_speech:
           $ref: "#/components/schemas/PartOfSpeech"
           description: Absent when the source did not give one
@@ -1781,9 +1788,15 @@ components:
         status: { $ref: "#/components/schemas/TrustStatus" }
     ReviewCard:
       type: object
-      required: [language, concept_id, gloss_en, priority, candidates]
+      required: [language, concept_id, gloss_en, priority, kind, candidates]
       properties:
         language: { $ref: "#/components/schemas/LanguageCode" }
+        kind:
+          type: string
+          description: |
+            `sense`: candidate words for the meaning. `phrase`: candidate phrases for a line
+            of a phrase pack, whose English is `gloss_en`. A card never mixes them.
+          enum: [sense, phrase]
         concept_id: { type: string, format: uuid }
         gloss_en:
           type: string
@@ -1821,12 +1834,12 @@ components:
           type: object
           additionalProperties: false
           description: |
-            The reviewer's own word for the card's meaning, required with `correct` decisions.
-            It becomes a new candidate that other reviewers check; the candidates it replaces
-            keep their history (US-22).
+            The reviewer's own word for the card's meaning, or on a phrase card their own
+            phrase, required with `correct` decisions. It becomes a new candidate that other
+            reviewers check; the candidates it replaces keep their history (US-22).
           required: [headword]
           properties:
-            headword: { type: string, minLength: 1, maxLength: 100 }
+            headword: { type: string, minLength: 1, maxLength: 200 }
             part_of_speech: { $ref: "#/components/schemas/PartOfSpeech" }
             noun_class:
               type: string

@@ -1159,10 +1159,18 @@ export interface components {
          */
         ReviewPriority: "quick" | "standard" | "full";
         ReviewCandidate: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description The candidate's item ID, a sense or, on a phrase card, a phrase
+             */
             sense_id: string;
-            /** @example amenshi */
+            /**
+             * @description The word, or on a phrase card the phrase
+             * @example amenshi
+             */
             headword: string;
+            /** @description On a phrase card, when to use this form */
+            notes?: string;
             /** @description Absent when the source did not give one */
             part_of_speech?: components["schemas"]["PartOfSpeech"];
             /** @example 6 */
@@ -1206,6 +1214,12 @@ export interface components {
         };
         ReviewCard: {
             language: components["schemas"]["LanguageCode"];
+            /**
+             * @description `sense`: candidate words for the meaning. `phrase`: candidate phrases for a line
+             *     of a phrase pack, whose English is `gloss_en`. A card never mixes them.
+             * @enum {string}
+             */
+            kind: "sense" | "phrase";
             /** Format: uuid */
             concept_id: string;
             /** @example water */
@@ -1227,9 +1241,9 @@ export interface components {
             /** @description Why, for rejections */
             comment?: string;
             /**
-             * @description The reviewer's own word for the card's meaning, required with `correct` decisions.
-             *     It becomes a new candidate that other reviewers check; the candidates it replaces
-             *     keep their history (US-22).
+             * @description The reviewer's own word for the card's meaning, or on a phrase card their own
+             *     phrase, required with `correct` decisions. It becomes a new candidate that other
+             *     reviewers check; the candidates it replaces keep their history (US-22).
              */
             correction?: {
                 headword: string;

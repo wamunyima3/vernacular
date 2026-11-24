@@ -52,3 +52,13 @@ LIMIT 1;
 -- name: InsertPhrase :exec
 INSERT INTO phrases (id, language_code, concept_id, pack, text, source_en, notes)
 VALUES (@id, @language, @concept_id, @pack, @text, @source_en, @notes);
+
+-- name: ListPhrasesByID :many
+SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
+FROM phrases p WHERE p.id = ANY(@ids::uuid[]);
+
+-- name: GetPhraseLine :one
+-- The source-list line a phrase translates.
+SELECT l.id, l.pack, l.source_en, l.notes, l.concept_id
+FROM phrases p JOIN phrase_list l ON l.pack = p.pack AND l.source_en = p.source_en
+WHERE p.id = $1;

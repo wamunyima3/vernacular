@@ -62,6 +62,34 @@ func (q *Queries) GetListLine(ctx context.Context, id uuid.UUID) (GetListLineRow
 	return i, err
 }
 
+const getPhraseLine = `-- name: GetPhraseLine :one
+SELECT l.id, l.pack, l.source_en, l.notes, l.concept_id
+FROM phrases p JOIN phrase_list l ON l.pack = p.pack AND l.source_en = p.source_en
+WHERE p.id = $1
+`
+
+type GetPhraseLineRow struct {
+	ID        uuid.UUID
+	Pack      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.UUID
+}
+
+// The source-list line a phrase translates.
+func (q *Queries) GetPhraseLine(ctx context.Context, id uuid.UUID) (GetPhraseLineRow, error) {
+	row := q.db.QueryRow(ctx, getPhraseLine, id)
+	var i GetPhraseLineRow
+	err := row.Scan(
+		&i.ID,
+		&i.Pack,
+		&i.SourceEn,
+		&i.Notes,
+		&i.ConceptID,
+	)
+	return i, err
+}
+
 const insertPhrase = `-- name: InsertPhrase :exec
 INSERT INTO phrases (id, language_code, concept_id, pack, text, source_en, notes)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -147,6 +175,45 @@ func (q *Queries) ListPack(ctx context.Context, arg ListPackParams) ([]ListPackR
 	var items []ListPackRow
 	for rows.Next() {
 		var i ListPackRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Text,
+			&i.SourceEn,
+			&i.Notes,
+			&i.ConceptID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPhrasesByID = `-- name: ListPhrasesByID :many
+SELECT p.id, p.text, p.source_en, p.notes, p.concept_id
+FROM phrases p WHERE p.id = ANY($1::uuid[])
+`
+
+type ListPhrasesByIDRow struct {
+	ID        uuid.UUID
+	Text      string
+	SourceEn  string
+	Notes     string
+	ConceptID uuid.NullUUID
+}
+
+func (q *Queries) ListPhrasesByID(ctx context.Context, ids []uuid.UUID) ([]ListPhrasesByIDRow, error) {
+	rows, err := q.db.Query(ctx, listPhrasesByID, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPhrasesByIDRow
+	for rows.Next() {
+		var i ListPhrasesByIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Text,

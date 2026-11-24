@@ -427,7 +427,7 @@ func (q *Queries) LockReport(ctx context.Context, id uuid.UUID) (LockReportRow, 
 
 const nextReviewCard = `-- name: NextReviewCard :many
 WITH open AS (
-    SELECT a.item_id, a.concept_id, a.priority, i.created_at
+    SELECT a.item_id, a.concept_id, a.kind, a.priority, i.created_at
     FROM review_agreement a
     JOIN items i ON i.id = a.item_id
     WHERE a.language_code = $1::text
@@ -435,15 +435,16 @@ WITH open AS (
       AND i.author_id IS DISTINCT FROM $2::text
       AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.item_id = i.id AND r.reviewer_id = $2::text)
 ), next AS (
-    SELECT o.concept_id, min(o.priority) AS priority
+    SELECT o.concept_id, o.kind, min(o.priority) AS priority
     FROM open o
     WHERE o.concept_id <> ALL (coalesce($3::uuid[], '{}'))
-    GROUP BY o.concept_id
-    ORDER BY min(o.priority), min(o.created_at), o.concept_id
+    GROUP BY o.concept_id, o.kind
+    ORDER BY min(o.priority), min(o.created_at), o.concept_id, o.kind
     LIMIT 1
 )
-SELECT o.item_id::uuid AS item_id, n.concept_id::uuid AS concept_id, n.priority::review_priority AS priority
-FROM open o JOIN next n ON n.concept_id = o.concept_id
+SELECT o.item_id::uuid AS item_id, n.concept_id::uuid AS concept_id, n.kind::item_kind AS kind,
+       n.priority::review_priority AS priority
+FROM open o JOIN next n ON n.concept_id = o.concept_id AND n.kind = o.kind
 ORDER BY random()
 `
 
@@ -456,11 +457,13 @@ type NextReviewCardParams struct {
 type NextReviewCardRow struct {
 	ItemID    uuid.UUID
 	ConceptID uuid.UUID
+	Kind      ItemKind
 	Priority  ReviewPriority
 }
 
-// The next card: the best-priority concept with senses still open to this
-// reviewer, and all of those senses in random order (AI-3, AI-4, CON-3).
+// The next card: the best-priority concept with senses, or phrases, still
+// open to this reviewer, and all of those items in random order (AI-3, AI-4,
+// CON-3). A card never mixes senses and phrases.
 func (q *Queries) NextReviewCard(ctx context.Context, arg NextReviewCardParams) ([]NextReviewCardRow, error) {
 	rows, err := q.db.Query(ctx, nextReviewCard, arg.LanguageCode, arg.ReviewerID, arg.Skip)
 	if err != nil {
@@ -470,7 +473,12 @@ func (q *Queries) NextReviewCard(ctx context.Context, arg NextReviewCardParams) 
 	var items []NextReviewCardRow
 	for rows.Next() {
 		var i NextReviewCardRow
-		if err := rows.Scan(&i.ItemID, &i.ConceptID, &i.Priority); err != nil {
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.ConceptID,
+			&i.Kind,
+			&i.Priority,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

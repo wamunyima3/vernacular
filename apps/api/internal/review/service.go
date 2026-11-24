@@ -17,6 +17,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
 	"github.com/wamunyima3/vernacular/apps/api/internal/lexicon"
+	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review/dbgen"
@@ -24,11 +25,14 @@ import (
 
 // Card is one English meaning with every candidate still open to the reviewer.
 type Card struct {
-	Language   string
-	ConceptID  uuid.UUID
-	GlossEn    string
-	Priority   dbgen.ReviewPriority
+	Language  string
+	ConceptID uuid.UUID
+	GlossEn   string
+	Priority  dbgen.ReviewPriority
+	Kind      dbgen.ItemKind
+	// The candidates: senses on a word card, phrases on a phrase card.
 	Candidates []lexicon.SenseCard
+	Phrases    []phrases.Phrase
 }
 
 // Decision is a reviewer's verdict on one candidate.
@@ -50,6 +54,13 @@ type Lexicon interface {
 	SenseCards(ctx context.Context, ids []uuid.UUID) ([]lexicon.SenseCard, error)
 }
 
+// Phrases is what the queue needs from the phrases module.
+type Phrases interface {
+	Cards(ctx context.Context, ids []uuid.UUID) ([]phrases.Phrase, error)
+	LineOf(ctx context.Context, id uuid.UUID) (phrases.Line, error)
+	Propose(ctx context.Context, language string, line phrases.Line, text, notes string, origin items.Origin) (uuid.UUID, bool, error)
+}
+
 // Items is what decisions need from the items module.
 type Items interface {
 	Lock(ctx context.Context, id uuid.UUID) (items.Locked, bool, error)
@@ -60,6 +71,7 @@ type Items interface {
 var (
 	newLexicon = func(tx pgx.Tx) Lexicon { return lexicon.NewStore(tx) }
 	newItems   = func(tx pgx.Tx) Items { return items.NewStore(tx) }
+	newPhrases = func(tx pgx.Tx) Phrases { return phrases.NewStore(tx) }
 )
 
 // Service runs the review queue.
@@ -86,19 +98,24 @@ func (s *Service) Next(ctx context.Context, language string, skip []uuid.UUID) (
 		for i, r := range rows {
 			ids[i] = r.ItemID
 		}
+		card = Card{Language: language, ConceptID: rows[0].ConceptID, Priority: rows[0].Priority, Kind: rows[0].Kind}
+		if card.Kind == dbgen.ItemKindPhrase {
+			// A phrase card shows the English as the pack writes it.
+			if card.Phrases, err = newPhrases(tx).Cards(ctx, ids); err == nil && len(card.Phrases) > 0 {
+				card.GlossEn = card.Phrases[0].SourceEn
+			}
+			return err
+		}
 		lex := newLexicon(tx)
-		concept, err := lex.Concept(ctx, rows[0].ConceptID)
+		concept, err := lex.Concept(ctx, card.ConceptID)
 		if err != nil {
 			return err
 		}
-		cards, err := lex.SenseCards(ctx, ids)
-		if err != nil {
-			return err
-		}
-		card = Card{Language: language, ConceptID: concept.ID, GlossEn: concept.GlossEn, Priority: rows[0].Priority, Candidates: cards}
-		return nil
+		card.GlossEn = concept.GlossEn
+		card.Candidates, err = lex.SenseCards(ctx, ids)
+		return err
 	})
-	return card, card.Candidates != nil, err
+	return card, card.Kind != "", err
 }
 
 // Decide records the reviewer's decisions on candidates from one card, all
@@ -121,12 +138,13 @@ func (s *Service) Decide(ctx context.Context, decisions []Decision, comment stri
 			if locked[i], err = checkTarget(ctx, its, me, d.SenseID); err != nil {
 				return err
 			}
-		}
-		var fix *replacement
-		if correction != nil {
-			if fix, err = replace(ctx, tx, me.ID, locked[0].Language, sorted, *correction); err != nil {
-				return err
+			if locked[i].Kind != locked[0].Kind {
+				return httpx.BadRequest("Decide on one card's candidates together: words and phrases are never on one card")
 			}
+		}
+		fix, err := correct(ctx, tx, me.ID, locked, sorted, correction)
+		if err != nil {
+			return err
 		}
 		for i, d := range sorted {
 			r := Recorded{Decision: d}
@@ -206,14 +224,26 @@ func compareIDs(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) }
 
 func bySense(a, b Decision) int { return compareIDs(a.SenseID, b.SenseID) }
 
+// correct records the reviewer's own word or phrase when the decisions
+// include corrections; nil when they do not.
+func correct(ctx context.Context, tx pgx.Tx, reviewerID string, locked []items.Locked, sorted []Decision, c *Correction) (*replacement, error) {
+	if c == nil {
+		return nil, nil
+	}
+	if locked[0].Kind == items.KindPhrase {
+		return replacePhrase(ctx, tx, reviewerID, locked[0].Language, sorted, *c)
+	}
+	return replace(ctx, tx, reviewerID, locked[0].Language, sorted, *c)
+}
+
 // checkTarget locks one item and applies the blind-review rules (CON-2, CON-3).
 func checkTarget(ctx context.Context, its Items, me accounts.Principal, id uuid.UUID) (items.Locked, error) {
 	t, ok, err := its.Lock(ctx, id)
 	switch {
 	case err != nil:
 		return t, err
-	case !ok || t.Kind != items.KindSense:
-		return t, httpx.BadRequest("No sense " + id.String())
+	case !ok || (t.Kind != items.KindSense && t.Kind != items.KindPhrase):
+		return t, httpx.BadRequest("No candidate " + id.String())
 	case !me.CanReview(t.Language):
 		return t, httpx.ErrForbidden
 	case t.AuthorID == me.ID:

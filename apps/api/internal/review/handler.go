@@ -26,12 +26,15 @@ func (h *Handler) GetNextReview(ctx context.Context, req gen.GetNextReviewReques
 	if !ok {
 		return gen.GetNextReview204Response{}, nil
 	}
-	candidates := make([]gen.ReviewCandidate, len(card.Candidates))
-	for i, c := range card.Candidates {
-		candidates[i] = candidate(c)
+	candidates := make([]gen.ReviewCandidate, 0, len(card.Candidates)+len(card.Phrases))
+	for _, c := range card.Candidates {
+		candidates = append(candidates, candidate(c))
+	}
+	for _, p := range card.Phrases {
+		candidates = append(candidates, gen.ReviewCandidate{SenseId: p.ID, Headword: p.Text, Notes: httpx.Optional(p.Notes)})
 	}
 	return gen.GetNextReview200JSONResponse{
-		Language: card.Language, ConceptId: card.ConceptID, GlossEn: card.GlossEn,
+		Language: card.Language, ConceptId: card.ConceptID, GlossEn: card.GlossEn, Kind: gen.ReviewCardKind(card.Kind),
 		Priority: gen.ReviewPriority(card.Priority), Candidates: candidates,
 	}, nil
 }

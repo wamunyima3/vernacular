@@ -3,7 +3,7 @@
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Field, FieldDescription, FieldLabel, FieldSet } from "@/components/ui/field"
+import { Field, FieldDescription, FieldError, FieldLabel, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { WordClassFields } from "@/components/word-class-fields"
 
@@ -12,7 +12,15 @@ import { WordClassFields } from "@/components/word-class-fields"
  * modal, so it works with the phone keyboard. Its fields belong to the card's
  * form, which posts them with `decision=correct`.
  */
-export function WriteMyOwn({ pending }: { pending: boolean }) {
+export function WriteMyOwn({
+  pending,
+  phrase,
+  error,
+}: {
+  pending: boolean
+  phrase: boolean
+  error?: string
+}) {
   const [open, setOpen] = useState(false)
 
   if (!open) {
@@ -30,11 +38,13 @@ export function WriteMyOwn({ pending }: { pending: boolean }) {
   return (
     <FieldSet className="rounded-lg border p-4">
       <Field>
-        <FieldLabel htmlFor="correction_headword">The right word</FieldLabel>
+        <FieldLabel htmlFor="correction_headword">
+          {phrase ? "The right phrase" : "The right word"}
+        </FieldLabel>
         <Input
           id="correction_headword"
           name="correction_headword"
-          maxLength={100}
+          maxLength={phrase ? 200 : 100}
           autoCapitalize="none"
           autoFocus
         />
@@ -42,7 +52,8 @@ export function WriteMyOwn({ pending }: { pending: boolean }) {
           It goes to other reviewers. The candidates above stay on record.
         </FieldDescription>
       </Field>
-      <WordClassFields prefix="correction_" unsure />
+      {!phrase && <WordClassFields prefix="correction_" unsure />}
+      {error && <FieldError>{error}</FieldError>}
       <div className="flex gap-2">
         <Button type="submit" name="decision" value="correct" disabled={pending}>
           {pending ? "Sending…" : "Send correction"}
