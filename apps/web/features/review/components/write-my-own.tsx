@@ -7,6 +7,8 @@ import { Field, FieldDescription, FieldError, FieldLabel, FieldSet } from "@/com
 import { Input } from "@/components/ui/input"
 import { WordClassFields } from "@/components/word-class-fields"
 
+import { type CardKind, kinds } from "../kinds"
+
 /**
  * docs/design/ui.md: "Write my own" opens a correction form inline, not in a
  * modal, so it works with the phone keyboard. Its fields belong to the card's
@@ -14,11 +16,11 @@ import { WordClassFields } from "@/components/word-class-fields"
  */
 export function WriteMyOwn({
   pending,
-  phrase,
+  kind,
   error,
 }: {
   pending: boolean
-  phrase: boolean
+  kind: CardKind
   error?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -38,13 +40,11 @@ export function WriteMyOwn({
   return (
     <FieldSet className="rounded-lg border p-4">
       <Field>
-        <FieldLabel htmlFor="correction_headword">
-          {phrase ? "The right phrase" : "The right word"}
-        </FieldLabel>
+        <FieldLabel htmlFor="correction_headword">{kinds[kind].label}</FieldLabel>
         <Input
           id="correction_headword"
           name="correction_headword"
-          maxLength={phrase ? 200 : 100}
+          maxLength={kinds[kind].maxLength}
           autoCapitalize="none"
           autoFocus
         />
@@ -52,7 +52,18 @@ export function WriteMyOwn({
           It goes to other reviewers. The candidates above stay on record.
         </FieldDescription>
       </Field>
-      {!phrase && <WordClassFields prefix="correction_" unsure />}
+      {kind === "sense" && <WordClassFields prefix="correction_" unsure />}
+      {kind === "example" && (
+        <Field>
+          <FieldLabel htmlFor="correction_translation_en">Its English</FieldLabel>
+          <Input
+            id="correction_translation_en"
+            name="correction_translation_en"
+            maxLength={500}
+            required
+          />
+        </Field>
+      )}
       {error && <FieldError>{error}</FieldError>}
       <div className="flex gap-2">
         <Button type="submit" name="decision" value="correct" disabled={pending}>

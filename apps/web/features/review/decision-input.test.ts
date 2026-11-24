@@ -104,4 +104,24 @@ describe("decisionInput", () => {
       ).ok,
     ).toBe(false)
   })
+  it("sends an example correction with its English, and asks for it when missing", () => {
+    const example = (english: string) =>
+      decisionInput(
+        form([
+          ["candidate", a],
+          ["kind", "example"],
+          ["decision", "correct"],
+          ["correction_headword", "Nalanwa amenshi"],
+          ["correction_translation_en", english],
+        ]),
+      )
+    expect(example("I drank water")).toEqual({
+      ok: true,
+      body: {
+        decisions: [{ item_id: a, decision: "correct" }],
+        correction: { headword: "Nalanwa amenshi", translation_en: "I drank water" },
+      },
+    })
+    expect(example("")).toEqual({ ok: false, error: "Write the sentence's English." })
+  })
 })

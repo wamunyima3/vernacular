@@ -3,6 +3,8 @@ import type { Schemas } from "@vernacular/api-client"
 import { formText, isOneOf } from "@/lib/form-data"
 import { wordClassInput } from "@/lib/word-class"
 
+import { isCardKind, kinds } from "./kinds"
+
 export const rejectReasons = [
   "Wrong meaning",
   "Misspelled",
@@ -33,13 +35,23 @@ export function decisionInput(
     }
   }
   if (form.get("decision") === "correct") {
+    const sent = form.get("kind")
+    const kind = isCardKind(sent) ? sent : "sense"
     const headword = text("correction_headword")
-    if (!headword) return { ok: false, error: "Write the right word or phrase." }
+    if (!headword) return { ok: false, error: `Write the right ${kinds[kind].noun}.` }
+    const translation_en = text("correction_translation_en")
+    if (kind === "example" && !translation_en)
+      return { ok: false, error: "Write the sentence's English." }
     return {
       ok: true,
       body: {
         decisions: candidates.map((item_id) => ({ item_id, decision: "correct" as const })),
-        correction: { headword, ...wordClassInput(form, "correction_") },
+        correction:
+          kind === "example"
+            ? { headword, translation_en }
+            : kind === "sense"
+              ? { headword, ...wordClassInput(form, "correction_") }
+              : { headword },
       },
     }
   }

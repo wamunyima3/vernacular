@@ -15,6 +15,17 @@ describe("candidateDetail", () => {
     ).toMatch(/· replaces amenshi \(water\)$/)
   })
 
+  it("gives an example's English and the word it uses", () => {
+    expect(
+      candidateDetail({
+        item_id: "a",
+        headword: "Nalanwa amenshi",
+        translation_en: "I drank water",
+        word: "amenshi",
+      }),
+    ).toBe("“I drank water” · uses amenshi")
+  })
+
   it("is empty for a bare candidate", () => {
     expect(candidateDetail({ item_id: "a", headword: "x" })).toBe("")
   })

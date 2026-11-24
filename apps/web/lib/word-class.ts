@@ -39,10 +39,13 @@ export function wordClassLabel(w: { part_of_speech?: string; noun_class?: string
 }
 
 /**
- * The line under a review candidate: a phrase's notes or a word's class, and
- * the meaning a correction would replace.
+ * The line under a review candidate: an example's English and the word it
+ * uses, a phrase's notes or a word's class, and the meaning a correction
+ * would replace.
  */
 export function candidateDetail(c: Schemas["ReviewCandidate"]): string {
+  if (c.translation_en)
+    return [`“${c.translation_en}”`, c.word && `uses ${c.word}`].filter(Boolean).join(" · ")
   const replaces = c.corrects && `replaces ${c.corrects.headword} (${c.corrects.gloss})`
   return [c.notes ?? wordClassLabel(c), replaces].filter(Boolean).join(" · ")
 }

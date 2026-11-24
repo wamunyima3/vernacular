@@ -23,6 +23,7 @@ import { candidateDetail } from "@/lib/word-class"
 
 import { decide } from "../actions"
 import { rejectReasons } from "../decision-input"
+import { kinds } from "../kinds"
 import { nextSession, type ReviewSession, reviewUrl } from "../review-url"
 import { WriteMyOwn } from "./write-my-own"
 
@@ -48,8 +49,7 @@ export function ReviewCard({
 }) {
   const [state, action, pending] = useActionState(decide, {})
   const single = card.candidates.length === 1
-  const phrase = card.kind === "phrase"
-  const noun = phrase ? "phrase" : "word"
+  const { noun, heading, wraps, rejectWhy } = kinds[card.kind]
   const submitLabel = (label: string) => (pending ? "Sending…" : label)
 
   return (
@@ -62,7 +62,7 @@ export function ReviewCard({
       </p>
 
       <div className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">{phrase ? "English phrase" : "English"}</p>
+        <p className="text-sm text-muted-foreground">{heading}</p>
         <h1 className="text-3xl font-semibold text-balance">{card.gloss_en}</h1>
       </div>
 
@@ -71,6 +71,7 @@ export function ReviewCard({
         <input type="hidden" name="skip" value={session.skip.join(",")} />
         <input type="hidden" name="done" value={session.done} />
         <input type="hidden" name="concept" value={card.concept_id} />
+        <input type="hidden" name="kind" value={card.kind} />
         {card.candidates.map((c) => (
           <input key={c.item_id} type="hidden" name="candidate" value={c.item_id} />
         ))}
@@ -84,9 +85,7 @@ export function ReviewCard({
                 <Field orientation="horizontal">
                   <RadioGroupItem id={c.item_id} value={c.item_id} />
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <span
-                      className={cn("text-lg font-medium", phrase ? "text-pretty" : "truncate")}
-                    >
+                    <span className={cn("text-lg font-medium", wraps ? "text-pretty" : "truncate")}>
                       {c.headword}
                     </span>
                     {candidateDetail(c) && (
@@ -102,7 +101,7 @@ export function ReviewCard({
         </FieldSet>
         <WriteMyOwn
           pending={pending}
-          phrase={phrase}
+          kind={card.kind}
           error={state.correcting ? state.error : undefined}
         />
       </form>
@@ -127,7 +126,7 @@ export function ReviewCard({
               <SheetContent side="bottom" className="pb-[env(safe-area-inset-bottom)]">
                 <SheetHeader>
                   <SheetTitle>Reject {single ? `this ${noun}` : "all candidates"}</SheetTitle>
-                  <SheetDescription>None of them means “{card.gloss_en}”. Why?</SheetDescription>
+                  <SheetDescription>{rejectWhy(card.gloss_en)}</SheetDescription>
                 </SheetHeader>
                 <div className="flex flex-col gap-4 px-4">
                   <RadioGroup name="reason" form="review" aria-label="Reason">
