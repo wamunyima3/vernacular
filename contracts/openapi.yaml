@@ -1918,9 +1918,12 @@ components:
           description: To the hour
         revoked_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
-        calls_today: { type: integer, description: Calls with the key today, UTC }
+        calls_today:
+          type: integer
+          description: Calls with the key today (UTC)
         calls_30d:
-          { type: integer, description: Calls with the key in the last 30 days, today included }
+          type: integer
+          description: Calls with the key in the last 30 days, today included
     KeyList:
       type: object
       required: [data]
@@ -2129,15 +2132,14 @@ components:
         id: { type: string, format: uuid }
         entry_id: { type: string, format: uuid }
         url:
-          {
-            type: string,
-            description: Where to fetch the sound,
-            relative to the API,
-            example: /v1/audio/0b6c…,
-          }
+          type: string
+          description: Where to fetch the sound, relative to the API
+          example: /v1/audio/0b6c5b0e-3f8e-4d0c-9a51-6f0f4e2b7c11
         content_type: { type: string, example: audio/webm }
         recorded_at: { type: string, format: date-time }
-        mine: { type: boolean, description: Recorded by the signed-in caller, who may delete it }
+        mine:
+          type: boolean
+          description: Recorded by the signed-in caller, who may delete it
     ClipList:
       type: object
       required: [data, can_record]

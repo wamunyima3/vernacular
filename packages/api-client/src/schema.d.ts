@@ -1260,9 +1260,9 @@ export interface components {
             revoked_at?: string;
             /** Format: date-time */
             created_at: string;
-            /** @description Calls with the key today */
+            /** @description Calls with the key today (UTC) */
             calls_today: number;
-            /** @description Calls with the key in the last 30 days */
+            /** @description Calls with the key in the last 30 days, today included */
             calls_30d: number;
         };
         KeyList: {
@@ -1424,15 +1424,15 @@ export interface components {
             /** Format: uuid */
             entry_id: string;
             /**
-             * @description Where to fetch the sound
-             * @example /v1/audio/0b6c…
+             * @description Where to fetch the sound, relative to the API
+             * @example /v1/audio/0b6c5b0e-3f8e-4d0c-9a51-6f0f4e2b7c11
              */
             url: string;
             /** @example audio/webm */
             content_type: string;
             /** Format: date-time */
             recorded_at: string;
-            /** @description Recorded by the signed-in caller */
+            /** @description Recorded by the signed-in caller, who may delete it */
             mine: boolean;
         };
         ClipList: {

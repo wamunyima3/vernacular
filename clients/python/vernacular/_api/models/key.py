@@ -23,8 +23,8 @@ class Key:
         name (str):
         prefix (str): The key's first characters, to tell keys apart Example: vk_3fA9.
         created_at (datetime.datetime):
-        calls_today (int): Calls with the key today
-        calls_30d (int): Calls with the key in the last 30 days
+        calls_today (int): Calls with the key today (UTC)
+        calls_30d (int): Calls with the key in the last 30 days, today included
         last_used_at (Union[Unset, datetime.datetime]): To the hour
         revoked_at (Union[Unset, datetime.datetime]):
     """

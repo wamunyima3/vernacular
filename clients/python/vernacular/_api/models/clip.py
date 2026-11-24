@@ -20,10 +20,11 @@ class Clip:
     Attributes:
         id (UUID):
         entry_id (UUID):
-        url (str): Where to fetch the sound Example: /v1/audio/0b6c….
+        url (str): Where to fetch the sound, relative to the API Example:
+            /v1/audio/0b6c5b0e-3f8e-4d0c-9a51-6f0f4e2b7c11.
         content_type (str):  Example: audio/webm.
         recorded_at (datetime.datetime):
-        mine (bool): Recorded by the signed-in caller
+        mine (bool): Recorded by the signed-in caller, who may delete it
     """
 
     id: UUID
