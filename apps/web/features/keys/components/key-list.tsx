@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { apiErrorMessage } from "@/lib/api-error"
-import { formatDate } from "@/lib/format-date"
+import { formatDate } from "@/lib/format"
 
 import { apiForSession } from "../../auth/session"
 import { revokeKey } from "../actions"

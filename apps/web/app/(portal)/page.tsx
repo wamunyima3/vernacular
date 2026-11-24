@@ -1,4 +1,7 @@
+import Link from "next/link"
 import { Suspense } from "react"
+
+import { Button } from "@/components/ui/button"
 
 import { LanguageList } from "@/features/languages/components/language-list"
 import { LanguageListSkeleton } from "@/features/languages/components/language-list-skeleton"
@@ -15,6 +18,14 @@ export default function HomePage() {
           verified until two native speakers have accepted it, and machine output is always
           labelled.
         </p>
+        <div className="flex flex-wrap gap-3">
+          <Button nativeButton={false} render={<Link href="/sign-up?next=/account" />}>
+            Get an API key
+          </Button>
+          <Button variant="outline" nativeButton={false} render={<Link href="/credits" />}>
+            See who checks the words
+          </Button>
+        </div>
       </section>
 
       <section aria-labelledby="languages-heading" className="flex flex-col gap-6">

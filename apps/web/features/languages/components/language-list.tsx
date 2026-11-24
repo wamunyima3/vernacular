@@ -1,12 +1,13 @@
 import { ErrorCard } from "@/components/error-card"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCount } from "@/lib/format"
 
 import { getLanguages } from "../get-languages"
 import { groupByWave, type Language } from "../group-by-wave"
 import { LanguageGrid } from "./language-grid"
 
-/** Languages grouped by rollout wave, fetched from GET /v1/languages at request time. */
+/** Languages grouped by rollout wave, with live counts, from GET /v1/languages at request time. */
 export async function LanguageList() {
   const result = await getLanguages()
 
@@ -32,8 +33,9 @@ export async function LanguageList() {
   )
 }
 
+/** A language with its live counts: words verified by two reviewers, of all it serves. */
 function LanguageCard({ language }: { language: Language }) {
-  const active = language.status === "active"
+  const { verified, total } = language.entries
   return (
     <Card size="sm">
       <CardHeader>
@@ -41,10 +43,22 @@ function LanguageCard({ language }: { language: Language }) {
         <CardDescription className="truncate">
           {language.own_name} · <span className="font-mono">{language.code}</span>
         </CardDescription>
-        <Badge variant={active ? "default" : "outline"} className="mt-1">
-          {active ? "Active" : "Planned"}
-        </Badge>
       </CardHeader>
+      <CardContent>
+        {language.status !== "active" ? (
+          <Badge variant="outline">Planned</Badge>
+        ) : total === 0 ? (
+          <p className="text-sm text-pretty text-muted-foreground">No words yet</p>
+        ) : (
+          <p className="text-sm text-pretty">
+            <span className="text-2xl font-semibold tabular-nums">{formatCount(verified)}</span>{" "}
+            verified
+            <span className="block text-muted-foreground tabular-nums">
+              of {formatCount(total)} words
+            </span>
+          </p>
+        )}
+      </CardContent>
     </Card>
   )
 }

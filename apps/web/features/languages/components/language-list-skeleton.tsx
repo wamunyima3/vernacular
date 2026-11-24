@@ -9,7 +9,7 @@ export function LanguageListSkeleton() {
       <Skeleton className="h-4 w-16" />
       <LanguageGrid>
         {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
+          <Skeleton key={i} className="h-36 rounded-xl" />
         ))}
       </LanguageGrid>
     </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { apiErrorMessage } from "@/lib/api-error"
-import { formatDate } from "@/lib/format-date"
+import { formatDate } from "@/lib/format"
 
 import { apiForSession } from "../../auth/session"
 import { getLanguages, languageName } from "../../languages/get-languages"

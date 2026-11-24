@@ -150,7 +150,7 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 
 ### Portal
 
-- [ ] **P1-WEB-01** Home with live verified counts (S)
+- [x] **P1-WEB-01** Home with live verified counts (S)
 - [ ] **P1-WEB-02** Try it: search box with JSON beside the result, and a "Report a problem" button on each meaning (M) → US-02, US-15
 - [ ] **P1-WEB-03** Interactive API reference from the contract (S) → DEV-2
 - [ ] **P1-WEB-04** Docs: concepts, verification levels, varieties, licences (M) → DEV-2
