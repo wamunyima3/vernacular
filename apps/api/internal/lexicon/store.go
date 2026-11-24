@@ -311,6 +311,26 @@ func (s *Store) SenseCards(ctx context.Context, ids []uuid.UUID) ([]SenseCard, e
 // EntryCount is how many entries a language has, verified and in all.
 type EntryCount struct{ Verified, Total int }
 
+// Coverage is how many verified core meanings in a language have a verified
+// example, and those that do not (LEX-5).
+type Coverage struct {
+	CoreSenses, WithExample int
+	Missing                 []dbgen.MissingExamplesRow // at most 100
+}
+
+// ExampleCoverage reads a language's example coverage.
+func (s *Store) ExampleCoverage(ctx context.Context, language string) (Coverage, error) {
+	counts, err := s.q.ExampleCoverage(ctx, language)
+	if err != nil {
+		return Coverage{}, fmt.Errorf("example coverage: %w", err)
+	}
+	missing, err := s.q.MissingExamples(ctx, language)
+	if err != nil {
+		return Coverage{}, fmt.Errorf("missing examples: %w", err)
+	}
+	return Coverage{CoreSenses: int(counts.CoreSenses), WithExample: int(counts.WithExample), Missing: missing}, nil
+}
+
 // CountEntries counts each language's entries; languages without any are left out.
 func (s *Store) CountEntries(ctx context.Context) (map[string]EntryCount, error) {
 	rows, err := s.q.CountEntries(ctx)

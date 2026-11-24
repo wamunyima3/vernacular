@@ -141,6 +141,28 @@ func (q *Queries) CreateSense(ctx context.Context, arg CreateSenseParams) error 
 	return err
 }
 
+const exampleCoverage = `-- name: ExampleCoverage :one
+SELECT count(*)::int AS core_senses,
+       count(*) FILTER (WHERE has_verified_example(s.id))::int AS with_example
+FROM senses s JOIN items i ON i.id = s.id
+JOIN entries e ON e.id = s.entry_id
+JOIN concepts c ON c.id = s.concept_id
+WHERE e.language_code = $1 AND c.core AND i.status = 'verified' AND NOT retired(s.id)
+`
+
+type ExampleCoverageRow struct {
+	CoreSenses  int32
+	WithExample int32
+}
+
+// Verified core-list meanings in a language, and how many have a verified example (LEX-5).
+func (q *Queries) ExampleCoverage(ctx context.Context, language string) (ExampleCoverageRow, error) {
+	row := q.db.QueryRow(ctx, exampleCoverage, language)
+	var i ExampleCoverageRow
+	err := row.Scan(&i.CoreSenses, &i.WithExample)
+	return i, err
+}
+
 const findConcepts = `-- name: FindConcepts :many
 SELECT id, gloss_en, fold(gloss_en) = $1::text AS exact
 FROM concepts
@@ -663,6 +685,54 @@ SELECT pg_advisory_xact_lock(hashtext('lexicon:' || $1::text))
 func (q *Queries) LockLanguage(ctx context.Context, languageCode string) error {
 	_, err := q.db.Exec(ctx, lockLanguage, languageCode)
 	return err
+}
+
+const missingExamples = `-- name: MissingExamples :many
+SELECT s.id AS sense_id, e.id AS entry_id, e.headword, c.gloss_en,
+       (SELECT count(*) FROM examples x JOIN items xi ON xi.id = x.id
+        WHERE x.sense_id = s.id AND open_for_review(xi.status))::int AS pending
+FROM senses s JOIN items i ON i.id = s.id
+JOIN entries e ON e.id = s.entry_id
+JOIN concepts c ON c.id = s.concept_id
+WHERE e.language_code = $1 AND c.core AND i.status = 'verified' AND NOT retired(s.id)
+  AND NOT has_verified_example(s.id)
+ORDER BY c.gloss_en, e.headword
+LIMIT 100
+`
+
+type MissingExamplesRow struct {
+	SenseID  uuid.UUID
+	EntryID  uuid.UUID
+	Headword string
+	GlossEn  string
+	Pending  int32
+}
+
+// Verified core-list meanings without a verified example, with how many wait for review.
+func (q *Queries) MissingExamples(ctx context.Context, language string) ([]MissingExamplesRow, error) {
+	rows, err := q.db.Query(ctx, missingExamples, language)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MissingExamplesRow
+	for rows.Next() {
+		var i MissingExamplesRow
+		if err := rows.Scan(
+			&i.SenseID,
+			&i.EntryID,
+			&i.Headword,
+			&i.GlossEn,
+			&i.Pending,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const searchEntries = `-- name: SearchEntries :many

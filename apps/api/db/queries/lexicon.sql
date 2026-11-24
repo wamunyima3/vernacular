@@ -172,3 +172,25 @@ LIMIT @lim;
 
 -- name: ListConcepts :many
 SELECT id, gloss_en FROM concepts WHERE id = ANY(@ids::uuid[]);
+
+-- name: ExampleCoverage :one
+-- Verified core-list meanings in a language, and how many have a verified example (LEX-5).
+SELECT count(*)::int AS core_senses,
+       count(*) FILTER (WHERE has_verified_example(s.id))::int AS with_example
+FROM senses s JOIN items i ON i.id = s.id
+JOIN entries e ON e.id = s.entry_id
+JOIN concepts c ON c.id = s.concept_id
+WHERE e.language_code = @language AND c.core AND i.status = 'verified' AND NOT retired(s.id);
+
+-- name: MissingExamples :many
+-- Verified core-list meanings without a verified example, with how many wait for review.
+SELECT s.id AS sense_id, e.id AS entry_id, e.headword, c.gloss_en,
+       (SELECT count(*) FROM examples x JOIN items xi ON xi.id = x.id
+        WHERE x.sense_id = s.id AND open_for_review(xi.status))::int AS pending
+FROM senses s JOIN items i ON i.id = s.id
+JOIN entries e ON e.id = s.entry_id
+JOIN concepts c ON c.id = s.concept_id
+WHERE e.language_code = @language AND c.core AND i.status = 'verified' AND NOT retired(s.id)
+  AND NOT has_verified_example(s.id)
+ORDER BY c.gloss_en, e.headword
+LIMIT 100;

@@ -10,7 +10,6 @@ from .clip_list import ClipList
 from .concept import Concept
 from .contribution import Contribution
 from .contribution_input import ContributionInput
-from .contribution_input_example import ContributionInputExample
 from .corrected_meaning import CorrectedMeaning
 from .create_key_body import CreateKeyBody
 from .create_report_body import CreateReportBody
@@ -32,6 +31,10 @@ from .entry_summary import EntrySummary
 from .error import Error
 from .error_code import ErrorCode
 from .example import Example
+from .example_contribution import ExampleContribution
+from .example_contribution_input import ExampleContributionInput
+from .example_coverage import ExampleCoverage
+from .example_input import ExampleInput
 from .export_phrase_pack_format import ExportPhrasePackFormat
 from .export_phrase_pack_response_200 import ExportPhrasePackResponse200
 from .health import Health
@@ -52,6 +55,7 @@ from .mark_retrained_body import MarkRetrainedBody
 from .match import Match
 from .me import Me
 from .min_status import MinStatus
+from .missing_example import MissingExample
 from .new_key import NewKey
 from .part_of_speech import PartOfSpeech
 from .pending_qualification import PendingQualification
@@ -120,7 +124,6 @@ __all__ = (
     "Concept",
     "Contribution",
     "ContributionInput",
-    "ContributionInputExample",
     "CorrectedMeaning",
     "CreateKeyBody",
     "CreateReportBody",
@@ -142,6 +145,10 @@ __all__ = (
     "Error",
     "ErrorCode",
     "Example",
+    "ExampleContribution",
+    "ExampleContributionInput",
+    "ExampleCoverage",
+    "ExampleInput",
     "ExportPhrasePackFormat",
     "ExportPhrasePackResponse200",
     "Health",
@@ -162,6 +169,7 @@ __all__ = (
     "Match",
     "Me",
     "MinStatus",
+    "MissingExample",
     "NewKey",
     "PartOfSpeech",
     "PendingQualification",

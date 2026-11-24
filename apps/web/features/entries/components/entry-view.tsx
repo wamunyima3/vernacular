@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { wordClassLabel } from "@/lib/word-class"
 
+import { AddExample } from "../../contribute/components/add-example"
 import { correctionHref } from "../../contribute/correcting"
 import { TrustBadge } from "../../trust/components/trust-badge"
 import { ReportDialog } from "./report-dialog"
@@ -104,6 +105,7 @@ export function EntryView({
                   Suggest a correction
                 </Button>
               </div>
+              <AddExample entryId={entry.id} senseId={s.id} />
             </div>
           </li>
         ))}

@@ -18,6 +18,7 @@ type Reader interface {
 	ConceptEntries(ctx context.Context, id uuid.UUID, f Filter) (ConceptEntries, bool, error)
 	FromEnglish(ctx context.Context, query string, languages []string, limit int, f Filter) ([]LookupHit, error)
 	ToEnglish(ctx context.Context, language, query string, limit int, f Filter) ([]LookupHit, error)
+	ExampleCoverage(ctx context.Context, language string) (Coverage, error)
 }
 
 // Handler implements the lexicon read operations of the generated strict server.
@@ -146,4 +147,19 @@ func (h *Handler) Lookup(ctx context.Context, req gen.LookupRequestObject) (gen.
 // filter reads the shared read-endpoint parameters.
 func filter(minStatus *gen.MinStatus, variety *string) Filter {
 	return Filter{MinStatus: items.Minimum(minStatus), Variety: httpx.Deref(variety)}
+}
+
+// GetExampleCoverage implements GET /v1/examples/missing.
+func (h *Handler) GetExampleCoverage(ctx context.Context, req gen.GetExampleCoverageRequestObject) (gen.GetExampleCoverageResponseObject, error) {
+	c, err := h.svc.ExampleCoverage(ctx, req.Params.Language)
+	if err != nil {
+		return nil, err
+	}
+	missing := make([]gen.MissingExample, len(c.Missing))
+	for i, m := range c.Missing {
+		missing[i] = gen.MissingExample{SenseId: m.SenseID, EntryId: m.EntryID, Headword: m.Headword, GlossEn: m.GlossEn, Pending: int(m.Pending)}
+	}
+	return gen.GetExampleCoverage200JSONResponse{
+		Language: req.Params.Language, CoreSenses: c.CoreSenses, WithExample: c.WithExample, Missing: missing,
+	}, nil
 }

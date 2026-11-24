@@ -3,6 +3,7 @@ import { ConfirmAction } from "@/components/confirm-action"
 import { ErrorCard } from "@/components/error-card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { percentOf } from "@/lib/format"
 import {
   Table,
   TableBody,
@@ -20,7 +21,7 @@ import { BuildReleaseForm } from "../../releases/components/build-release-form"
 import { revoke } from "../actions"
 import { ApproveForm } from "./approve-form"
 
-const percent = (n: number, of: number) => (of === 0 ? "–" : `${Math.round((100 * n) / of)}%`)
+const percent = (n: number, of: number) => (of === 0 ? "–" : `${percentOf(n, of)}%`)
 
 /** docs/design/ui.md, Admin: reviewer approvals and provider quality, both as tables (US-26). */
 export async function AdminOverview() {

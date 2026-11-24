@@ -348,6 +348,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/senses/{id}/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add an example sentence to a meaning (contributors)
+         * @description Adds the sentence and its English to an existing meaning as `sourced` and queues it
+         *     for blind review (LEX-5, CON-1).
+         */
+        post: operations["contributeExample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/examples/missing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Core meanings without a verified example
+         * @description Coverage of LEX-5 in a language: verified meanings of core-list concepts, how many
+         *     have a verified example, and those that do not yet, for contributors to work on.
+         */
+        get: operations["getExampleCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/review/next": {
         parameters: {
             query?: never;
@@ -1316,10 +1358,7 @@ export interface components {
             noun_class?: string;
             /** @example water */
             gloss_en: string;
-            example?: {
-                text: string;
-                translation_en: string;
-            };
+            example?: components["schemas"]["ExampleInput"];
             /**
              * Format: uuid
              * @description The meaning (sense ID) this contribution corrects, in the same language. The
@@ -1332,6 +1371,46 @@ export interface components {
              * @enum {boolean}
              */
             agree_to_licence: true;
+        };
+        /** @description A sentence using the word, with its English translation (LEX-5) */
+        ExampleInput: {
+            text: string;
+            translation_en: string;
+        };
+        ExampleContributionInput: {
+            example: components["schemas"]["ExampleInput"];
+            /**
+             * @description The contributor agrees their example is published under the dataset licence
+             * @enum {boolean}
+             */
+            agree_to_licence: true;
+        };
+        ExampleContribution: {
+            /** Format: uuid */
+            example_id: string;
+            trust: components["schemas"]["Trust"];
+        };
+        /** @description How many core meanings in a language have a verified example (LEX-5) */
+        ExampleCoverage: {
+            language: components["schemas"]["LanguageCode"];
+            /** @description Verified meanings of core-list concepts */
+            core_senses: number;
+            /** @description Of those, the meanings with at least one verified example */
+            with_example: number;
+            /** @description Meanings still without a verified example, by English gloss, at most 100 */
+            missing: components["schemas"]["MissingExample"][];
+        };
+        MissingExample: {
+            /** Format: uuid */
+            sense_id: string;
+            /** Format: uuid */
+            entry_id: string;
+            /** @example amenshi */
+            headword: string;
+            /** @example water */
+            gloss_en: string;
+            /** @description Examples of this meaning waiting for review */
+            pending: number;
         };
         Contribution: {
             /** Format: uuid */
@@ -2228,6 +2307,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Contribution"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    contributeExample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExampleContributionInput"];
+            };
+        };
+        responses: {
+            /** @description Recorded and queued for review */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleContribution"];
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getExampleCoverage: {
+        parameters: {
+            query: {
+                language: components["schemas"]["LanguageCode"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coverage and the meanings still missing an example */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleCoverage"];
                 };
             };
             default: components["responses"]["Error"];

@@ -10,7 +10,7 @@ from typing import Union
 from uuid import UUID
 
 if TYPE_CHECKING:
-    from ..models.contribution_input_example import ContributionInputExample
+    from ..models.example_input import ExampleInput
 
 
 T = TypeVar("T", bound="ContributionInput")
@@ -26,7 +26,7 @@ class ContributionInput:
         gloss_en (str):  Example: water.
         agree_to_licence (bool): The contributor agrees their contribution is published under the dataset licence
         noun_class (Union[Unset, str]): Singular/plural class pair, for nouns Example: 6.
-        example (Union[Unset, ContributionInputExample]):
+        example (Union[Unset, ExampleInput]): A sentence using the word, with its English translation (LEX-5)
         corrects (Union[Unset, UUID]): The meaning (sense ID) this contribution corrects, in the same language. The
             correction is reviewed like any contribution; the original stays served and keeps
             its history meanwhile.
@@ -38,7 +38,7 @@ class ContributionInput:
     gloss_en: str
     agree_to_licence: bool
     noun_class: Union[Unset, str] = UNSET
-    example: Union[Unset, "ContributionInputExample"] = UNSET
+    example: Union[Unset, "ExampleInput"] = UNSET
     corrects: Union[Unset, UUID] = UNSET
 
     def to_dict(self) -> dict[str, Any]:
@@ -84,7 +84,7 @@ class ContributionInput:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.contribution_input_example import ContributionInputExample
+        from ..models.example_input import ExampleInput
 
         d = dict(src_dict)
         language = d.pop("language")
@@ -100,11 +100,11 @@ class ContributionInput:
         noun_class = d.pop("noun_class", UNSET)
 
         _example = d.pop("example", UNSET)
-        example: Union[Unset, ContributionInputExample]
+        example: Union[Unset, ExampleInput]
         if isinstance(_example, Unset):
             example = UNSET
         else:
-            example = ContributionInputExample.from_dict(_example)
+            example = ExampleInput.from_dict(_example)
 
         _corrects = d.pop("corrects", UNSET)
         corrects: Union[Unset, UUID]

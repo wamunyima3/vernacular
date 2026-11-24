@@ -1,32 +1,12 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 
-import { ErrorCard } from "@/components/error-card"
-import { LanguageTabs } from "@/components/language-tabs"
+import { PerLanguage } from "@/components/per-language"
 import { CreditList, CreditListSkeleton } from "@/features/credits/components/credit-list"
-import { getLanguages, isActive } from "@/features/languages/get-languages"
 
 export const metadata: Metadata = {
   title: "Contributors",
   description: "The volunteers who contribute and review the words in Vernacular, per language.",
-}
-
-/** One tab per active language; the list is per language (requirements, Portal). */
-async function Credits({ searchParams }: PageProps<"/credits">) {
-  const [{ language: asked }, languages] = await Promise.all([searchParams, getLanguages()])
-  if (!languages.ok)
-    return <ErrorCard title="Languages could not be loaded" message={languages.message} />
-  const active = languages.languages.filter(isActive)
-  const current = active.find((l) => l.code === asked) ?? active[0]
-  if (!current) return null
-  return (
-    <>
-      <LanguageTabs languages={active} current={current.code} path="/credits" />
-      <Suspense key={current.code} fallback={<CreditListSkeleton />}>
-        <CreditList language={current.code} />
-      </Suspense>
-    </>
-  )
 }
 
 export default function CreditsPage(props: PageProps<"/credits">) {
@@ -40,7 +20,12 @@ export default function CreditsPage(props: PageProps<"/credits">) {
         </p>
       </div>
       <Suspense fallback={<CreditListSkeleton />}>
-        <Credits {...props} />
+        <PerLanguage
+          searchParams={props.searchParams}
+          path="/credits"
+          fallback={<CreditListSkeleton />}
+          render={(language) => <CreditList language={language} />}
+        />
       </Suspense>
     </div>
   )

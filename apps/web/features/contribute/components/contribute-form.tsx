@@ -6,7 +6,6 @@ import { useActionState, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Field,
   FieldDescription,
@@ -18,12 +17,12 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { LanguageField } from "@/components/language-field"
-import { Textarea } from "@/components/ui/textarea"
 import { WordClassFields } from "@/components/word-class-fields"
 
 import { TrustBadge } from "../../trust/components/trust-badge"
 import { type ContributeState, contribute } from "../actions"
 import type { Correcting } from "../correcting"
+import { ExampleFields, LicenceAgreement } from "./example-fields"
 
 /** docs/design/ui.md, Contribute: one column, errors under their field. */
 export function ContributeForm({
@@ -73,41 +72,10 @@ export function ContributeForm({
         </Field>
         <FieldSet>
           <FieldLegend variant="label">Example (optional)</FieldLegend>
-          <Field>
-            <FieldLabel htmlFor="example_text" className="font-normal">
-              A sentence using the word
-            </FieldLabel>
-            <Textarea
-              id="example_text"
-              name="example_text"
-              defaultValue={v.example_text}
-              maxLength={500}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="example_translation" className="font-normal">
-              Its English translation
-            </FieldLabel>
-            <Textarea
-              id="example_translation"
-              name="example_translation"
-              defaultValue={v.example_translation}
-              maxLength={500}
-            />
-          </Field>
+          <ExampleFields values={v} />
           {state.errors?.example && <FieldError>{state.errors.example}</FieldError>}
         </FieldSet>
-        <Field orientation="horizontal">
-          <Checkbox
-            id="agree_to_licence"
-            name="agree_to_licence"
-            defaultChecked={v.agree_to_licence === "on"}
-          />
-          <FieldLabel htmlFor="agree_to_licence" className="font-normal">
-            I agree my contribution is published under the dataset licence, with my name as
-            contributor.
-          </FieldLabel>
-        </Field>
+        <LicenceAgreement checked={v.agree_to_licence === "on"} />
         {state.errors?.agree_to_licence && <FieldError>{state.errors.agree_to_licence}</FieldError>}
       </FieldGroup>
       {state.error && <FieldError>{state.error}</FieldError>}

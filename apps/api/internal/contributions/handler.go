@@ -40,3 +40,12 @@ func (h *Handler) CreateContribution(ctx context.Context, req gen.CreateContribu
 		EntryId: r.EntryID, SenseId: r.SenseID, ExampleId: r.ExampleID, NewSense: r.NewSense, Trust: r.Trust.API(),
 	}, nil
 }
+
+// ContributeExample implements POST /v1/senses/{id}/examples.
+func (h *Handler) ContributeExample(ctx context.Context, req gen.ContributeExampleRequestObject) (gen.ContributeExampleResponseObject, error) {
+	r, err := h.svc.ProposeExample(ctx, req.Id, Example{Text: req.Body.Example.Text, TranslationEn: req.Body.Example.TranslationEn})
+	if err != nil {
+		return nil, err
+	}
+	return gen.ContributeExample201JSONResponse{ExampleId: r.ExampleID, Trust: r.Trust.API()}, nil
+}

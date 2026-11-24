@@ -80,6 +80,38 @@ func (s *Service) Propose(ctx context.Context, in Input) (Receipt, error) {
 	return r, err
 }
 
+// ExampleReceipt is a contributed example and its trust.
+type ExampleReceipt struct {
+	ExampleID uuid.UUID
+	Trust     items.Trust
+}
+
+// ProposeExample adds the signed-in contributor's example to an existing
+// meaning and queues it for review (LEX-5).
+func (s *Service) ProposeExample(ctx context.Context, senseID uuid.UUID, ex Example) (ExampleReceipt, error) {
+	author, err := accounts.Require(ctx, func(p accounts.Principal) bool { return p.HasRole(gen.RoleContributor) })
+	if err != nil {
+		return ExampleReceipt{}, err
+	}
+	var r ExampleReceipt
+	err = database.InTx(ctx, s.db, author.ID, func(tx pgx.Tx) error {
+		its := items.NewStore(tx)
+		sense, ok, err := its.Lock(ctx, senseID)
+		switch {
+		case err != nil:
+			return err
+		case !ok || sense.Kind != items.KindSense:
+			return httpx.ErrNotFound
+		}
+		if r.ExampleID, err = addExample(ctx, tx, author.ID, sense.Language, senseID, ex); err != nil {
+			return err
+		}
+		r.Trust, err = its.Trust(ctx, r.ExampleID)
+		return err
+	})
+	return r, err
+}
+
 // Add stores a contribution by author inside the caller's transaction; the
 // caller has checked that author may contribute. Receipt.Trust is left empty.
 func Add(ctx context.Context, tx pgx.Tx, author string, in Input) (Receipt, error) {
@@ -109,16 +141,34 @@ func Add(ctx context.Context, tx pgx.Tx, author string, in Input) (Receipt, erro
 		}
 	}
 	if in.Example != nil {
-		id, err := lex.AddExample(ctx, in.Language, added.SenseID, in.Example.Text, in.Example.TranslationEn, origin)
-		if errors.Is(err, lexicon.ErrInvalid) {
-			return Receipt{}, httpx.BadRequest(err.Error())
-		}
+		id, err := exampleBy(ctx, lex, in.Language, added.SenseID, *in.Example, origin)
 		if err != nil {
 			return Receipt{}, err
 		}
 		r.ExampleID = &id
 	}
 	return r, nil
+}
+
+// addExample adds author's example to a meaning in an active language.
+func addExample(ctx context.Context, tx pgx.Tx, author, language string, senseID uuid.UUID, ex Example) (uuid.UUID, error) {
+	if err := languages.NewStore(tx).RequireActive(ctx, language); err != nil {
+		return uuid.Nil, err
+	}
+	sourceID, err := sources.Lookup(ctx, tx, SourceName)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return exampleBy(ctx, newLexicon(tx), language, senseID, ex, items.Contributed(sourceID, author))
+}
+
+// exampleBy stores an example with its origin, a bad one as a 400.
+func exampleBy(ctx context.Context, lex Lexicon, language string, senseID uuid.UUID, ex Example, origin items.Origin) (uuid.UUID, error) {
+	id, err := lex.AddExample(ctx, language, senseID, ex.Text, ex.TranslationEn, origin)
+	if errors.Is(err, lexicon.ErrInvalid) {
+		return uuid.Nil, httpx.BadRequest(err.Error())
+	}
+	return id, err
 }
 
 // linkCorrection checks the sense a proposal corrects and links the new

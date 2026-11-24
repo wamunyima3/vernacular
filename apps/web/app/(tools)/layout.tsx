@@ -21,6 +21,9 @@ export default function ToolsLayout({ children }: LayoutProps<"/">) {
         <Link href="/contribute" className="text-muted-foreground hover:text-foreground">
           Contribute
         </Link>
+        <Link href="/examples" className="text-muted-foreground hover:text-foreground">
+          Needs examples
+        </Link>
         <Link href="/sources" className="text-muted-foreground hover:text-foreground">
           Sources
         </Link>

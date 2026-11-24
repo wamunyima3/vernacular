@@ -3,6 +3,14 @@ import type { Schemas } from "@vernacular/api-client"
 import { formText } from "@/lib/form-data"
 import { wordClassInput } from "@/lib/word-class"
 
+export const licenceError = "Agree to publish your contribution under the dataset licence."
+
+/** The example fields of a form, trimmed; either half may be empty. */
+export function exampleInput(form: FormData): Schemas["ExampleInput"] {
+  const text = formText(form)
+  return { text: text("example_text"), translation_en: text("example_translation") }
+}
+
 export type ContributionErrors = Partial<Record<"example" | "agree_to_licence", string>>
 
 /**
@@ -15,12 +23,12 @@ export function contributionInput(
   const text = formText(form)
   const errors: ContributionErrors = {}
   const { part_of_speech = "noun", noun_class } = wordClassInput(form)
-  const example = { text: text("example_text"), translation_en: text("example_translation") }
+  const example = exampleInput(form)
   if (Boolean(example.text) !== Boolean(example.translation_en)) {
     errors.example = "Give the example and its English translation, or leave both empty."
   }
   if (form.get("agree_to_licence") !== "on") {
-    errors.agree_to_licence = "Agree to publish your contribution under the dataset licence."
+    errors.agree_to_licence = licenceError
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors }
   const corrects = text("corrects")

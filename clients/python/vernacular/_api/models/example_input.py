@@ -4,12 +4,13 @@ from typing import Any, TypeVar
 from attrs import define as _attrs_define
 
 
-T = TypeVar("T", bound="ContributionInputExample")
+T = TypeVar("T", bound="ExampleInput")
 
 
 @_attrs_define
-class ContributionInputExample:
-    """
+class ExampleInput:
+    """A sentence using the word, with its English translation (LEX-5)
+
     Attributes:
         text (str):
         translation_en (str):
@@ -41,9 +42,9 @@ class ContributionInputExample:
 
         translation_en = d.pop("translation_en")
 
-        contribution_input_example = cls(
+        example_input = cls(
             text=text,
             translation_en=translation_en,
         )
 
-        return contribution_input_example
+        return example_input
