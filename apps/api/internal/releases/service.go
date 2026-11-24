@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -117,10 +118,15 @@ func (s *Service) Build(ctx context.Context, notes string) (Release, error) {
 		if prev.ID != uuid.Nil && built.Changes == (Changes{}) {
 			return httpx.Conflict(fmt.Sprintf("Nothing changed since release %s", prev.Name))
 		}
-		return nil
+		// The copy pinned reads use (ADR-0012).
+		return q.MaterialiseRelease(ctx, dbgen.MaterialiseReleaseParams{ReleaseID: row.ID, Schema: Schema(row.Name)})
 	})
 	return built, err
 }
+
+// Schema is the PostgreSQL schema a release is materialised in, such as
+// release_2027_1 for 2027.1 (ADR-0012).
+func Schema(name string) string { return "release_" + strings.ReplaceAll(name, ".", "_") }
 
 func fromRow(r dbgen.Release) (Release, error) {
 	var c counts

@@ -56,3 +56,6 @@ UPDATE releases SET counts = jsonb_build_object(
 FROM diff
 WHERE id = @release_id::uuid
 RETURNING releases.*;
+
+-- name: MaterialiseRelease :exec
+SELECT materialise_release(@release_id::uuid, @schema::text);

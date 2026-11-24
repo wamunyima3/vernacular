@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
@@ -62,6 +64,8 @@ func TestBuild(t *testing.T) {
 		t.Errorf("second = %s %+v, want <year>.2 with 1 added, 1 changed, 1 removed", second.Name, second.Changes)
 	}
 
+	checkSchema(t, tx, second)
+
 	list, err := svc.List(t.Context())
 	if err != nil || len(list) < 2 || list[0].Name != second.Name {
 		t.Errorf("list = %v, %v; want newest first", list, err)
@@ -80,6 +84,24 @@ func checkFirst(t *testing.T, first releases.Release) {
 	}
 	if first.Changes != (releases.Changes{Added: 2}) {
 		t.Errorf("first changes = %+v, want 2 added", first.Changes)
+	}
+}
+
+// checkSchema: the release's schema holds its items and the live search indexes (ADR-0012).
+func checkSchema(t *testing.T, tx pgx.Tx, r releases.Release) {
+	t.Helper()
+	schema := releases.Schema(r.Name)
+	var phrases, indexes int
+	table := pgx.Identifier{schema, "phrases"}.Sanitize() //nolint:misspell // pgx's method name
+	err := tx.QueryRow(t.Context(), `SELECT
+			(SELECT count(*) FROM `+table+` WHERE pack = 'zz-release'),
+			(SELECT count(*) FROM pg_indexes WHERE schemaname = $1 AND tablename = 'entries')`,
+		schema).Scan(&phrases, &indexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if phrases != 2 || indexes == 0 {
+		t.Errorf("%s: %d phrases, %d entry indexes; want the 2 verified phrases and the live indexes", schema, phrases, indexes)
 	}
 }
 

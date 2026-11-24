@@ -106,6 +106,20 @@ func (q *Queries) LockReleases(ctx context.Context) error {
 	return err
 }
 
+const materialiseRelease = `-- name: MaterialiseRelease :exec
+SELECT materialise_release($1::uuid, $2::text)
+`
+
+type MaterialiseReleaseParams struct {
+	ReleaseID uuid.UUID
+	Schema    string
+}
+
+func (q *Queries) MaterialiseRelease(ctx context.Context, arg MaterialiseReleaseParams) error {
+	_, err := q.db.Exec(ctx, materialiseRelease, arg.ReleaseID, arg.Schema)
+	return err
+}
+
 const summariseRelease = `-- name: SummariseRelease :one
 WITH cur AS (SELECT item_id, snapshot FROM release_items WHERE release_id = $1::uuid),
      prev AS (SELECT item_id, snapshot FROM release_items WHERE release_id = $2::uuid),
