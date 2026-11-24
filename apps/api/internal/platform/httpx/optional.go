@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,4 +48,10 @@ func OptionalTime(t pgtype.Timestamptz) *time.Time {
 		return nil
 	}
 	return &t.Time
+}
+
+// Attachment is a Content-Disposition value that downloads as filename.
+func Attachment(filename string) *string {
+	v := fmt.Sprintf("attachment; filename=%q", filename)
+	return &v
 }

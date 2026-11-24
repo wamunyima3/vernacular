@@ -1,7 +1,9 @@
 package phrases
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/items"
@@ -72,4 +74,28 @@ func phrase(ph Phrase) gen.Phrase {
 		Id: ph.ID, Text: ph.Text, SourceEn: ph.SourceEn, Notes: httpx.Optional(ph.Notes),
 		ConceptId: httpx.OptionalUUID(ph.ConceptID), Trust: ph.Trust.API(),
 	}
+}
+
+// ExportPhrasePack implements GET /v1/phrases/export (PHR-3, US-12).
+func (h *Handler) ExportPhrasePack(ctx context.Context, req gen.ExportPhrasePackRequestObject) (gen.ExportPhrasePackResponseObject, error) {
+	p := req.Params
+	phrases, err := h.svc.Pack(ctx, p.Lang, p.Pack, items.Minimum(p.MinStatus))
+	if err != nil {
+		return nil, err
+	}
+	headers := gen.ExportPhrasePack200ResponseHeaders{
+		ContentDisposition: httpx.Attachment(fmt.Sprintf("%s.%s.%s", p.Pack, p.Lang, p.Format)),
+	}
+	switch p.Format {
+	case gen.ExportPhrasePackParamsFormatPo:
+		body := PO(p.Pack, p.Lang, phrases)
+		return gen.ExportPhrasePack200TextxGettextTranslationResponse{Body: bytes.NewReader(body), ContentLength: int64(len(body)), Headers: headers}, nil
+	case gen.ExportPhrasePackParamsFormatXliff:
+		body, err := XLIFF(p.Pack, p.Lang, phrases)
+		if err != nil {
+			return nil, err
+		}
+		return gen.ExportPhrasePack200ApplicationxliffXmlResponse{Body: bytes.NewReader(body), ContentLength: int64(len(body)), Headers: headers}, nil
+	}
+	return gen.ExportPhrasePack200JSONResponse{Body: Map(phrases), Headers: headers}, nil
 }

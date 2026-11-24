@@ -1,0 +1,37 @@
+---
+title: Phrase packs
+description: Ready-made phrases for apps, and how to drop them into your i18n files.
+---
+
+A phrase pack is a set of everyday lines on one topic, each with its English source and a
+translation checked by reviewers. There are six packs: `greetings`, `numbers`, `dates`,
+`interface` (labels such as "Save" and "Cancel"), `health` and `money`.
+
+## Read a pack
+
+```bash
+curl -H "X-API-Key: $VERNACULAR_KEY" \
+  "$VERNACULAR_URL/v1/phrases?pack=greetings&lang=bem"
+```
+
+Each phrase carries its trust fields, like every item. Only `verified` phrases come back unless
+you pass `min_status`; see [verification levels](/docs/verification-levels).
+
+## Export for your i18n pipeline
+
+`GET /v1/phrases/export` returns the same pack as a localisation file keyed by the English
+source. Pick a `format`:
+
+- `json`: a flat object from English to translation, for i18next, FormatJS and the like.
+- `po`: a gettext catalogue. Notes become translator comments.
+- `xliff`: an XLIFF 2.0 document. A segment's `state` follows the trust status: `verified` is
+  `final`, `reviewed` is `reviewed`, and anything less is `translated`.
+
+```bash
+curl -OJ -H "X-API-Key: $VERNACULAR_KEY" \
+  "$VERNACULAR_URL/v1/phrases/export?pack=interface&lang=nya&format=po"
+```
+
+The file is named `<pack>.<lang>.<format>`. When an English line has more than one translation,
+the first is kept, as these formats allow one per line. Add `release` to export a frozen pack;
+see [releases](/docs/releases).

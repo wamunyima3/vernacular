@@ -152,6 +152,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/phrases/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A phrase pack as a localisation file
+         * @description The pack as a file an i18n pipeline reads (PHR-3, US-12), keyed by the English
+         *     source: `json` is a flat object from English to translation, `po` a gettext
+         *     catalogue, and `xliff` an XLIFF 2.0 document whose segment state follows the trust
+         *     status (`verified` is `final`). When an English line has several translations,
+         *     the first is kept. Notes become translator comments.
+         */
+        get: operations["exportPhrasePack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/detect": {
         parameters: {
             query?: never;
@@ -1306,6 +1330,9 @@ export interface components {
         MinStatus: components["schemas"]["MinStatus"];
         /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
         Variety: string;
+        /** @example greetings */
+        Pack: string;
+        Lang: components["schemas"]["LanguageCode"];
         /**
          * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
          *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
@@ -1557,8 +1584,8 @@ export interface operations {
         parameters: {
             query: {
                 /** @example greetings */
-                pack: string;
-                lang: components["schemas"]["LanguageCode"];
+                pack: components["parameters"]["Pack"];
+                lang: components["parameters"]["Lang"];
                 /**
                  * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
                  *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
@@ -1588,6 +1615,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PhrasePack"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    exportPhrasePack: {
+        parameters: {
+            query: {
+                /** @example greetings */
+                pack: components["parameters"]["Pack"];
+                lang: components["parameters"]["Lang"];
+                format: "json" | "po" | "xliff";
+                /**
+                 * @description The least-checked items to return (TRN-4, AI-6, ADR-0004): `verified` by default;
+                 *     `machine` only when asked for. `disputed` is never returned. Entries and concepts
+                 *     with no meaning at this level are left out, so a strict caller gets nothing rather
+                 *     than a guess.
+                 */
+                min_status?: components["parameters"]["MinStatus"];
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, named `<pack>.<lang>.<format>` */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                    "text/x-gettext-translation": string;
+                    "application/xliff+xml": string;
                 };
             };
             400: components["responses"]["Error"];

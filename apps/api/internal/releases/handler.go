@@ -3,9 +3,9 @@ package releases
 import (
 	"bytes"
 	"context"
-	"fmt"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 )
 
 // Handler implements the release operations of the generated strict server.
@@ -57,9 +57,8 @@ func (h *Handler) DownloadRelease(ctx context.Context, req gen.DownloadReleaseRe
 	if err != nil {
 		return nil, err
 	}
-	disposition := fmt.Sprintf(`attachment; filename="vernacular-%s.zip"`, name)
 	return gen.DownloadRelease200ApplicationzipResponse{
 		Body: bytes.NewReader(body), ContentLength: int64(len(body)),
-		Headers: gen.DownloadRelease200ResponseHeaders{ContentDisposition: &disposition},
+		Headers: gen.DownloadRelease200ResponseHeaders{ContentDisposition: httpx.Attachment("vernacular-" + name + ".zip")},
 	}, nil
 }

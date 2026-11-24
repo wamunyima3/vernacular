@@ -239,15 +239,8 @@ paths:
         - apiKey: []
         - session: []
       parameters:
-        - name: pack
-          in: query
-          required: true
-          schema: { type: string, pattern: "^[a-z][a-z0-9-]*$", maxLength: 40 }
-          example: greetings
-        - name: lang
-          in: query
-          required: true
-          schema: { $ref: "#/components/schemas/LanguageCode" }
+        - $ref: "#/components/parameters/Pack"
+        - $ref: "#/components/parameters/Lang"
         - $ref: "#/components/parameters/MinStatus"
         - $ref: "#/components/parameters/PinnedRelease"
       responses:
@@ -256,6 +249,53 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PhrasePack" }
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/phrases/export:
+    get:
+      operationId: exportPhrasePack
+      summary: A phrase pack as a localisation file
+      description: |
+        The pack as a file an i18n pipeline reads (PHR-3, US-12), keyed by the English
+        source: `json` is a flat object from English to translation, `po` a gettext
+        catalogue, and `xliff` an XLIFF 2.0 document whose segment state follows the trust
+        status (`verified` is `final`). When an English line has several translations,
+        the first is kept. Notes become translator comments.
+      tags: [phrases]
+      security:
+        - apiKey: []
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/Pack"
+        - $ref: "#/components/parameters/Lang"
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [json, po, xliff] }
+        - $ref: "#/components/parameters/MinStatus"
+        - $ref: "#/components/parameters/PinnedRelease"
+      responses:
+        "200":
+          description: The file, named `<pack>.<lang>.<format>`
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: string }
+                example: { Good morning: Mwashibukeni }
+            text/x-gettext-translation:
+              schema: { type: string }
+            application/xliff+xml:
+              schema: { type: string }
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -1039,6 +1079,17 @@ components:
       in: query
       description: Only entries of this variety, such as a town or regional form (LEX-6)
       schema: { type: string, pattern: "^[a-z][a-z0-9-]*$", maxLength: 40 }
+    Pack:
+      name: pack
+      in: query
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9-]*$", maxLength: 40 }
+      example: greetings
+    Lang:
+      name: lang
+      in: query
+      required: true
+      schema: { $ref: "#/components/schemas/LanguageCode" }
     PinnedRelease:
       name: release
       in: query
