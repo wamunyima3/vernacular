@@ -218,6 +218,8 @@ Done when: four languages are live and the dictionary and phrase API has launche
 
 - [ ] **P3-01** Choose a base model whose licence allows commercial serving; write ADR 👤
 - [ ] **P3-02** Python training pipeline in `ml/` (L, split) → AI-7
+  - [x] **P3-02a** `ml/`: build an English↔language parallel corpus from a release zip (senses, examples, phrases), keeping only items whose every source allows `train`, split train/dev/test by English text so no meaning crosses splits, and drop anything in a held-out test set such as FLORES (DQ-10) (M)
+  - [ ] **P3-02b** `ml/`: fine-tune the base model chosen in P3-01 on that corpus and report chrF on the dev split (M, needs P3-01)
 - [ ] **P3-03** Translation service (separate deployable) (M)
 - [ ] **P3-04** `POST /v1/translate`: verified phrase first, then labelled machine output (M) → TRN-3, US-31
 - [ ] **P3-05** Benchmark against Google and NLLB-200 on FLORES and publish the scores (M) → DQ-9, DQ-10

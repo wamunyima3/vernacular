@@ -64,6 +64,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: make gen-check
       - run: make test-python
+      - run: make test-ml
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

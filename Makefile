@@ -124,12 +124,16 @@ dev-web:
 	pnpm --filter @vernacular/web dev
 
 .PHONY: test
-test: test-api test-python ## Run Go, web and Python client tests
+test: test-api test-python test-ml ## Run Go, web and Python tests
 	pnpm test
 
 .PHONY: test-python
 test-python: ## Lint and test the Python client
 	cd clients/python && uv run --locked sh -c "ruff check . && ruff format --check . && pytest -q"
+
+.PHONY: test-ml
+test-ml: ## Lint and test the training pipeline
+	cd ml && uv run --locked sh -c "ruff check . && ruff format --check . && pytest -q"
 
 .PHONY: test-api
 test-api:
