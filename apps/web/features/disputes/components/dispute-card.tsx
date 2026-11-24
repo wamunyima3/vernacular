@@ -2,7 +2,7 @@ import type { Schemas } from "@vernacular/api-client"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { wordClassLabel } from "@/lib/word-class"
+import { candidateDetail } from "@/lib/word-class"
 
 import { ResolveForm } from "./resolve-form"
 
@@ -12,7 +12,7 @@ const deadlineDays = 14
 const decisionLabels: Record<Schemas["ReviewDecision"], string> = {
   accept: "Accepted",
   reject: "Rejected",
-  correct: "Wrote another word",
+  correct: "Wrote their own",
 }
 
 /**
@@ -29,6 +29,7 @@ export function DisputeCard({
   daysOpen: number
 }) {
   const { candidate } = dispute
+  const detail = candidateDetail(candidate)
 
   return (
     <Card>
@@ -45,10 +46,8 @@ export function DisputeCard({
         </CardDescription>
         <CardTitle className="text-2xl" lang={dispute.language}>
           {candidate.headword}
-          {wordClassLabel(candidate) && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              {wordClassLabel(candidate)}
-            </span>
+          {detail && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">{detail}</span>
           )}
         </CardTitle>
       </CardHeader>

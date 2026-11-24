@@ -19,15 +19,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
-import { wordClassLabel } from "@/lib/word-class"
+import { candidateDetail } from "@/lib/word-class"
 
 import { decide } from "../actions"
 import { rejectReasons } from "../decision-input"
 import { nextSession, type ReviewSession, reviewUrl } from "../review-url"
 import { WriteMyOwn } from "./write-my-own"
-
-/** The line under a candidate: a phrase's notes, or a word's class. */
-const detail = (c: Schemas["ReviewCandidate"]) => c.notes ?? wordClassLabel(c)
 
 const priorityLabels: Record<Schemas["ReviewPriority"], string> = {
   quick: "Quick confirm",
@@ -92,9 +89,9 @@ export function ReviewCard({
                     >
                       {c.headword}
                     </span>
-                    {detail(c) && (
+                    {candidateDetail(c) && (
                       <span className="text-sm font-normal text-pretty text-muted-foreground">
-                        {detail(c)}
+                        {candidateDetail(c)}
                       </span>
                     )}
                   </div>

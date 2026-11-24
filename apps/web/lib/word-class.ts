@@ -37,3 +37,6 @@ export function wordClassInput(
 export function wordClassLabel(w: { part_of_speech?: string; noun_class?: string }): string {
   return [w.part_of_speech, w.noun_class && `class ${w.noun_class}`].filter(Boolean).join(" · ")
 }
+
+/** The line under a review candidate: a phrase's notes, or a word's class. */
+export const candidateDetail = (c: Schemas["ReviewCandidate"]) => c.notes ?? wordClassLabel(c)

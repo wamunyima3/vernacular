@@ -274,7 +274,7 @@ func checkTarget(ctx context.Context, its Items, me accounts.Principal, id uuid.
 	switch {
 	case err != nil:
 		return t, err
-	case !ok || (t.Kind != items.KindSense && t.Kind != items.KindPhrase):
+	case !ok || !items.Reviewable(t.Kind):
 		return t, httpx.BadRequest("No candidate " + id.String())
 	case !me.CanReview(t.Language):
 		return t, httpx.ErrForbidden

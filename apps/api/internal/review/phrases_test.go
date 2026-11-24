@@ -88,3 +88,31 @@ func checkPhraseCorrection(t *testing.T, tx pgx.Tx, svc *review.Service, card re
 		t.Errorf("correction = %q in %q, %v; want a new phrase in the line's pack", text, pack, err)
 	}
 }
+
+// TestPhraseDisputes: a phrase reviewers disagree on reaches senior
+// reviewers, who can settle it (P1-REV-04c).
+func TestPhraseDisputes(t *testing.T) {
+	tx := dbtest.Tx(t)
+	phraseFixture(t, tx)
+	svc := review.NewService(tx)
+	card, ok, err := svc.Next(reviewer(t), "tst", nil)
+	if err != nil || !ok {
+		t.Fatalf("next = %v %v", ok, err)
+	}
+	phrase := card.Candidates[0].ID
+	for _, r := range []struct {
+		id string
+		d  dbgen.ReviewDecision
+	}{{"r1", dbgen.ReviewDecisionAccept}, {"r2", dbgen.ReviewDecisionReject}} {
+		if _, err := svc.Decide(reviewer(t, r.id), []review.Decision{{ItemID: phrase, Decision: r.d}}, "zz", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	disputes, err := svc.Disputes(senior(t, "s1"))
+	if err != nil || len(disputes) != 1 || disputes[0].Candidate.ID != phrase || disputes[0].Candidate.English != "Zz good night" {
+		t.Fatalf("disputes = %+v, %v; want the phrase", disputes, err)
+	}
+	if status, err := svc.Resolve(senior(t, "s1"), phrase, dbgen.ResolutionOutcomeKeep, "Zz right"); err != nil || status != items.StatusVerified {
+		t.Errorf("resolve = %s, %v; want verified", status, err)
+	}
+}

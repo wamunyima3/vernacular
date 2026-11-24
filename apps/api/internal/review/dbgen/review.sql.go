@@ -251,7 +251,7 @@ SELECT i.id, i.language_code,
             WHERE p.item_id = i.id AND p.state = 'confirmed' AND p.settled_by IS NULL)
        )::timestamptz AS disputed_since
 FROM items i
-WHERE i.status = 'disputed' AND i.kind = 'sense'
+WHERE i.status = 'disputed' AND i.kind IN ('sense', 'phrase')
   AND i.language_code = ANY($1::text[])
 ORDER BY disputed_since, i.id
 LIMIT 50
@@ -263,7 +263,7 @@ type ListDisputesRow struct {
 	DisputedSince time.Time
 }
 
-// Disputed senses in the languages, oldest first. A dispute is as old as what
+// Disputed senses and phrases in the languages, oldest first. A dispute is as old as what
 // made it: the last counted review, or the confirmation of a report.
 func (q *Queries) ListDisputes(ctx context.Context, languages []string) ([]ListDisputesRow, error) {
 	rows, err := q.db.Query(ctx, listDisputes, languages)

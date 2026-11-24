@@ -99,7 +99,7 @@ func (s *Service) Resolve(ctx context.Context, itemID uuid.UUID, outcome dbgen.R
 		switch {
 		case err != nil:
 			return err
-		case !ok || item.Kind != items.KindSense:
+		case !ok || !items.Reviewable(item.Kind):
 			return httpx.ErrNotFound
 		case !me.IsSenior(item.Language):
 			return httpx.ErrForbidden
