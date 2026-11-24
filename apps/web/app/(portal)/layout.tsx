@@ -15,7 +15,7 @@ export default function PortalLayout({ children }: LayoutProps<"/">) {
         <Link href="/docs/api" className="text-muted-foreground hover:text-foreground">
           API reference
         </Link>
-        <Link href="/docs/errors" className="text-muted-foreground hover:text-foreground">
+        <Link href="/docs" className="text-muted-foreground hover:text-foreground">
           Docs
         </Link>
         <Suspense fallback={<span className="w-14" />}>

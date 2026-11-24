@@ -1,0 +1,11 @@
+{
+  "pages": [
+    "index",
+    "verification-levels",
+    "concepts",
+    "varieties",
+    "licences",
+    "[Errors](/docs/errors)",
+    "[API reference](/docs/api)"
+  ]
+}

@@ -128,3 +128,11 @@
     @apply font-sans;
   }
 }
+
+/* Shiki code blocks in the docs (fumadocs-mdx): light and dark token colours. */
+.shiki span {
+  color: var(--shiki-light);
+}
+.dark .shiki span {
+  color: var(--shiki-dark);
+}

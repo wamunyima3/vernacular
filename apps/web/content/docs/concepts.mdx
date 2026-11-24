@@ -1,0 +1,36 @@
+---
+title: Concepts
+description: How a word in one language connects to the same meaning in another.
+---
+
+Each meaning of a word points to a **concept**: a language-independent meaning with an English
+gloss, such as "water". Words in different languages that mean the same thing share the concept.
+Translating goes from a word to its concept, then from the concept to words in other languages.
+
+```text
+amenshi (Bemba) ──┐
+                  ├── concept "water" ── madzi (Nyanja)
+water (English) ──┘
+```
+
+Adding a language means linking its words to concepts once, rather than to every other
+language. A core list of about 4,000 concepts, grouped by domain (health, money, numbers and
+more), sets what every language should cover first.
+
+## Words and meanings
+
+An **entry** is a word in one language: its headword, part of speech, noun class and plural. An
+entry has one or more **senses**, its meanings, each with an English gloss, examples and its own
+trust. "umwenshi" in Bemba has three: month, moon and quarter. Each sense points to one concept.
+
+## Endpoints
+
+- `GET /v1/lookup?q=water&from=eng&to=bem,nya` finds concepts by English gloss and returns their
+  words in the languages you name.
+- `GET /v1/lookup?q=amenshi&from=bem&to=eng` goes the other way: the English meanings of a word.
+- `GET /v1/concepts/{id}` returns one concept with its words in every language.
+- `GET /v1/entries/{id}` returns one word with all its meanings.
+
+Word lookup between two Zambian languages goes through the concept: look up the word's English
+meaning, then that concept's words in the other language. (`POST /v1/translate` does take any
+pair, but only for whole phrases that reviewers have verified.)

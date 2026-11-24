@@ -1,0 +1,42 @@
+---
+title: Verification levels
+description: How far each item has been checked, and how to choose what you get.
+---
+
+A wrong word is worse than no word, so the API never passes off unchecked data as checked. Every
+item carries a `trust.status`:
+
+| Level      | Meaning                                                        | Returned                   |
+| ---------- | -------------------------------------------------------------- | -------------------------- |
+| `verified` | Accepted by two approved reviewers, working separately         | By default                 |
+| `reviewed` | Accepted by one reviewer, waiting for a second                 | With `min_status=reviewed` |
+| `sourced`  | Taken from a licensed published source, not yet reviewed by us | With `min_status=sourced`  |
+| `machine`  | Produced by a model, such as Claude or Google Translate        | With `min_status=machine`  |
+| `disputed` | Reviewers disagree, or a confirmed report is open              | Never                      |
+
+`min_status` is the least-checked level you accept: `sourced` returns `verified`, `reviewed`
+and `sourced` items. An entry with no meaning at your level is left out, so a strict caller gets
+nothing rather than a guess.
+
+## How an item moves
+
+- Reviewers decide without seeing each other's decisions or which model suggested a word.
+- Two accepts make an item `verified`; one makes it `reviewed`. Machine output follows the same
+  path as anything else: it is only verified after two human reviews.
+- If reviewers disagree, the item is `disputed` until a senior reviewer for the language
+  settles it.
+- Anyone can report a wrong meaning, from the API (`POST /v1/reports`) or the "Report a problem"
+  button on an entry. If a reviewer agrees, the item is `disputed` and is settled within 14 days.
+
+## The trust object
+
+```json
+"trust": {
+  "status": "sourced",
+  "sources": [{ "name": "GATITOS", "licence": "CC BY 4.0", "reference": "gatitos/en_bem.jsonl:207" }],
+  "reviews": { "accepts": 0, "corrections": 0 }
+}
+```
+
+`sources` names every source that has the item, with its licence; machine items name the model.
+`reviews` gives counts only: reviewers are never named per item.

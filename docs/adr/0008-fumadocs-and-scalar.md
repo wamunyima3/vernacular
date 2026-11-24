@@ -24,6 +24,10 @@ For the API reference, Scalar (MIT, released daily) renders an OpenAPI file with
 - **Scalar** (`@scalar/nextjs-api-reference`) at `/docs/api`. It reads `contracts/openapi.yaml` at build time, so the reference never drifts from the contract.
 - `/docs/errors` stays a typed page, because it is checked against `ErrorCode` at compile time.
 
+### Amendment, 2026-11-24 (P1-WEB-04)
+
+The docs use `fumadocs-mdx` and `fumadocs-core` only: MDX compiled at build time, and a page tree whose order `content/docs/meta.json` sets. `fumadocs-ui` is not used, because its layout brings a second header, sidebar and stylesheet into the portal. The pages render with the app's own components (`features/docs/mdx-components.tsx`), keeping one design system. Fumadocs UI's search and table of contents are given up until the docs are long enough to need them.
+
 ## Consequences
 
 - Docs are versioned with the code and reviewed in the same pull requests.

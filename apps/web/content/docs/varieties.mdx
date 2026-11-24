@@ -1,0 +1,29 @@
+---
+title: Varieties and registers
+description: Town and regional forms, and how formal a word is.
+---
+
+A language is not one fixed thing. Town Bemba and Town Nyanja borrow heavily from English and
+differ from rural forms, and Malawian Chichewa differs from Zambian Nyanja. Rather than pick one
+and drop the rest, the API tags each entry.
+
+## Varieties
+
+Each language has a standard variety: Zambian Nyanja for Nyanja, for example. An entry from
+another variety carries a `variety` code, such as a town or regional form; entries of the
+standard variety have none.
+
+To get only one variety, pass `variety` to search and lookup:
+
+```bash
+curl -H "X-API-Key: $VERNACULAR_KEY" \
+  "$VERNACULAR_URL/v1/entries/search?language=nya&q=madzi&variety=town"
+```
+
+Without `variety`, every variety is returned and you can read each entry's tag.
+
+## Registers
+
+`register` says where a word fits socially: `neutral`, `formal`, `informal`, `town`,
+`respectful`, `vulgar` or `archaic`. Most words are `neutral`. Check it before showing a word to
+the public; a `respectful` form may be expected when addressing elders.

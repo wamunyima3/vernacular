@@ -1,3 +1,4 @@
+import { createMDX } from "fumadocs-mdx/next"
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
@@ -18,4 +19,5 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// MDX docs under content/docs (ADR-0008).
+export default createMDX()(nextConfig)

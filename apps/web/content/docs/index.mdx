@@ -1,0 +1,43 @@
+---
+title: Getting started
+description: Make your first call to the Vernacular API in a few minutes.
+---
+
+Vernacular is a public API of words and phrases in Zambian languages. Every item it returns says
+where it came from and who checked it, and by default you only get items that two native
+speakers have accepted.
+
+## 1. Get a key
+
+[Create an account](/sign-up?next=/account), then create a key on your account page. The key is
+shown once; store it as a secret. Keep one key per app, so you can revoke one without breaking
+the others.
+
+## 2. Make a call
+
+Send the key in the `X-API-Key` header. Set `VERNACULAR_URL` to the API's address
+(`http://localhost:8080` when you run it yourself). This searches the Bemba dictionary:
+
+```bash
+curl -H "X-API-Key: $VERNACULAR_KEY" \
+  "$VERNACULAR_URL/v1/entries/search?language=bem&q=amenshi"
+```
+
+Each hit says what matched (the headword, a spelling variant, the root, or a similar spelling)
+and carries a `trust` object: its [verification level](/docs/verification-levels), its sources
+and its review counts.
+
+## 3. Ask for less-checked data only when you mean to
+
+Results are `verified` unless you ask otherwise with `min_status`. Early on, few words are
+verified, so a search may come back empty. Add `min_status=machine` to see everything, each item
+labelled with how far it has been checked.
+
+## What else is there
+
+- [Try it](/try) searches through the live API and shows the JSON beside the result.
+- The [API reference](/docs/api) lists every endpoint and can send requests.
+- [Concepts](/docs/concepts) explains how words in different languages connect.
+- [Errors](/docs/errors) lists every error code and what to do about it.
+- Limits: 120 calls a minute per key, and 30 a minute per IP address without one. Every
+  response carries `X-RateLimit-Remaining`.
