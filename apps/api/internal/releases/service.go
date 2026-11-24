@@ -128,11 +128,17 @@ func (s *Service) Build(ctx context.Context, notes string) (Release, error) {
 }
 
 // Pin runs fn on the frozen rows of the named release, or of the newest for
-// `latest` (ADR-0012): in a read-only transaction whose search_path puts the
-// release's schema before public, so the live read queries need no change.
-// fn gets the release's name and a context that routes database.Routed
-// handles to that transaction.
+// `latest` (ADR-0012). fn gets the release's name and a context that routes
+// database.Routed handles to the pinned transaction.
 func (s *Service) Pin(ctx context.Context, name string, fn func(ctx context.Context, release string) error) error {
+	return s.pinned(ctx, name, func(tx pgx.Tx, release dbgen.Release) error {
+		return fn(database.WithTx(ctx, tx), release.Name)
+	})
+}
+
+// pinned runs fn in a read-only transaction whose search_path puts the
+// release's schema before public, so the live read queries need no change.
+func (s *Service) pinned(ctx context.Context, name string, fn func(tx pgx.Tx, release dbgen.Release) error) error {
 	return pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "SET TRANSACTION READ ONLY"); err != nil {
 			return err
@@ -148,11 +154,11 @@ func (s *Service) Pin(ctx context.Context, name string, fn func(ctx context.Cont
 		if err != nil {
 			return err
 		}
-		path := pgx.Identifier{Schema(release)}.Sanitize() + ", public" //nolint:misspell // pgx's method name
-		if _, err := tx.Exec(ctx, "SELECT set_config('search_path', $1, true), set_config('app.release', $2, true)", path, release); err != nil {
-			return fmt.Errorf("pin release %s: %w", release, err)
+		path := pgx.Identifier{Schema(release.Name)}.Sanitize() + ", public" //nolint:misspell // pgx's method name
+		if _, err := tx.Exec(ctx, "SELECT set_config('search_path', $1, true), set_config('app.release', $2, true)", path, release.Name); err != nil {
+			return fmt.Errorf("pin release %s: %w", release.Name, err)
 		}
-		return fn(database.WithTx(ctx, tx), release)
+		return fn(tx, release)
 	})
 }
 

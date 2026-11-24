@@ -589,6 +589,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/releases/{name}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a release as open data
+         * @description The release as a zip of CSV files, one per table (entries, variants, senses,
+         *     examples, phrases, concepts, item_sources, sources), with `release.json` and a
+         *     README describing them (NFR-9, US-17). Frozen like a pinned read (ADR-0012):
+         *     concepts and source details are as they are now. Public.
+         */
+        get: operations["downloadRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources": {
         parameters: {
             query?: never;
@@ -2208,6 +2231,33 @@ export interface operations {
                     "application/json": components["schemas"]["Release"];
                 };
             };
+            default: components["responses"]["Error"];
+        };
+    };
+    downloadRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A release, such as `2027.1`, or `latest` */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The zip archive */
+            200: {
+                headers: {
+                    /** @description attachment; filename="vernacular-<release>.zip" */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            404: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

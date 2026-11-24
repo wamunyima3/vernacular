@@ -873,6 +873,36 @@ paths:
               schema: { $ref: "#/components/schemas/Release" }
         default:
           $ref: "#/components/responses/Error"
+  /v1/releases/{name}/download:
+    get:
+      operationId: downloadRelease
+      summary: Download a release as open data
+      description: |
+        The release as a zip of CSV files, one per table (entries, variants, senses,
+        examples, phrases, concepts, item_sources, sources), with `release.json` and a
+        README describing them (NFR-9, US-17). Frozen like a pinned read (ADR-0012):
+        concepts and source details are as they are now. Public.
+      tags: [releases]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: A release, such as `2027.1`, or `latest`
+          schema: { type: string, pattern: "^(latest|[0-9]{4}\\.[0-9]+)$" }
+      responses:
+        "200":
+          description: The zip archive
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="vernacular-<release>.zip"
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/sources:
     get:
       operationId: listSources

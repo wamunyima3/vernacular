@@ -1,4 +1,5 @@
 import type { Schemas } from "@vernacular/api-client"
+import { DownloadIcon } from "lucide-react"
 import Link from "next/link"
 
 import { cn } from "cn"
@@ -66,9 +67,19 @@ function Release({
   const codes = Object.keys(r.languages).sort()
   return (
     <li id={r.name} className="flex scroll-mt-6 flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-x-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h2 className="text-xl font-semibold tabular-nums">{r.name}</h2>
         <span className="text-sm text-muted-foreground">{formatDate(r.published_at)}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          nativeButton={false}
+          render={<a href={`/releases/${r.name}/download`} download />}
+        >
+          <DownloadIcon aria-hidden />
+          Download CSV
+        </Button>
       </div>
       <p className="text-sm text-muted-foreground tabular-nums">
         {formatCount(r.changes.added)} added · {formatCount(r.changes.changed)} changed ·{" "}

@@ -15,7 +15,7 @@ export default function ReleasesPage() {
         <h1 className="text-3xl font-semibold text-balance">Releases</h1>
         <p className="text-pretty text-muted-foreground">
           A release is a numbered, frozen copy of the verified words and phrases. Each lists what
-          changed since the one before.
+          changed since the one before, and can be downloaded as open data in CSV files.
         </p>
       </div>
       <Suspense fallback={<ReleaseListSkeleton />}>

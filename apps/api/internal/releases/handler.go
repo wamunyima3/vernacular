@@ -1,7 +1,9 @@
 package releases
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 )
@@ -47,4 +49,17 @@ func toAPI(r Release) gen.Release {
 		Name: r.Name, PublishedAt: r.PublishedAt, Notes: r.Notes, Languages: langs,
 		Changes: gen.ReleaseChanges{Added: r.Changes.Added, Changed: r.Changes.Changed, Removed: r.Changes.Removed},
 	}
+}
+
+// DownloadRelease implements GET /v1/releases/{name}/download.
+func (h *Handler) DownloadRelease(ctx context.Context, req gen.DownloadReleaseRequestObject) (gen.DownloadReleaseResponseObject, error) {
+	name, body, err := h.svc.Export(ctx, req.Name)
+	if err != nil {
+		return nil, err
+	}
+	disposition := fmt.Sprintf(`attachment; filename="vernacular-%s.zip"`, name)
+	return gen.DownloadRelease200ApplicationzipResponse{
+		Body: bytes.NewReader(body), ContentLength: int64(len(body)),
+		Headers: gen.DownloadRelease200ResponseHeaders{ContentDisposition: &disposition},
+	}, nil
 }

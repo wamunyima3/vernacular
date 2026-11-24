@@ -32,6 +32,20 @@ the item rather than change it.
 Responses pinned to a numbered release can be cached for a day; other reads for five minutes.
 Every response has an `ETag`, so send `If-None-Match` to get a `304` when nothing changed.
 
+## Download a release
+
+Each release can be downloaded as open data, so it outlives this service: a zip of UTF-8 CSV
+files, one per table (entries, variants, senses, examples, phrases, concepts, item sources and
+sources), joined by their IDs, with a README and a `release.json` summary. Use the button on the
+[releases page](/releases), or:
+
+```bash
+curl -OJ "$VERNACULAR_URL/v1/releases/latest/download"
+```
+
+No key is needed. Credit each item's sources as their licences ask; see
+[licences](/docs/licences).
+
 ## What changed
 
 The [releases page](/releases) lists every release with its counts per language and what was

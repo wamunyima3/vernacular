@@ -1,5 +1,6 @@
 import { getSession } from "@/features/auth/session"
 import { apiAs } from "@/lib/api"
+import { proxyDownload } from "@/lib/proxy-download"
 
 /** Streams the permission document from the API, as the signed-in admin. */
 export async function GET(_: Request, { params }: RouteContext<"/sources/[id]/permission">) {
@@ -10,11 +11,5 @@ export async function GET(_: Request, { params }: RouteContext<"/sources/[id]/pe
     params: { path: { id } },
     parseAs: "stream",
   })
-  if (!response.ok) return new Response(null, { status: response.status })
-  return new Response(response.body, {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="permission-${id}"`,
-    },
-  })
+  return proxyDownload(response, "application/octet-stream", `permission-${id}`)
 }
