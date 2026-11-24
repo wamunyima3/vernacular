@@ -170,7 +170,9 @@ Done when: 4,000 verified concepts exist in both languages, and the API is open 
 Done when: four languages are live and the dictionary and phrase API has launched publicly.
 
 - [ ] **P2-01** Add Tonga and Lozi: style guides, stemmers, AI candidates (Claude only) (L, split)
-- [ ] **P2-02** Release builder job and `GET /v1/releases` (M) → PRV-4, US-11, US-29
+- [ ] **P2-02** Release builder job and `GET /v1/releases` (M) → PRV-4, US-11, US-29. Split:
+  - [x] **P2-02a** Build a release (admin, `POST /v1/releases`) that freezes the verified items with counts and changes against the previous release; `GET /v1/releases`; the portal releases page (M). Built in the request, in one transaction; move it to a River job if a build outgrows a request
+  - [ ] **P2-02b** Pinned reads: `release=` on the read endpoints serves the frozen snapshots, `trust.release` is filled, and the `ETag` is tied to the release (M) → US-11, NFR-3
 - [ ] **P2-03** Open dataset export in open formats and the download page (M) → NFR-9, US-17
 - [ ] **P2-04** `GET /v1/phrases/export` in JSON, PO and XLIFF (M) → PHR-3, US-12
 - [ ] **P2-05** Phrase placeholders with grammar notes (M) → PHR-2, US-32

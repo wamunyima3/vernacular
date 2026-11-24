@@ -37,6 +37,7 @@ tags:
   - name: lexicon
   - name: phrases
   - name: detect
+  - name: releases
 paths:
   /healthz:
     get:
@@ -827,6 +828,44 @@ paths:
                   status: { $ref: "#/components/schemas/TrustStatus" }
         default:
           $ref: "#/components/responses/Error"
+  /v1/releases:
+    get:
+      operationId: listReleases
+      summary: Dataset releases and their change logs
+      description: |
+        Numbered, frozen copies of the verified data (PRV-4), newest first. Each gives its
+        counts per language and what changed since the release before it. Public.
+      tags: [releases]
+      responses:
+        "200":
+          description: Every release, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReleaseList" }
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createRelease
+      summary: Build a release from the verified items (admin)
+      description: |
+        Freezes every verified item into a new release named `<year>.<n>` (US-29). Refused
+        with `conflict` when nothing is verified yet or nothing changed since the last release.
+      tags: [releases]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReleaseInput" }
+      responses:
+        "201":
+          description: The new release
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Release" }
+        default:
+          $ref: "#/components/responses/Error"
   /v1/sources:
     get:
       operationId: listSources
@@ -1203,6 +1242,55 @@ components:
             updated_at:
               type: string
               format: date-time
+    ReleaseInput:
+      type: object
+      required: [notes]
+      properties:
+        notes:
+          type: string
+          maxLength: 5000
+          description: The change log in the admin's words; may be empty
+    KindCounts:
+      type: object
+      description: Verified items in a release, by kind
+      required: [entries, senses, examples, phrases]
+      properties:
+        entries: { type: integer, minimum: 0 }
+        senses: { type: integer, minimum: 0 }
+        examples: { type: integer, minimum: 0 }
+        phrases: { type: integer, minimum: 0 }
+    ReleaseChanges:
+      type: object
+      description: Items compared with the release before; everything is added in the first
+      required: [added, changed, removed]
+      properties:
+        added: { type: integer, minimum: 0 }
+        changed: { type: integer, minimum: 0 }
+        removed: { type: integer, minimum: 0 }
+    Release:
+      type: object
+      required: [name, published_at, notes, languages, changes]
+      properties:
+        name:
+          type: string
+          pattern: "^[0-9]{4}\\.[0-9]+$"
+          example: "2027.1"
+        published_at:
+          type: string
+          format: date-time
+        notes: { type: string }
+        languages:
+          type: object
+          description: Counts per language code
+          additionalProperties: { $ref: "#/components/schemas/KindCounts" }
+        changes: { $ref: "#/components/schemas/ReleaseChanges" }
+    ReleaseList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Release" }
     SourceList:
       type: object
       required: [data]

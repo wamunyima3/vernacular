@@ -25,6 +25,7 @@ import (
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/config"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
+	"github.com/wamunyima3/vernacular/apps/api/internal/releases"
 	"github.com/wamunyima3/vernacular/apps/api/internal/review"
 	"github.com/wamunyima3/vernacular/apps/api/internal/server"
 	"github.com/wamunyima3/vernacular/apps/api/internal/sources"
@@ -88,6 +89,7 @@ func run() error {
 			Lexicon:       lex,
 			Phrases:       phrases.NewStore(pool),
 			Detector:      detector,
+			Releases:      releases.NewService(pool),
 		},
 	)
 

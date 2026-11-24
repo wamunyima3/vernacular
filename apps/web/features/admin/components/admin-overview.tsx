@@ -16,6 +16,7 @@ import { apiErrorMessage } from "@/lib/api-error"
 
 import { sessionWithAdmin } from "../../auth/admin"
 import { getLanguages, languageName } from "../../languages/get-languages"
+import { BuildReleaseForm } from "../../releases/components/build-release-form"
 import { revoke } from "../actions"
 import { ApproveForm } from "./approve-form"
 
@@ -101,6 +102,13 @@ export async function AdminOverview() {
             </TableBody>
           </Table>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4" aria-labelledby="releases">
+        <h2 id="releases" className="text-xl font-semibold text-balance">
+          Releases
+        </h2>
+        <BuildReleaseForm />
       </section>
 
       <section className="flex flex-col gap-4" aria-labelledby="providers">

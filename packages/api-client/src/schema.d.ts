@@ -563,6 +563,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dataset releases and their change logs
+         * @description Numbered, frozen copies of the verified data (PRV-4), newest first. Each gives its
+         *     counts per language and what changed since the release before it. Public.
+         */
+        get: operations["listReleases"];
+        put?: never;
+        /**
+         * Build a release from the verified items (admin)
+         * @description Freezes every verified item into a new release named `<year>.<n>` (US-29). Refused
+         *     with `conflict` when nothing is verified yet or nothing changed since the last release.
+         */
+        post: operations["createRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources": {
         parameters: {
             query?: never;
@@ -793,6 +819,38 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        ReleaseInput: {
+            /** @description The change log in the admin's words; may be empty */
+            notes: string;
+        };
+        /** @description Verified items in a release, by kind */
+        KindCounts: {
+            entries: number;
+            senses: number;
+            examples: number;
+            phrases: number;
+        };
+        /** @description Items compared with the release before; everything is added in the first */
+        ReleaseChanges: {
+            added: number;
+            changed: number;
+            removed: number;
+        };
+        Release: {
+            /** @example 2027.1 */
+            name: string;
+            /** Format: date-time */
+            published_at: string;
+            notes: string;
+            /** @description Counts per language code */
+            languages: {
+                [key: string]: components["schemas"]["KindCounts"];
+            };
+            changes: components["schemas"]["ReleaseChanges"];
+        };
+        ReleaseList: {
+            data: components["schemas"]["Release"][];
         };
         SourceList: {
             data: components["schemas"]["Source"][];
@@ -2045,6 +2103,52 @@ export interface operations {
                     "application/json": {
                         status: components["schemas"]["TrustStatus"];
                     };
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listReleases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every release, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseInput"];
+            };
+        };
+        responses: {
+            /** @description The new release */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
                 };
             };
             default: components["responses"]["Error"];

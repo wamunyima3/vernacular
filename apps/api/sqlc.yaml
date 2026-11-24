@@ -51,3 +51,8 @@ sql:
     queries: db/queries/detect.sql
     gen:
       go: { package: dbgen, out: internal/detect/dbgen, sql_package: pgx/v5 }
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/releases.sql
+    gen:
+      go: { package: dbgen, out: internal/releases/dbgen, sql_package: pgx/v5 }

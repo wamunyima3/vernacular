@@ -29,6 +29,10 @@ export default function PortalLayout({ children }: LayoutProps<"/">) {
           <Link href="/credits" className="underline underline-offset-4 hover:text-foreground">
             Contributors
           </Link>
+          {" · "}
+          <Link href="/releases" className="underline underline-offset-4 hover:text-foreground">
+            Releases
+          </Link>
         </p>
       </footer>
     </>
