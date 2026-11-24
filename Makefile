@@ -56,6 +56,10 @@ ingest: ## Import a registered source, e.g. make ingest FEED=gatitos-en-bem
 restem: ## Recompute search stems after changing a stemmer
 	cd $(API_DIR) && go run ./cmd/ingest -restem
 
+.PHONY: examples
+examples: ## Run the docs' examples against the API (needs VERNACULAR_KEY)
+	./scripts/run-examples.sh
+
 .PHONY: seed
 seed: ## Import our core concept lists, the phrase list and every open source we hold a licence for
 	cd $(API_DIR) && go run ./cmd/ingest -all

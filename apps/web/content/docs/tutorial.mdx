@@ -1,0 +1,62 @@
+---
+title: Tutorial
+description: Look up a Bemba word from your own code, in curl, JavaScript, Python or Go.
+---
+
+This tutorial searches the Bemba dictionary for "amenshi" (water) and prints each word it finds
+with its meanings and how far each meaning has been checked. It takes about five minutes.
+
+## 1. Set your key and the API's address
+
+[Create a key](/sign-up?next=/account) on your account page, then put it and the API's address
+in your environment, so the code never contains the key:
+
+```bash
+export VERNACULAR_KEY=vk_...
+export VERNACULAR_URL=http://localhost:8080
+```
+
+## 2. Run the example
+
+Copy the example in your language into a file and run it. Each uses only its language's standard
+library.
+
+<ExampleTabs />
+
+You should see lines like:
+
+```text
+amenshi: water (sourced)
+umwenshi: month (sourced), moon (sourced), quarter (sourced)
+amenshi ayakosa: ice (sourced)
+```
+
+## 3. Read the response
+
+The search returns `data`, a list of hits, best match first. Each hit has:
+
+- `match`: what your query matched: `headword`, `variant` (another spelling), `root` (an
+  inflected or prefixed form of the word) or `similar` (a near spelling).
+- `entry`: the word, with its `senses`. Each sense has an English `gloss` and a `trust` object.
+
+The examples ask for `min_status=machine`, so they include meanings nobody has checked yet, each
+labelled with its [verification level](/docs/verification-levels). Remove `min_status` to get
+only verified meanings, which is what an app shown to the public should do.
+
+## 4. Handle errors and limits
+
+Every error has the same body, with a `code` to match on; see [Errors](/docs/errors).
+
+- `401 unauthorized`: the key is missing, wrong or revoked.
+- `429 rate_limited`: wait the number of seconds in `Retry-After`, then try again.
+
+## 5. Cache what you fetch
+
+Successful `GET` responses carry an `ETag`. Store it with the response and send it back in `If-None-Match`; if
+nothing changed, the API answers `304` with no body, which saves data on slow connections.
+
+## Next
+
+- Translate from English with `GET /v1/lookup?q=water&from=eng&to=bem,nya`; see
+  [Concepts](/docs/concepts).
+- Browse every endpoint in the [API reference](/docs/api).

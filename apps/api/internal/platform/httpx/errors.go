@@ -55,6 +55,11 @@ var (
 	ErrNotFound     = &Problem{http.StatusNotFound, gen.ErrorCodeNotFound, "Not found"}
 )
 
+// Unauthorized is a 401 with its own message, for callers who sent the wrong credentials.
+func Unauthorized(msg string) error {
+	return &Problem{http.StatusUnauthorized, gen.ErrorCodeUnauthorized, msg}
+}
+
 // BadRequest is a 400 with a message for the caller.
 func BadRequest(msg string) error {
 	return &Problem{http.StatusBadRequest, gen.ErrorCodeBadRequest, msg}

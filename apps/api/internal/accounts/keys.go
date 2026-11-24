@@ -22,7 +22,7 @@ import (
 // enough because, unlike a password, the key cannot be guessed.
 
 // ErrNoKey means the API key is unknown, revoked or belongs to a banned user.
-var ErrNoKey = fmt.Errorf("unknown or revoked API key: %w", httpx.ErrUnauthorized)
+var ErrNoKey = httpx.Unauthorized("Unknown or revoked API key. Check X-API-Key, or create a key on your account page")
 
 const (
 	keyPrefix  = "vk_"

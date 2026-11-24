@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { Suspense } from "react"
 
 import { docsSource } from "@/lib/docs-source"
 import { mdxComponents } from "@/features/docs/mdx-components"
@@ -15,8 +16,16 @@ export async function generateMetadata({
   return page ? { title: page.data.title, description: page.data.description } : {}
 }
 
-/** One MDX page from content/docs (P1-WEB-04). */
-export default async function DocsPage({ params }: PageProps<"/docs/[[...slug]]">) {
+/** One MDX page from content/docs (P1-WEB-04). Every page is prerendered from generateStaticParams. */
+export default function DocsPage({ params }: PageProps<"/docs/[[...slug]]">) {
+  return (
+    <Suspense>
+      <DocsArticle params={params} />
+    </Suspense>
+  )
+}
+
+async function DocsArticle({ params }: Pick<PageProps<"/docs/[[...slug]]">, "params">) {
   const page = docsSource.getPage((await params).slug)
   if (!page) notFound()
   const Body = page.data.body

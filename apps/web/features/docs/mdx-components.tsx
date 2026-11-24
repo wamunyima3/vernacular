@@ -3,6 +3,8 @@ import Link from "next/link"
 
 import { cn } from "cn"
 
+import { ExampleTabs } from "./components/example-tabs"
+
 /** Docs typography in the app's own styles, so the docs share one design system (ADR-0008). */
 export const mdxComponents: MDXComponents = {
   h2: (p) => <h2 className="mt-6 scroll-mt-6 text-2xl font-semibold text-balance" {...p} />,
@@ -39,5 +41,6 @@ export const mdxComponents: MDXComponents = {
   ),
   th: (p) => <th className="border-b px-3 py-2 text-left font-medium" {...p} />,
   td: (p) => <td className="border-b px-3 py-2 align-top text-pretty" {...p} />,
+  ExampleTabs,
   blockquote: (p) => <blockquote className="border-l-2 pl-4 text-muted-foreground" {...p} />,
 }
