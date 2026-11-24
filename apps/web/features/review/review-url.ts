@@ -1,6 +1,9 @@
 import type { Schemas } from "@vernacular/api-client"
 
 import { isOneOf } from "@/lib/form-data"
+import { idList as ids, param as one, type Params } from "@/lib/search-params"
+
+export type { Params }
 
 /** Where the reviewer is in a session: the language, skipped concepts and how many cards they have done. */
 export type ReviewSession = { language: string; skip: string[]; done: number }
@@ -8,19 +11,11 @@ export type ReviewSession = { language: string; skip: string[]; done: number }
 /** The reviews just recorded, which can still be undone. */
 export type LastDecision = { reviews: string[]; decision: Schemas["ReviewDecision"] }
 
-/** Search params as Next.js passes them. */
-export type Params = Record<string, string | string[] | undefined>
-
 const decisions = [
   "accept",
   "reject",
   "correct",
 ] as const satisfies readonly Schemas["ReviewDecision"][]
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const one = (params: Params, k: string) => (Array.isArray(params[k]) ? params[k][0] : params[k])
-const ids = (params: Params, k: string) =>
-  (one(params, k) ?? "").split(",").filter((s) => uuid.test(s))
 
 /** Reads the session from URL or form values, dropping anything malformed. */
 export function readSession(

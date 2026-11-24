@@ -18,11 +18,14 @@ class Recheck:
     Attributes:
         quarter (str): A calendar quarter, UTC Example: 2026-Q4.
         language (str): ISO 639-3 code Example: bem.
+        gloss_en (str): The English meaning, or for a phrase its English line, or for an example the meaning it
+            illustrates
         candidate (ReviewCandidate):
     """
 
     quarter: str
     language: str
+    gloss_en: str
     candidate: "ReviewCandidate"
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -30,6 +33,8 @@ class Recheck:
         quarter = self.quarter
 
         language = self.language
+
+        gloss_en = self.gloss_en
 
         candidate = self.candidate.to_dict()
 
@@ -39,6 +44,7 @@ class Recheck:
             {
                 "quarter": quarter,
                 "language": language,
+                "gloss_en": gloss_en,
                 "candidate": candidate,
             }
         )
@@ -54,11 +60,14 @@ class Recheck:
 
         language = d.pop("language")
 
+        gloss_en = d.pop("gloss_en")
+
         candidate = ReviewCandidate.from_dict(d.pop("candidate"))
 
         recheck = cls(
             quarter=quarter,
             language=language,
+            gloss_en=gloss_en,
             candidate=candidate,
         )
 

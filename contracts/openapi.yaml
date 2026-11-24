@@ -2470,10 +2470,13 @@ components:
         sampled: { type: integer, description: Items drawn by this call }
     Recheck:
       type: object
-      required: [quarter, language, candidate]
+      required: [quarter, language, gloss_en, candidate]
       properties:
         quarter: { $ref: "#/components/schemas/Quarter" }
         language: { $ref: "#/components/schemas/LanguageCode" }
+        gloss_en:
+          type: string
+          description: The English meaning, or for a phrase its English line, or for an example the meaning it illustrates
         candidate: { $ref: "#/components/schemas/ReviewCandidate" }
     RecheckBatchInput:
       type: object

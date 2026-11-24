@@ -16,7 +16,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { FieldError } from "@/components/ui/field"
 
-type State = { error?: string }
+/** What an action tells the button: an error to show, if any. */
+export type ActionState = { error?: string }
 
 /**
  * A button for an irreversible action, confirmed in an AlertDialog
@@ -33,7 +34,7 @@ export function ConfirmAction({
   label: string
   title: string
   description: string
-  action: (state: State) => Promise<State>
+  action: (state: ActionState) => Promise<ActionState>
   destructive?: boolean
   className?: string
 }) {

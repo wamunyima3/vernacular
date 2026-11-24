@@ -1702,6 +1702,8 @@ export interface components {
         Recheck: {
             quarter: components["schemas"]["Quarter"];
             language: components["schemas"]["LanguageCode"];
+            /** @description The English meaning, or for a phrase its English line, or for an example the meaning it illustrates */
+            gloss_en: string;
             candidate: components["schemas"]["ReviewCandidate"];
         };
         RecheckBatchInput: {

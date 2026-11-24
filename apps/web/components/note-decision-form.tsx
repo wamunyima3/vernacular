@@ -3,13 +3,13 @@
 import { useActionState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 
 export type NoteDecisionState = { error?: string }
 
 /**
- * A decision that must say why: a note, then one submit button per choice,
+ * A decision that says why: a note (optional with noteHint), then one submit button per choice,
  * sent as `name` (docs/design/ui.md, Disputes and Reports).
  */
 export function NoteDecisionForm({
@@ -17,11 +17,14 @@ export function NoteDecisionForm({
   name,
   choices,
   action: submit,
+  noteHint,
 }: {
   id: string
   name: string
   choices: [{ value: string; label: string }, { value: string; label: string }]
   action: (state: NoteDecisionState, form: FormData) => Promise<NoteDecisionState>
+  /** Makes the note optional, saying when it is needed. */
+  noteHint?: string
 }) {
   const [state, action, pending] = useActionState(submit, {})
   const noteId = `note-${id}`
@@ -29,7 +32,8 @@ export function NoteDecisionForm({
     <form action={action} className="flex flex-col gap-3">
       <Field>
         <FieldLabel htmlFor={noteId}>Note</FieldLabel>
-        <Textarea id={noteId} name="note" required maxLength={1000} />
+        <Textarea id={noteId} name="note" required={!noteHint} maxLength={1000} />
+        {noteHint && <FieldDescription>{noteHint}</FieldDescription>}
       </Field>
       {state.error && <FieldError>{state.error}</FieldError>}
       <div className="flex flex-wrap gap-2">

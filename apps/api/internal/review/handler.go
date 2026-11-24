@@ -200,7 +200,7 @@ func (h *Handler) GetNextRecheck(ctx context.Context, req gen.GetNextRecheckRequ
 	if !ok {
 		return gen.GetNextRecheck204Response{}, nil
 	}
-	return gen.GetNextRecheck200JSONResponse{Quarter: r.Quarter, Language: req.Params.Language, Candidate: candidate(r.Candidate)}, nil
+	return gen.GetNextRecheck200JSONResponse{Quarter: r.Quarter, Language: req.Params.Language, GlossEn: r.Candidate.English, Candidate: candidate(r.Candidate)}, nil
 }
 
 // RecordRecheck implements POST /v1/rechecks/{item_id}.
