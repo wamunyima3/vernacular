@@ -29,6 +29,8 @@ type Input struct {
 	Example                                              *Example
 	// ConceptID names the meaning when it is known, as for review corrections.
 	ConceptID uuid.NullUUID
+	// Corrects names the sense this proposal would replace (US-18).
+	Corrects uuid.NullUUID
 }
 
 // Example is a sentence using the word, with its English translation.
@@ -101,6 +103,11 @@ func Add(ctx context.Context, tx pgx.Tx, author string, in Input) (Receipt, erro
 		return Receipt{}, err
 	}
 	r := Receipt{EntryID: added.EntryID, SenseID: added.SenseID, NewSense: added.Sense}
+	if in.Corrects.Valid {
+		if err := linkCorrection(ctx, tx, in, added); err != nil {
+			return Receipt{}, err
+		}
+	}
 	if in.Example != nil {
 		id, err := lex.AddExample(ctx, in.Language, added.SenseID, in.Example.Text, in.Example.TranslationEn, origin)
 		if errors.Is(err, lexicon.ErrInvalid) {
@@ -112,4 +119,22 @@ func Add(ctx context.Context, tx pgx.Tx, author string, in Input) (Receipt, erro
 		r.ExampleID = &id
 	}
 	return r, nil
+}
+
+// linkCorrection checks the sense a proposal corrects and links the new
+// candidate to it. A correction must say something the dictionary does not.
+func linkCorrection(ctx context.Context, tx pgx.Tx, in Input, added lexicon.Added) error {
+	its := items.NewStore(tx)
+	target, ok, err := its.Lock(ctx, in.Corrects.UUID)
+	switch {
+	case err != nil:
+		return err
+	case !ok || target.Kind != items.KindSense || target.Language != in.Language:
+		return httpx.BadRequest("corrects must name a meaning in " + in.Language)
+	case added.SenseID == in.Corrects.UUID:
+		return httpx.BadRequest("That is what the dictionary already says; change the word or meaning")
+	case !added.Sense:
+		return httpx.BadRequest("That word and meaning are already in the dictionary; report the problem instead")
+	}
+	return its.SetCorrects(ctx, added.SenseID, in.Corrects)
 }

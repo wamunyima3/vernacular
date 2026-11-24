@@ -189,6 +189,21 @@ func (q *Queries) LockItem(ctx context.Context, id uuid.UUID) (LockItemRow, erro
 	return i, err
 }
 
+const setCorrects = `-- name: SetCorrects :exec
+UPDATE items SET corrects = $1 WHERE id = $2 AND corrects IS NULL
+`
+
+type SetCorrectsParams struct {
+	Corrects uuid.NullUUID
+	ID       uuid.UUID
+}
+
+// Links a candidate to the item it proposes to replace; the first link stays.
+func (q *Queries) SetCorrects(ctx context.Context, arg SetCorrectsParams) error {
+	_, err := q.db.Exec(ctx, setCorrects, arg.Corrects, arg.ID)
+	return err
+}
+
 const setItemStatus = `-- name: SetItemStatus :exec
 UPDATE items SET status = $2, updated_at = now() WHERE id = $1
 `

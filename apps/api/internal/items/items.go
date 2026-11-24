@@ -80,6 +80,15 @@ func (s *Store) Link(ctx context.Context, id uuid.UUID, o Origin) error {
 	return nil
 }
 
+// SetCorrects links candidate id to the item it proposes to replace. The
+// first link stays.
+func (s *Store) SetCorrects(ctx context.Context, id uuid.UUID, corrects uuid.NullUUID) error {
+	if err := s.q.SetCorrects(ctx, dbgen.SetCorrectsParams{ID: id, Corrects: corrects}); err != nil {
+		return fmt.Errorf("set corrects: %w", err)
+	}
+	return nil
+}
+
 // Contributed is the origin of rows a registered contributor proposed
 // (CON-1). They start as `sourced`, like imports, and record their author.
 func Contributed(sourceID uuid.UUID, authorID string) Origin {

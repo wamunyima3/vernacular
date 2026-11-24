@@ -641,6 +641,7 @@ type Item struct {
 	AuthorID     pgtype.Text
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	Corrects     uuid.NullUUID
 }
 
 type ItemSource struct {

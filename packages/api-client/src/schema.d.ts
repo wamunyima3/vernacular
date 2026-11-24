@@ -1137,6 +1137,13 @@ export interface components {
                 translation_en: string;
             };
             /**
+             * Format: uuid
+             * @description The meaning (sense ID) this contribution corrects, in the same language. The
+             *     correction is reviewed like any contribution; the original stays served and keeps
+             *     its history meanwhile.
+             */
+            corrects?: string;
+            /**
              * @description The contributor agrees their contribution is published under the dataset licence
              * @enum {boolean}
              */

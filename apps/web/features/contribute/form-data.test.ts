@@ -18,6 +18,12 @@ const base = {
 }
 
 describe("contributionInput", () => {
+  it("passes on the meaning a correction names", () => {
+    const id = "0b0e4f4a-1f8e-4c39-8b0a-2a6f4d1c9e11"
+    const r = contributionInput(form({ ...base, corrects: id }))
+    expect(r.ok && r.body.corrects).toBe(id)
+  })
+
   it("builds the contract input, without empty optional fields", () => {
     expect(contributionInput(form(base))).toEqual({
       ok: true,

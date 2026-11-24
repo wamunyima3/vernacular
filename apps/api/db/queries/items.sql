@@ -46,3 +46,7 @@ SELECT isrc.item_id, s.name, s.licence, s.url, isrc.reference, isrc.model
 FROM item_sources isrc JOIN sources s ON s.id = isrc.source_id
 WHERE isrc.item_id = ANY(@ids::uuid[])
 ORDER BY isrc.item_id, s.name, isrc.reference;
+
+-- name: SetCorrects :exec
+-- Links a candidate to the item it proposes to replace; the first link stays.
+UPDATE items SET corrects = @corrects WHERE id = @id AND corrects IS NULL;

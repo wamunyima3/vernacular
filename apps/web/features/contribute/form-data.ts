@@ -23,6 +23,7 @@ export function contributionInput(
     errors.agree_to_licence = "Agree to publish your contribution under the dataset licence."
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors }
+  const corrects = text("corrects")
 
   return {
     ok: true,
@@ -33,6 +34,7 @@ export function contributionInput(
       gloss_en: text("gloss_en"),
       ...(noun_class && { noun_class }),
       ...(example.text && { example }),
+      ...(corrects && { corrects }),
       agree_to_licence: true,
     },
   }

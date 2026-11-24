@@ -3,6 +3,8 @@ package contributions
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 )
 
@@ -23,6 +25,9 @@ func (h *Handler) CreateContribution(ctx context.Context, req gen.CreateContribu
 	}
 	if b.NounClass != nil {
 		in.NounClass = *b.NounClass
+	}
+	if b.Corrects != nil {
+		in.Corrects = uuid.NullUUID{UUID: *b.Corrects, Valid: true}
 	}
 	if b.Example != nil {
 		in.Example = &Example{Text: b.Example.Text, TranslationEn: b.Example.TranslationEn}

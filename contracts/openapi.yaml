@@ -1696,6 +1696,13 @@ components:
           properties:
             text: { type: string, minLength: 1, maxLength: 500 }
             translation_en: { type: string, minLength: 1, maxLength: 500 }
+        corrects:
+          type: string
+          format: uuid
+          description: |
+            The meaning (sense ID) this contribution corrects, in the same language. The
+            correction is reviewed like any contribution; the original stays served and keeps
+            its history meanwhile.
         agree_to_licence:
           type: boolean
           description: The contributor agrees their contribution is published under the dataset licence

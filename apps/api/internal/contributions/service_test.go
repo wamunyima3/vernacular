@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/contributions"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
@@ -16,13 +19,19 @@ var water = contributions.Input{
 	Example: &contributions.Example{Text: "Ndefwaya  zzamenshi.", TranslationEn: "I want water."},
 }
 
-func TestPropose(t *testing.T) {
-	tx := dbtest.Tx(t)
+// contributor adds user c1 and signs them in.
+func contributor(t *testing.T, tx pgx.Tx) context.Context {
+	t.Helper()
 	if _, err := tx.Exec(t.Context(), `INSERT INTO users (id, name, email, email_verified, role)
 		VALUES ('c1', 'Chanda', 'chanda@test.invalid', true, 'contributor')`); err != nil {
 		t.Fatal(err)
 	}
-	ctx := accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "c1", Role: gen.RoleContributor})
+	return accounts.WithPrincipal(t.Context(), accounts.Principal{ID: "c1", Role: gen.RoleContributor})
+}
+
+func TestPropose(t *testing.T) {
+	tx := dbtest.Tx(t)
+	ctx := contributor(t, tx)
 	svc := contributions.NewService(tx)
 
 	r, err := svc.Propose(ctx, water)
@@ -51,6 +60,45 @@ func TestPropose(t *testing.T) {
 	}
 	if again.NewSense || again.SenseID != r.SenseID {
 		t.Errorf("second proposal = %+v, want the existing sense", again)
+	}
+}
+
+// TestProposeCorrection: a correction is a new candidate linked to the
+// meaning it corrects, which stays as it was (US-18).
+func TestProposeCorrection(t *testing.T) {
+	tx := dbtest.Tx(t)
+	ctx := contributor(t, tx)
+	svc := contributions.NewService(tx)
+	original, err := svc.Propose(ctx, contributions.Input{Language: "bem", Headword: "zzamensi", PartOfSpeech: "noun", GlossEn: "zz water"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fix := func(headword, lang string) contributions.Input {
+		return contributions.Input{
+			Language: lang, Headword: headword, PartOfSpeech: "noun", GlossEn: "zz water",
+			Corrects: uuid.NullUUID{UUID: original.SenseID, Valid: true},
+		}
+	}
+	r, err := svc.Propose(ctx, fix("zzamenshi", "bem"))
+	if err != nil || !r.NewSense {
+		t.Fatalf("correction = %+v, %v; want a new sense", r, err)
+	}
+	var corrects uuid.UUID
+	var status string
+	if err := tx.QueryRow(t.Context(), `SELECT c.corrects, o.status FROM items c, items o WHERE c.id = $1 AND o.id = $2`,
+		r.SenseID, original.SenseID).Scan(&corrects, &status); err != nil {
+		t.Fatal(err)
+	}
+	if corrects != original.SenseID || status != "sourced" {
+		t.Errorf("corrects %s, original %s; want linked and the original unchanged", corrects, status)
+	}
+	for name, in := range map[string]contributions.Input{
+		"unchanged":      fix("zzamensi", "bem"),
+		"other language": fix("zzmadzi", "nya"),
+	} {
+		if _, err := svc.Propose(ctx, in); httpx.Status(err) != 400 {
+			t.Errorf("%s: err = %v, want 400", name, err)
+		}
 	}
 }
 

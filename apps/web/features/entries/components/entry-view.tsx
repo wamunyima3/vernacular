@@ -1,8 +1,12 @@
 import type { Schemas } from "@vernacular/api-client"
 
+import Link from "next/link"
+
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { wordClassLabel } from "@/lib/word-class"
 
+import { correctionHref } from "../../contribute/correcting"
 import { TrustBadge } from "../../trust/components/trust-badge"
 import { ReportDialog } from "./report-dialog"
 
@@ -75,8 +79,25 @@ export function EntryView({
                   ))}
                 </ul>
               )}
-              <div>
+              <div className="flex flex-wrap gap-1">
                 <ReportDialog senseId={s.id} meaning={`${entry.headword}: ${s.gloss}`} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  nativeButton={false}
+                  render={
+                    <Link
+                      href={correctionHref({
+                        corrects: s.id,
+                        language: entry.language,
+                        headword: entry.headword,
+                        gloss_en: s.gloss,
+                      })}
+                    />
+                  }
+                >
+                  Suggest a correction
+                </Button>
               </div>
             </div>
           </li>

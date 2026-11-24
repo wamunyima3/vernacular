@@ -1,6 +1,7 @@
 "use client"
 
 import type { Schemas } from "@vernacular/api-client"
+import Link from "next/link"
 import { useActionState, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -22,38 +23,35 @@ import { WordClassFields } from "@/components/word-class-fields"
 
 import { TrustBadge } from "../../trust/components/trust-badge"
 import { type ContributeState, contribute } from "../actions"
+import type { Correcting } from "../correcting"
 
 /** docs/design/ui.md, Contribute: one column, errors under their field. */
-export function ContributeForm({ languages }: { languages: Schemas["Language"][] }) {
+export function ContributeForm({
+  languages,
+  correcting,
+}: {
+  languages: Schemas["Language"][]
+  correcting?: Correcting
+}) {
   const [state, action, pending] = useActionState(contribute, {})
-  const v = state.values ?? {}
+  const v: Record<string, string> = state.values ?? correcting ?? {}
   // Each submission returns a new state object, so "Contribute another"
   // hides this receipt without hiding the next one.
   const [dismissed, setDismissed] = useState<ContributeState>()
 
   if (state.receipt && state !== dismissed) {
-    const r = state.receipt
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-2 text-balance">
-            {r.headword} <TrustBadge status={r.trust.status} />
-          </CardTitle>
-          <CardDescription className="text-pretty">
-            {r.new_sense
-              ? "In the review queue. Two reviewers will check it before it is verified."
-              : "This word and meaning were already known. Your contribution counts as agreement."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => setDismissed(state)}>Contribute another</Button>
-        </CardContent>
-      </Card>
+      <Receipt
+        receipt={state.receipt}
+        correction={Boolean(correcting)}
+        onAnother={() => setDismissed(state)}
+      />
     )
   }
 
   return (
     <form action={action} className="flex flex-col gap-6">
+      {correcting && <input type="hidden" name="corrects" value={correcting.corrects} />}
       <FieldGroup>
         <LanguageField languages={languages} defaultValue={v.language} />
         <Field>
@@ -117,5 +115,41 @@ export function ContributeForm({ languages }: { languages: Schemas["Language"][]
         {pending ? "Sending…" : "Send for review"}
       </Button>
     </form>
+  )
+}
+
+/** What was stored, and what happens next. A correction ends the visit; a new word can be followed by another. */
+function Receipt({
+  receipt: r,
+  correction,
+  onAnother,
+}: {
+  receipt: NonNullable<ContributeState["receipt"]>
+  correction: boolean
+  onAnother: () => void
+}) {
+  const next = correction
+    ? "In the review queue as a correction. The current meaning stays until two reviewers verify yours."
+    : r.new_sense
+      ? "In the review queue. Two reviewers will check it before it is verified."
+      : "This word and meaning were already known. Your contribution counts as agreement."
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-center gap-2 text-balance">
+          {r.headword} <TrustBadge status={r.trust.status} />
+        </CardTitle>
+        <CardDescription className="text-pretty">{next}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {correction ? (
+          <Button nativeButton={false} render={<Link href="/contribute" />}>
+            Contribute a word
+          </Button>
+        ) : (
+          <Button onClick={onAnother}>Contribute another</Button>
+        )}
+      </CardContent>
+    </Card>
   )
 }
