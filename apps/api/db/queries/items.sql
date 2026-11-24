@@ -27,9 +27,16 @@ UPDATE items SET status = $2, updated_at = now() WHERE id = $1;
 
 -- name: ListTrusts :many
 -- The trust fields of many items at once (PRV-1).
+-- release is the newest release holding the item, or on a pinned read the
+-- pinned one (app.release, ADR-0012).
 SELECT i.id, i.status,
        count(r.id) FILTER (WHERE r.decision = 'accept')::int  AS accepts,
-       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections
+       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections,
+       coalesce((SELECT rel.name FROM release_items ri JOIN releases rel ON rel.id = ri.release_id
+        WHERE ri.item_id = i.id
+          AND rel.name = coalesce(nullif(current_setting('app.release', true), ''), rel.name)
+        ORDER BY split_part(rel.name, '.', 1)::int DESC, split_part(rel.name, '.', 2)::int DESC
+        LIMIT 1), '')::text AS release
 FROM items i LEFT JOIN reviews r ON r.item_id = i.id
 WHERE i.id = ANY(@ids::uuid[])
 GROUP BY i.id;

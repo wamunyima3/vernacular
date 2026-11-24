@@ -104,7 +104,12 @@ func (q *Queries) ListTrustSourcesOf(ctx context.Context, ids []uuid.UUID) ([]Li
 const listTrusts = `-- name: ListTrusts :many
 SELECT i.id, i.status,
        count(r.id) FILTER (WHERE r.decision = 'accept')::int  AS accepts,
-       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections
+       count(r.id) FILTER (WHERE r.decision = 'correct')::int AS corrections,
+       coalesce((SELECT rel.name FROM release_items ri JOIN releases rel ON rel.id = ri.release_id
+        WHERE ri.item_id = i.id
+          AND rel.name = coalesce(nullif(current_setting('app.release', true), ''), rel.name)
+        ORDER BY split_part(rel.name, '.', 1)::int DESC, split_part(rel.name, '.', 2)::int DESC
+        LIMIT 1), '')::text AS release
 FROM items i LEFT JOIN reviews r ON r.item_id = i.id
 WHERE i.id = ANY($1::uuid[])
 GROUP BY i.id
@@ -115,9 +120,12 @@ type ListTrustsRow struct {
 	Status      TrustStatus
 	Accepts     int32
 	Corrections int32
+	Release     string
 }
 
 // The trust fields of many items at once (PRV-1).
+// release is the newest release holding the item, or on a pinned read the
+// pinned one (app.release, ADR-0012).
 func (q *Queries) ListTrusts(ctx context.Context, ids []uuid.UUID) ([]ListTrustsRow, error) {
 	rows, err := q.db.Query(ctx, listTrusts, ids)
 	if err != nil {
@@ -132,6 +140,7 @@ func (q *Queries) ListTrusts(ctx context.Context, ids []uuid.UUID) ([]ListTrusts
 			&i.Status,
 			&i.Accepts,
 			&i.Corrections,
+			&i.Release,
 		); err != nil {
 			return nil, err
 		}

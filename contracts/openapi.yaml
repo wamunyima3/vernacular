@@ -94,6 +94,7 @@ paths:
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
         - $ref: "#/components/parameters/MinStatus"
         - $ref: "#/components/parameters/Variety"
+        - $ref: "#/components/parameters/PinnedRelease"
       responses:
         "200":
           description: Matching entries
@@ -123,6 +124,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/MinStatus"
+        - $ref: "#/components/parameters/PinnedRelease"
       responses:
         "200":
           description: The entry
@@ -152,6 +154,7 @@ paths:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/MinStatus"
         - $ref: "#/components/parameters/Variety"
+        - $ref: "#/components/parameters/PinnedRelease"
       responses:
         "200":
           description: The concept
@@ -208,6 +211,7 @@ paths:
           schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
         - $ref: "#/components/parameters/MinStatus"
         - $ref: "#/components/parameters/Variety"
+        - $ref: "#/components/parameters/PinnedRelease"
       responses:
         "200":
           description: Matching concepts with their entries
@@ -245,6 +249,7 @@ paths:
           required: true
           schema: { $ref: "#/components/schemas/LanguageCode" }
         - $ref: "#/components/parameters/MinStatus"
+        - $ref: "#/components/parameters/PinnedRelease"
       responses:
         "200":
           description: The pack; empty when it has no phrases at that level
@@ -309,6 +314,8 @@ paths:
       security:
         - apiKey: []
         - session: []
+      parameters:
+        - $ref: "#/components/parameters/PinnedRelease"
       requestBody:
         required: true
         content:
@@ -1002,6 +1009,16 @@ components:
       in: query
       description: Only entries of this variety, such as a town or regional form (LEX-6)
       schema: { type: string, pattern: "^[a-z][a-z0-9-]*$", maxLength: 40 }
+    PinnedRelease:
+      name: release
+      in: query
+      description: |
+        Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+        (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+        use the live data. Items carry the release in `trust.release`. Review counts and
+        source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+        lists them.
+      schema: { type: string, pattern: "^(latest|[0-9]{4}\\.[0-9]+)$", example: "2027.1" }
     Id:
       name: id
       in: path

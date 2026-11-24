@@ -16,6 +16,7 @@ func (t Trust) API() gen.Trust {
 		Status:  gen.TrustStatus(t.Status),
 		Sources: sources,
 		Reviews: gen.ReviewSummary{Accepts: t.Accepts, Corrections: t.Corrections},
+		Release: httpx.Optional(t.Release),
 	}
 }
 

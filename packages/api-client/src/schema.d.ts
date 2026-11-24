@@ -1283,6 +1283,14 @@ export interface components {
         MinStatus: components["schemas"]["MinStatus"];
         /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
         Variety: string;
+        /**
+         * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+         *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+         *     use the live data. Items carry the release in `trust.release`. Review counts and
+         *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+         *     lists them.
+         */
+        PinnedRelease: string;
         Id: string;
     };
     requestBodies: never;
@@ -1349,6 +1357,14 @@ export interface operations {
                 min_status?: components["parameters"]["MinStatus"];
                 /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
                 variety?: components["parameters"]["Variety"];
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
             };
             header?: never;
             path?: never;
@@ -1381,6 +1397,14 @@ export interface operations {
                  *     than a guess.
                  */
                 min_status?: components["parameters"]["MinStatus"];
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
             };
             header?: never;
             path: {
@@ -1417,6 +1441,14 @@ export interface operations {
                 min_status?: components["parameters"]["MinStatus"];
                 /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
                 variety?: components["parameters"]["Variety"];
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
             };
             header?: never;
             path: {
@@ -1468,6 +1500,14 @@ export interface operations {
                 min_status?: components["parameters"]["MinStatus"];
                 /** @description Only entries of this variety, such as a town or regional form (LEX-6) */
                 variety?: components["parameters"]["Variety"];
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
             };
             header?: never;
             path?: never;
@@ -1503,6 +1543,14 @@ export interface operations {
                  *     than a guess.
                  */
                 min_status?: components["parameters"]["MinStatus"];
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
             };
             header?: never;
             path?: never;
@@ -1558,7 +1606,16 @@ export interface operations {
     };
     translate: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Read a frozen dataset release, such as `2027.1`, or `latest` for the newest
+                 *     (US-11, ADR-0012), so the data does not change under your app. Without it, reads
+                 *     use the live data. Items carry the release in `trust.release`. Review counts and
+                 *     source details stay live. An unknown release is `not_found`; `GET /v1/releases`
+                 *     lists them.
+                 */
+                release?: components["parameters"]["PinnedRelease"];
+            };
             header?: never;
             path?: never;
             cookie?: never;

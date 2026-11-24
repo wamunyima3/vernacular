@@ -120,6 +120,20 @@ func (q *Queries) MaterialiseRelease(ctx context.Context, arg MaterialiseRelease
 	return err
 }
 
+const resolveRelease = `-- name: ResolveRelease :one
+SELECT name FROM releases WHERE $1::text IN ('latest', name)
+ORDER BY split_part(name, '.', 1)::int DESC, split_part(name, '.', 2)::int DESC
+LIMIT 1
+`
+
+// The release a pinned read names; `latest` is the newest.
+func (q *Queries) ResolveRelease(ctx context.Context, name string) (string, error) {
+	row := q.db.QueryRow(ctx, resolveRelease, name)
+	var name_2 string
+	err := row.Scan(&name_2)
+	return name_2, err
+}
+
 const summariseRelease = `-- name: SummariseRelease :one
 WITH cur AS (SELECT item_id, snapshot FROM release_items WHERE release_id = $1::uuid),
      prev AS (SELECT item_id, snapshot FROM release_items WHERE release_id = $2::uuid),

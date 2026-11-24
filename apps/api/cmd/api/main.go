@@ -54,6 +54,8 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
+	// Read stores follow a pinned release's transaction (ADR-0012).
+	reads := database.Routed{Default: pool}
 
 	bucket, err := blob.Open(ctx, cfg.BlobURL)
 	if err != nil {
@@ -61,7 +63,7 @@ func run() error {
 	}
 	defer func() { _ = bucket.Close() }()
 
-	lex := lexicon.NewStore(pool) // read-only here: search and counts
+	lex := lexicon.NewStore(reads) // read-only here: search and counts
 	detector, err := detect.Load(ctx, pool)
 	if err != nil {
 		return err
@@ -87,7 +89,7 @@ func run() error {
 			Contributions: contributions.NewService(pool),
 			Review:        review.NewService(pool),
 			Lexicon:       lex,
-			Phrases:       phrases.NewStore(pool),
+			Phrases:       phrases.NewStore(reads),
 			Detector:      detector,
 			Releases:      releases.NewService(pool),
 		},

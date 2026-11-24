@@ -92,6 +92,7 @@ type Trust struct {
 	Status               string
 	Sources              []SourceRef
 	Accepts, Corrections int
+	Release              string // empty until the item is first released
 }
 
 // Trust reads an item's status, sources and review counts.
@@ -120,7 +121,7 @@ func (s *Store) Trusts(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]Trus
 	}
 	out := make(map[uuid.UUID]Trust, len(rows))
 	for _, r := range rows {
-		out[r.ID] = Trust{Status: string(r.Status), Accepts: int(r.Accepts), Corrections: int(r.Corrections)}
+		out[r.ID] = Trust{Status: string(r.Status), Accepts: int(r.Accepts), Corrections: int(r.Corrections), Release: r.Release}
 	}
 	for _, r := range refs {
 		t := out[r.ItemID]

@@ -1,0 +1,38 @@
+---
+title: Releases and pinning
+description: Freeze the data your app reads, and upgrade when you choose.
+---
+
+The live data changes every day as reviewers verify, correct and withdraw items. When your app
+needs the same answers tomorrow as today, pin a **release**: a numbered, frozen copy of every
+verified item, such as `2027.1` (the year, then the release number in that year).
+
+## Pin a release
+
+Pass `release` to search, entries, concepts, lookup, phrases and translate:
+
+```bash
+curl -H "X-API-Key: $VERNACULAR_KEY" \
+  "$VERNACULAR_URL/v1/entries/search?language=bem&q=amenshi&release=2027.1"
+```
+
+- `release=2027.1` reads that release, whatever has changed since.
+- `release=latest` reads the newest release, and moves on when a new one is published.
+- Without `release`, you read the live data.
+
+Every item names the newest release it belongs to in `trust.release`; on a pinned read, that is
+the release you asked for. An item with no `trust.release` has not been released yet.
+
+A release holds verified items only, so a pinned read with `min_status` below `verified` returns
+nothing more than one without it. Review counts and source details stay live, as they describe
+the item rather than change it.
+
+## Caching
+
+Responses pinned to a numbered release can be cached for a day; other reads for five minutes.
+Every response has an `ETag`, so send `If-None-Match` to get a `304` when nothing changed.
+
+## What changed
+
+The [releases page](/releases) lists every release with its counts per language and what was
+added, changed or removed since the one before. An unknown release answers `not_found`.

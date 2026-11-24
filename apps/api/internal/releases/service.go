@@ -5,7 +5,9 @@ package releases
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
+	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/releases/dbgen"
@@ -122,6 +125,35 @@ func (s *Service) Build(ctx context.Context, notes string) (Release, error) {
 		return q.MaterialiseRelease(ctx, dbgen.MaterialiseReleaseParams{ReleaseID: row.ID, Schema: Schema(row.Name)})
 	})
 	return built, err
+}
+
+// Pin runs fn on the frozen rows of the named release, or of the newest for
+// `latest` (ADR-0012): in a read-only transaction whose search_path puts the
+// release's schema before public, so the live read queries need no change.
+// fn gets the release's name and a context that routes database.Routed
+// handles to that transaction.
+func (s *Service) Pin(ctx context.Context, name string, fn func(ctx context.Context, release string) error) error {
+	return pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SET TRANSACTION READ ONLY"); err != nil {
+			return err
+		}
+		release, err := dbgen.New(tx).ResolveRelease(ctx, name)
+		if errors.Is(err, pgx.ErrNoRows) {
+			msg := fmt.Sprintf("No release %q. GET /v1/releases lists them", name)
+			if name == "latest" {
+				msg = "No release has been built yet. Leave out release to read the live data"
+			}
+			return &httpx.Problem{Status: http.StatusNotFound, Code: gen.ErrorCodeNotFound, Message: msg}
+		}
+		if err != nil {
+			return err
+		}
+		path := pgx.Identifier{Schema(release)}.Sanitize() + ", public" //nolint:misspell // pgx's method name
+		if _, err := tx.Exec(ctx, "SELECT set_config('search_path', $1, true), set_config('app.release', $2, true)", path, release); err != nil {
+			return fmt.Errorf("pin release %s: %w", release, err)
+		}
+		return fn(database.WithTx(ctx, tx), release)
+	})
 }
 
 // Schema is the PostgreSQL schema a release is materialised in, such as

@@ -59,3 +59,9 @@ RETURNING releases.*;
 
 -- name: MaterialiseRelease :exec
 SELECT materialise_release(@release_id::uuid, @schema::text);
+
+-- The release a pinned read names; `latest` is the newest.
+-- name: ResolveRelease :one
+SELECT name FROM releases WHERE @name::text IN ('latest', name)
+ORDER BY split_part(name, '.', 1)::int DESC, split_part(name, '.', 2)::int DESC
+LIMIT 1;

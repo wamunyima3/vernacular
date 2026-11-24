@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	validator "github.com/oapi-codegen/nethttp-middleware"
 
@@ -87,7 +88,11 @@ func New(opts Options, deps Deps) http.Handler {
 	r := httpx.NewRouter(httpx.RouterOptions{
 		Log: opts.Log, AllowedOrigins: opts.AllowedOrigins, Errors: errs, Metrics: opts.Metrics,
 	})
-	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), httpx.ETag(cacheControl), validateRequests(errs))
+	spec, err := gen.GetSpec()
+	if err != nil {
+		panic(fmt.Sprintf("embedded OpenAPI spec is invalid: %v", err)) // a build defect, caught by every test
+	}
+	r.Use(accounts.Middleware(deps.Accounts, errs), rateLimit(opts.RateLimits, errs), httpx.ETag(cacheControl), validateRequests(spec, errs))
 
 	strict := gen.NewStrictHandlerWithOptions(api{
 		accountsOps:  accounts.NewHandler(deps.Reviewers),
@@ -100,7 +105,7 @@ func New(opts Options, deps Deps) http.Handler {
 		phrasesOps:   phrases.NewHandler(deps.Phrases),
 		detectOps:    detect.NewHandler(deps.Detector),
 		releasesOps:  releases.NewHandler(deps.Releases),
-	}, nil, gen.StrictHTTPServerOptions{
+	}, []gen.StrictMiddlewareFunc{pinRelease(spec, deps.Releases)}, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  errs.RequestError,
 		ResponseErrorHandlerFunc: errs.ResponseError,
 	})
@@ -113,11 +118,7 @@ func New(opts Options, deps Deps) http.Handler {
 // validateRequests checks every request against the contract before any
 // handler runs, so handlers can trust required fields, enums and formats.
 // Authentication is left to accounts.Middleware.
-func validateRequests(errs httpx.Errors) func(http.Handler) http.Handler {
-	spec, err := gen.GetSpec()
-	if err != nil {
-		panic(fmt.Sprintf("embedded OpenAPI spec is invalid: %v", err)) // a build defect, caught by every test
-	}
+func validateRequests(spec *openapi3.T, errs httpx.Errors) func(http.Handler) http.Handler {
 	spec.Servers = nil // match any host
 	codes := map[int]gen.ErrorCode{
 		http.StatusUnauthorized:          gen.ErrorCodeUnauthorized,
@@ -152,13 +153,54 @@ func authenticate(_ context.Context, in *openapi3filter.AuthenticationInput) err
 
 var errNoCredentials = errors.New("no credentials for this scheme")
 
-// cacheControl lets clients reuse data for five minutes, then revalidate
-// with the ETag; what a signed-in user sees about their own account is
+// pinRelease runs the operations whose contract takes `release` on that
+// release's frozen rows when the caller names one (ADR-0012). Stores read
+// through database.Routed, so they follow the pinned transaction.
+func pinRelease(spec *openapi3.T, svc *releases.Service) gen.StrictMiddlewareFunc {
+	pinnable := operationsWithParam(spec, "release")
+	return func(f gen.StrictHandlerFunc, op string) gen.StrictHandlerFunc {
+		if !pinnable[op] {
+			return f
+		}
+		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, req any) (resp any, err error) {
+			name := r.URL.Query().Get("release")
+			if name == "" {
+				return f(ctx, w, r, req)
+			}
+			err = svc.Pin(ctx, name, func(ctx context.Context, _ string) error {
+				resp, err = f(ctx, w, r, req)
+				return err
+			})
+			return resp, err
+		}
+	}
+}
+
+// operationsWithParam names the operations whose contract declares the query parameter.
+func operationsWithParam(spec *openapi3.T, name string) map[string]bool {
+	ops := map[string]bool{}
+	for _, item := range spec.Paths.Map() {
+		for _, op := range item.Operations() {
+			for _, p := range op.Parameters {
+				if p.Value.In == "query" && p.Value.Name == name {
+					ops[op.OperationID] = true
+				}
+			}
+		}
+	}
+	return ops
+}
+
+// cacheControl lets clients reuse data for five minutes, or a day when it
+// is pinned to a numbered release, then revalidate with the ETag; what a signed-in user sees about their own account is
 // always revalidated. Private either way, so a shared cache cannot hand data
 // fetched with a key to a caller without one.
 func cacheControl(r *http.Request) string {
 	if p, ok := accounts.FromContext(r.Context()); ok && !p.ByKey() {
 		return "private, no-cache"
+	}
+	if release := r.URL.Query().Get("release"); release != "" && release != "latest" {
+		return "private, max-age=86400" // a numbered release's content is frozen
 	}
 	return "private, max-age=300"
 }

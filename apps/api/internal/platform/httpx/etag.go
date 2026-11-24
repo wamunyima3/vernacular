@@ -12,8 +12,8 @@ import (
 // answers 304 Not Modified, with no body, when If-None-Match names it
 // (NFR-3). Weak, because compression changes the bytes on the wire but not
 // the meaning. cacheControl sets Cache-Control unless the handler already
-// did. Until dataset releases exist the tag is a hash of the body; with
-// them it can become the release number (PRV-4, US-11).
+// did. The body names each item's release in trust.release, so the tag
+// changes with the release a read is pinned to (PRV-4, US-11).
 func ETag(cacheControl func(*http.Request) string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

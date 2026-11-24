@@ -4,6 +4,9 @@
 -- The caller names the schema (releases.Schema), so Go holds the one naming rule.
 
 -- +goose Up
+-- trust.release looks up the releases an item is in.
+CREATE INDEX release_items_item_id ON release_items (item_id);
+
 -- +goose StatementBegin
 CREATE FUNCTION materialise_release(release_id uuid, s text) RETURNS void
 LANGUAGE plpgsql AS $$
@@ -25,13 +28,18 @@ BEGIN
                         WHERE x.%I IN (SELECT id FROM %I.items)', s, c[1], c[1], c[2], s);
         tables := tables || c[1];
     END LOOP;
-    -- The live indexes, so pinned search and lookup stay fast.
+    -- The live indexes, so pinned search and lookup stay fast, and the primary
+    -- keys, which queries grouping by id rely on.
     FOR ix IN
-        SELECT tablename, indexdef FROM pg_indexes
-        WHERE schemaname = 'public' AND tablename = ANY(tables)
+        SELECT x.tablename, x.indexname, x.indexdef, i.indisprimary
+        FROM pg_indexes x JOIN pg_index i ON i.indexrelid = format('public.%I', x.indexname)::regclass
+        WHERE x.schemaname = 'public' AND x.tablename = ANY(tables)
     LOOP
         EXECUTE replace(ix.indexdef, ' ON public.' || ix.tablename || ' USING',
                         format(' ON %I.%I USING', s, ix.tablename));
+        IF ix.indisprimary THEN
+            EXECUTE format('ALTER TABLE %I.%I ADD PRIMARY KEY USING INDEX %I', s, ix.tablename, ix.indexname);
+        END IF;
     END LOOP;
     -- Planner statistics now, rather than when autovacuum gets to the tables.
     FOREACH t IN ARRAY tables LOOP
@@ -42,3 +50,4 @@ END $$;
 
 -- +goose Down
 DROP FUNCTION materialise_release(uuid, text);
+DROP INDEX release_items_item_id;

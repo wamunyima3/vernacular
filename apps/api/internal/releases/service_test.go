@@ -1,6 +1,7 @@
 package releases_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/wamunyima3/vernacular/apps/api/internal/accounts"
 	"github.com/wamunyima3/vernacular/apps/api/internal/gen"
+	"github.com/wamunyima3/vernacular/apps/api/internal/phrases"
+	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/database/dbtest"
 	"github.com/wamunyima3/vernacular/apps/api/internal/platform/httpx"
 	"github.com/wamunyima3/vernacular/apps/api/internal/releases"
@@ -69,6 +72,45 @@ func TestBuild(t *testing.T) {
 	list, err := svc.List(t.Context())
 	if err != nil || len(list) < 2 || list[0].Name != second.Name {
 		t.Errorf("list = %v, %v; want newest first", list, err)
+	}
+	// Last: a pin's search_path lasts until the test's transaction ends.
+	checkPinned(t, tx, svc, first.Name, second.Name)
+}
+
+// checkPinned: a pinned read runs the live store on the release's frozen rows
+// and names the release in trust; latest is the newest; unknown is not found.
+func checkPinned(t *testing.T, tx pgx.Tx, svc *releases.Service, first, second string) {
+	t.Helper()
+	store := phrases.NewStore(database.Routed{Default: tx})
+	pack := func(ctx context.Context) []phrases.Phrase {
+		t.Helper()
+		got, err := store.Pack(ctx, "bem", "zz-release", "verified")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if live := pack(t.Context()); len(live) != 1 || live[0].Trust.Release != second {
+		t.Errorf("live = %+v, want the 1 phrase still verified, in %s", live, second)
+	}
+	// The first release has both Bemba phrases unedited; the second only the edited one.
+	for _, c := range []struct {
+		name, want, notes string
+		n                 int
+	}{{first, first, "", 2}, {"latest", second, "zz edited", 1}} {
+		err := svc.Pin(t.Context(), c.name, func(ctx context.Context, release string) error {
+			got := pack(ctx)
+			if release != c.want || len(got) != c.n || got[0].Trust.Release != c.want || got[0].Notes != c.notes {
+				t.Errorf("pinned %s = %s %+v, want %d phrases of %s noted %q", c.name, release, got, c.n, c.want, c.notes)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := svc.Pin(t.Context(), "1999.1", nil); httpx.Status(err) != 404 {
+		t.Errorf("unknown release: err = %v, want 404", err)
 	}
 }
 
