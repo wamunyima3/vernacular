@@ -226,6 +226,10 @@ Done when: four languages are live and the dictionary and phrase API has launche
 - [ ] **P3-05** Benchmark against Google and NLLB-200 on FLORES and publish the scores (M, split) → DQ-9, DQ-10
   - [x] **P3-05a** `ml/`: `vernacular-benchmark` scores our service, Google Translate and NLLB-200 with chrF on FLORES-200 (Bemba, Nyanja) and on our own test split, both directions, and writes the results as JSON and a Markdown table for the docs (M)
   - [ ] **P3-05b** Run the benchmark with the trained model, add human ratings of a sample (DQ-9), publish the table in the docs, and decide whether to set `TRANSLATION_SERVICE_URL` in production 👤
+- [ ] **P3-06** Meet the Gemma Terms of Use before machine output is served or the adapter is shared (M, split; blocks P3-05b) → [ADR 0013](docs/adr/0013-translategemma.md)
+  - [x] **P3-06a** `ml/`: `vernacular-train` writes a `NOTICE` file (Gemma §3.1(d)) and a model card stating the adapter is modified from TranslateGemma, under the Gemma Terms of Use and Prohibited Use Policy, beside the adapter (S)
+  - [ ] **P3-06b** Developer terms of use at `/terms`, accepted when signing up and creating a key, carrying the Gemma use restrictions for machine output (Gemma §3.1(a), (b)); the API docs and the `machine` field's contract description link to them (M)
+  - [ ] **P3-06c** Have the developer terms reviewed with the legal advice in P0-OUT-05 👤
 
 ---
 

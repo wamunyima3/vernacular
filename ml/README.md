@@ -33,7 +33,9 @@ export HF_TOKEN=...
 uv run --group train vernacular-train corpus/ runs/2026.1 --language bem --language nya
 ```
 
-It writes the LoRA adapter and `report.json` to `runs/2026.1`. Prompts come from
+It writes the LoRA adapter and `report.json` to `runs/2026.1`, with the `NOTICE`
+file and model card the Gemma Terms of Use require; keep both with every copy of
+the adapter. Prompts come from
 `vernacular_ml/prompt.py`, which the translation service uses too, so training and
 serving use the same prompt. The test split is kept for the benchmark (P3-05).
 

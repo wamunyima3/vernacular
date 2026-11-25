@@ -22,6 +22,7 @@ from pathlib import Path
 
 from sacrebleu.metrics import CHRF
 
+from . import licence
 from .corpus import read_split
 from .model import load_base
 from .prompt import END, ENGLISH, answer, prompt
@@ -130,6 +131,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - needs a G
         data_collator=DataCollatorForSeq2Seq(tok, label_pad_token_id=IGNORE),
     ).train()
     model.save_pretrained(args.out)
+    licence.write(args.out, args.base, args.language)
 
     dev = load("dev")
     model.eval()
