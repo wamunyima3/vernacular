@@ -1,10 +1,18 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google"
 
 import "./globals.css"
 
-const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] })
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
+// Atkinson Hyperlegible keeps look-alike letters apart (I/l/1, rn/m): words in unfamiliar
+// languages must be read exactly (PRODUCT.md). latin-ext covers names and diacritics.
+const sans = Atkinson_Hyperlegible_Next({
+  variable: "--font-sans",
+  subsets: ["latin", "latin-ext"],
+})
+const mono = Atkinson_Hyperlegible_Mono({
+  variable: "--font-mono-face",
+  subsets: ["latin", "latin-ext"],
+})
 
 export const metadata: Metadata = {
   title: { default: "Vernacular", template: "%s · Vernacular" },
@@ -14,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   )
