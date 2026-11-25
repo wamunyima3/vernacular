@@ -23,7 +23,7 @@ def test_translates_to_the_contract():
     res = client(model).post("/translate", json={"text": "Good night", "from": "eng", "to": "bem"})
     assert res.status_code == 200
     assert res.json() == {"translation": "Mulale bwino", "confidence": 0.5, "model": "vernacular-mt-test"}
-    assert "source_lang=en target_lang=bem" in model.prompts[0]
+    assert "English (en) to Bemba (bem) translator" in model.prompts[0]
 
 
 def test_refuses_pairs_it_was_not_trained_on():

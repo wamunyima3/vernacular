@@ -1,12 +1,20 @@
-from vernacular_ml.prompt import END, answer, prompt, tag_code
+import pytest
+
+from vernacular_ml.prompt import END, answer, prompt
 from vernacular_ml.train import IGNORE, Example, chrf_report, encode, examples
 
 
-def test_prompt_uses_our_codes():
-    p = prompt("Good night", "eng", "bem")
-    assert "<translate source_lang=en target_lang=bem>" in p and "Good night" in p
+def test_prompt_names_languages_with_our_codes():
+    p = prompt("Good night", "eng", "toi")
+    assert p.startswith("<bos><start_of_turn>user\n")
+    assert "You are a professional English (en) to Tonga (toi) translator." in p
+    assert "into Tonga:\n\n\nGood night<end_of_turn>" in p  # never the two-letter "to", which is Tongan
     assert p.endswith("<start_of_turn>model\n")
-    assert tag_code("toi") == "toi"  # never the two-letter "to", which is Tongan
+
+
+def test_prompt_refuses_unnamed_languages():
+    with pytest.raises(ValueError, match="kqn"):
+        prompt("water", "eng", "kqn")
 
 
 def test_each_pair_trains_both_directions():
