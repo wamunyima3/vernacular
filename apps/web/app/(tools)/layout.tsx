@@ -39,7 +39,9 @@ export default function ToolsLayout({ children }: LayoutProps<"/">) {
           </Button>
         </form>
       </SiteHeader>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12">{children}</main>
+      <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-12">
+        {children}
+      </main>
     </>
   )
 }

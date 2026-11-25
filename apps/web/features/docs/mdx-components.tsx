@@ -9,9 +9,9 @@ import { ExampleTabs } from "./components/example-tabs"
 export const mdxComponents: MDXComponents = {
   h2: (p) => <h2 className="mt-6 scroll-mt-6 text-2xl font-semibold text-balance" {...p} />,
   h3: (p) => <h3 className="mt-4 scroll-mt-6 text-lg font-semibold text-balance" {...p} />,
-  p: (p) => <p className="leading-7 text-pretty" {...p} />,
-  ul: (p) => <ul className="ml-6 flex list-disc flex-col gap-1" {...p} />,
-  ol: (p) => <ol className="ml-6 flex list-decimal flex-col gap-1" {...p} />,
+  p: (p) => <p className="max-w-lg leading-7 text-pretty" {...p} />,
+  ul: (p) => <ul className="ml-6 flex max-w-lg list-disc flex-col gap-1" {...p} />,
+  ol: (p) => <ol className="ml-6 flex max-w-lg list-decimal flex-col gap-1" {...p} />,
   li: (p) => <li className="pl-1 text-pretty" {...p} />,
   a: ({ href = "", ...p }) => (
     <Link href={href} className="underline underline-offset-4 hover:text-muted-foreground" {...p} />
@@ -42,5 +42,7 @@ export const mdxComponents: MDXComponents = {
   th: (p) => <th className="border-b px-3 py-2 text-left font-medium" {...p} />,
   td: (p) => <td className="border-b px-3 py-2 align-top text-pretty" {...p} />,
   ExampleTabs,
-  blockquote: (p) => <blockquote className="border-l-2 pl-4 text-muted-foreground" {...p} />,
+  blockquote: (p) => (
+    <blockquote className="max-w-lg border-l-2 pl-4 text-muted-foreground" {...p} />
+  ),
 }
