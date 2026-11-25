@@ -1349,7 +1349,11 @@ export interface components {
             data: components["schemas"]["Translation"][];
             machine?: components["schemas"]["MachineTranslation"];
         };
-        /** @description Output of a translation model, not checked by any person (TRN-3) */
+        /**
+         * @description Output of a translation model, not checked by any person (TRN-3). The model is
+         *     fine-tuned from Gemma: using its output is subject to the Gemma Prohibited Use
+         *     Policy, as set out in the terms of use at /docs/terms.
+         */
         MachineTranslation: {
             /** @example Mulale bwino */
             translation: string;

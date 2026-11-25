@@ -4,11 +4,13 @@ import Link from "next/link"
 import { useActionState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 import { signIn, signUp } from "../actions"
 import { type AuthMode, authModes } from "../modes"
+import { termsField } from "../terms"
 
 const actions = { "sign-in": signIn, "sign-up": signUp } satisfies Record<AuthMode, unknown>
 
@@ -50,6 +52,20 @@ export function AuthForm({ mode, next }: { mode: AuthMode; next?: string }) {
             required
           />
         </Field>
+        {mode === "sign-up" && (
+          <Field orientation="horizontal">
+            <Checkbox id={termsField} name={termsField} defaultChecked={state.agreed} required />
+            <FieldLabel htmlFor={termsField} className="font-normal">
+              <span>
+                I agree to the{" "}
+                <Link href="/docs/terms" className="underline underline-offset-4">
+                  terms of use
+                </Link>
+                , including the limits on machine translation.
+              </span>
+            </FieldLabel>
+          </Field>
+        )}
       </FieldGroup>
       {state.error && <FieldError role="alert">{state.error}</FieldError>}
       <Button type="submit" disabled={pending}>

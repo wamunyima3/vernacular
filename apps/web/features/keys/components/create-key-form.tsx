@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useActionState } from "react"
 
 import { CopyButton } from "@/components/copy-button"
@@ -32,6 +33,9 @@ export function CreateKeyForm() {
               Create key
             </Button>
           </div>
+          <FieldDescription>
+            By creating a key you agree to the <Link href="/docs/terms">terms of use</Link>.
+          </FieldDescription>
           {state.error && <FieldError>{state.error}</FieldError>}
         </Field>
       </form>

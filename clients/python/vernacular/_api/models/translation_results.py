@@ -21,7 +21,10 @@ class TranslationResults:
     """
     Attributes:
         data (list['Translation']):
-        machine (Union[Unset, MachineTranslation]): Output of a translation model, not checked by any person (TRN-3)
+        machine (Union[Unset, MachineTranslation]): Output of a translation model, not checked by any person (TRN-3).
+            The model is
+            fine-tuned from Gemma: using its output is subject to the Gemma Prohibited Use
+            Policy, as set out in the terms of use at /docs/terms.
     """
 
     data: list["Translation"]

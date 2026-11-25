@@ -1,0 +1,52 @@
+---
+title: Terms of use
+description: The terms you accept when you create an account or an API key.
+---
+
+> **Draft, pending legal review.** The machine translation terms below already apply.
+
+These terms cover your use of the Vernacular API, its website and the API keys you create. You
+accept them when you create an account and each time you create a key. If you use Vernacular for
+an organisation, you accept them for it too.
+
+## Your account and keys
+
+- Keep your keys secret. Calls made with your key count as yours; revoke a key you think has leaked.
+- Keys are rate limited. Calls over the limit are refused with `429`; do not work around the limit
+  with extra keys.
+- We may revoke a key, or close an account, that breaks these terms.
+
+## The data
+
+Words, phrases and examples are published with their sources and licences, as explained in
+[Licences](/docs/licences). Credit each source the way its licence asks.
+
+## Machine translation
+
+With `machine: true`, `POST /v1/translate` may return a translation made by a model rather than
+checked by a person. It is marked `status: machine` and named by its `model`. Treat it as
+unchecked: do not present it as verified, and check it before relying on it for anything that
+matters, such as health, legal or financial information.
+
+Our translation model is fine-tuned from Google's Gemma, so its use is also governed by the
+[Gemma Terms of Use](https://ai.google.dev/gemma/terms), which you can read in full at that link.
+As a condition of using machine translation, you must not use it, or its output:
+
+- for any use restricted by the
+  [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy); or
+- in breach of applicable laws and regulations.
+
+These restrictions are part of these terms and are enforceable by us. If you pass machine
+translation on to others as a service, you must bind them to the same restrictions. Google does
+not endorse Vernacular, and Gemma is provided under and subject to the Gemma Terms of Use.
+
+## No warranty
+
+Vernacular is provided as is. Volunteers check the data with care, but we give no warranty that it
+or any machine translation is correct or fit for your purpose, and we are not liable for loss from
+using it, to the extent the law allows.
+
+## Changes
+
+We may change these terms. The changes are published here, and they apply to calls made after
+that.

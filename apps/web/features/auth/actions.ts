@@ -7,8 +7,9 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 
 import { safeNext } from "./safe-next"
+import { termsError, termsField } from "./terms"
 
-export type AuthFormState = { error?: string; email?: string; name?: string }
+export type AuthFormState = { error?: string; email?: string; name?: string; agreed?: boolean }
 
 function field(form: FormData, name: string) {
   const value = form.get(name)
@@ -43,7 +44,8 @@ export async function signIn(_: AuthFormState, form: FormData): Promise<AuthForm
 export async function signUp(_: AuthFormState, form: FormData): Promise<AuthFormState> {
   const email = field(form, "email")
   const name = field(form, "name")
-  return attempt(form, { email, name }, (h) =>
+  if (form.get(termsField) !== "on") return { email, name, error: termsError }
+  return attempt(form, { email, name, agreed: true }, (h) =>
     auth.api.signUpEmail({
       body: { email, name, password: String(form.get("password")) },
       headers: h,

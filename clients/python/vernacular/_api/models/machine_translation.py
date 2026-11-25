@@ -13,13 +13,15 @@ T = TypeVar("T", bound="MachineTranslation")
 
 @_attrs_define
 class MachineTranslation:
-    """Output of a translation model, not checked by any person (TRN-3)
+    """Output of a translation model, not checked by any person (TRN-3). The model is
+    fine-tuned from Gemma: using its output is subject to the Gemma Prohibited Use
+    Policy, as set out in the terms of use at /docs/terms.
 
-    Attributes:
-        translation (str):  Example: Mulale bwino.
-        status (MachineTranslationStatus): Always `machine`; never treat it as verified
-        confidence (float): The model's own score
-        model (str): The model and version that produced it Example: vernacular-mt-0.1.
+        Attributes:
+            translation (str):  Example: Mulale bwino.
+            status (MachineTranslationStatus): Always `machine`; never treat it as verified
+            confidence (float): The model's own score
+            model (str): The model and version that produced it Example: vernacular-mt-0.1.
     """
 
     translation: str
