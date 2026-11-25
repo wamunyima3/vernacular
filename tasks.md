@@ -219,7 +219,8 @@ Done when: four languages are live and the dictionary and phrase API has launche
 - [x] **P3-01** Choose a base model whose licence allows commercial serving; write ADR 👤 → [ADR 0013](docs/adr/0013-translategemma.md): TranslateGemma 4B
 - [ ] **P3-02** Python training pipeline in `ml/` (L, split) → AI-7
   - [x] **P3-02a** `ml/`: build an English↔language parallel corpus from a release zip (senses, examples, phrases), keeping only items whose every source allows `train`, split train/dev/test by English text so no meaning crosses splits, and drop anything in a held-out test set such as FLORES (DQ-10) (M)
-  - [ ] **P3-02b** `ml/`: fine-tune TranslateGemma 4B (ADR 0013) with LoRA on that corpus and report chrF on the dev split (M, needs P3-01)
+  - [x] **P3-02b** `ml/`: `vernacular-train` fine-tunes TranslateGemma 4B (ADR 0013) with LoRA on that corpus, both directions, and reports chrF on the dev split; one prompt module shared with the service (M)
+  - [ ] **P3-02c** Run `vernacular-train` on a GPU host with a Hugging Face account that accepted the Gemma terms, once a release has enough verified pairs; keep the adapter and report 👤
 - [ ] **P3-03** Translation service (separate deployable) serving the P3-02b model to the contract in [docs/translation-service.md](docs/translation-service.md) (M, needs P3-02b)
 - [x] **P3-04** `POST /v1/translate`: verified phrase first, then labelled machine output (M) → TRN-3, US-31
 - [ ] **P3-05** Benchmark against Google and NLLB-200 on FLORES and publish the scores (M) → DQ-9, DQ-10

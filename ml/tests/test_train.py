@@ -1,0 +1,38 @@
+from vernacular_ml.prompt import END, prompt, tag_code
+from vernacular_ml.train import IGNORE, Example, answer, chrf_report, encode, examples
+
+
+def test_prompt_uses_our_codes():
+    p = prompt("Good night", "eng", "bem")
+    assert "<translate source_lang=en target_lang=bem>" in p and "Good night" in p
+    assert p.endswith("<start_of_turn>model\n")
+    assert tag_code("toi") == "toi"  # never the two-letter "to", which is Tongan
+
+
+def test_each_pair_trains_both_directions():
+    got = list(examples([{"language": "bem", "en": "water", "text": "amenshi"}]))
+    assert [(e.source, e.target, e.text, e.reference) for e in got] == [
+        ("eng", "bem", "water", "amenshi"),
+        ("bem", "eng", "amenshi", "water"),
+    ]
+
+
+def test_encode_masks_the_prompt():
+    tokenize = lambda s: [ord(c) for c in s]  # noqa: E731 - one token per character
+    ex = Example("bem", "eng", "bem", "water", "amenshi")
+    enc = encode(ex, tokenize, max_tokens=10_000)
+    head = len(prompt("water", "eng", "bem"))
+    assert enc["labels"][:head] == [IGNORE] * head
+    assert enc["labels"][head:] == tokenize("amenshi" + END) == enc["input_ids"][head:]
+    assert len(encode(ex, tokenize, max_tokens=5)["labels"]) == 5
+
+
+def test_chrf_report_per_language_and_direction():
+    exs = [Example("bem", "eng", "bem", "water", "amenshi"), Example("bem", "bem", "eng", "amenshi", "water")]
+    report = chrf_report(exs, ["amenshi", "fire"])
+    assert report["bem"]["eng-bem"] == {"chrf": 100.0, "sentences": 1}
+    assert report["bem"]["bem-eng"]["chrf"] < 20
+
+
+def test_answer_stops_at_end_of_turn():
+    assert answer(" amenshi<end_of_turn>\n<eos>") == "amenshi"

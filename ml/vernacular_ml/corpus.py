@@ -121,6 +121,15 @@ def write(corpus: dict[str, dict[str, list[Pair]]], out: Path, release_name: str
     return manifest
 
 
+def read_split(corpus: Path, language: str, split: str) -> Iterator[dict]:
+    """The pairs of one language's split, as write() stored them."""
+    if split not in SPLITS:
+        raise ValueError(f"no split {split!r}; use one of {SPLITS}")
+    with (corpus / language / f"{split}.jsonl").open(encoding="utf-8") as f:
+        for line in f:
+            yield json.loads(line)
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("release", type=Path, help="a release zip from GET /v1/releases/{name}/download")
