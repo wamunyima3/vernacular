@@ -15,3 +15,5 @@ One file per decision that is hard to reverse. Copy `0000-template.md`, take the
 | [0009](0009-river-and-claude-candidates.md) | River for jobs; Claude candidates per concept   | Accepted |
 | [0010](0010-language-detection.md)          | Our own n-gram language detector                | Accepted |
 | [0011](0011-api-keys.md)                    | Our own API keys, hashed with SHA-256           | Accepted |
+| [0012](0012-pinned-release-reads.md)        | Pinned reads through a schema per release       | Accepted |
+| [0013](0013-translategemma.md)              | TranslateGemma as the base translation model    | Accepted |
