@@ -223,7 +223,9 @@ Done when: four languages are live and the dictionary and phrase API has launche
   - [ ] **P3-02c** Run `vernacular-train` on a GPU host with a Hugging Face account that accepted the Gemma terms, once a release has enough verified pairs; keep the adapter and report 👤
 - [x] **P3-03** Translation service (separate deployable): `vernacular_ml.service`, a FastAPI app serving the P3-02b adapter to the contract in [docs/translation-service.md](docs/translation-service.md), with `ml/Dockerfile` for a GPU host (M)
 - [x] **P3-04** `POST /v1/translate`: verified phrase first, then labelled machine output (M) → TRN-3, US-31
-- [ ] **P3-05** Benchmark against Google and NLLB-200 on FLORES and publish the scores (M) → DQ-9, DQ-10
+- [ ] **P3-05** Benchmark against Google and NLLB-200 on FLORES and publish the scores (M, split) → DQ-9, DQ-10
+  - [x] **P3-05a** `ml/`: `vernacular-benchmark` scores our service, Google Translate and NLLB-200 with chrF on FLORES-200 (Bemba, Nyanja) and on our own test split, both directions, and writes the results as JSON and a Markdown table for the docs (M)
+  - [ ] **P3-05b** Run the benchmark with the trained model, add human ratings of a sample (DQ-9), publish the table in the docs, and decide whether to set `TRANSLATION_SERVICE_URL` in production 👤
 
 ---
 

@@ -50,6 +50,21 @@ MODEL_DIR=runs/2026.1 uv run --group serve uvicorn --factory vernacular_ml.servi
 
 `ml/Dockerfile` builds it for a GPU host; see [docs/deploy.md](../docs/deploy.md).
 
+## Benchmark
+
+`vernacular-benchmark` scores our translation service, Google Translate and NLLB-200 with
+chrF, both directions, on FLORES-200 devtest (Bemba and Nyanja; FLORES has no Tonga or
+Lozi) and on our own test split (DQ-9). It writes `results.json` and `results.md`, a table
+for the docs. NLLB-200's licence is non-commercial, so it is a comparison only.
+
+```sh
+uv run --group model vernacular-benchmark results/ --corpus corpus/ --flores flores200/devtest \
+  --language bem --language nya --service http://gpu-host:8090 --google-key "$KEY" --nllb
+```
+
+Build the corpus with `--exclude` on the same FLORES files, so the model never trains on
+them (DQ-10).
+
 ## Checks
 
 ```sh
