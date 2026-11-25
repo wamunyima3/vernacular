@@ -34,8 +34,21 @@ uv run --group train vernacular-train corpus/ runs/2026.1 --language bem --langu
 ```
 
 It writes the LoRA adapter and `report.json` to `runs/2026.1`. Prompts come from
-`vernacular_ml/prompt.py`, which the translation service (P3-03) will use too, so
-training and serving use the same prompt. The test split is kept for the benchmark (P3-05).
+`vernacular_ml/prompt.py`, which the translation service uses too, so training and
+serving use the same prompt. The test split is kept for the benchmark (P3-05).
+
+## Translation service
+
+`vernacular_ml.service` serves an adapter from `vernacular-train` to the API, following
+[docs/translation-service.md](../docs/translation-service.md). It translates between
+English and the languages in the adapter's `report.json`, and gives a confidence: the
+geometric mean of the generated tokens' probabilities.
+
+```sh
+MODEL_DIR=runs/2026.1 uv run --group serve uvicorn --factory vernacular_ml.service:from_env --port 8090
+```
+
+`ml/Dockerfile` builds it for a GPU host; see [docs/deploy.md](../docs/deploy.md).
 
 ## Checks
 

@@ -12,9 +12,13 @@ vernacular-corpus = "vernacular_ml.corpus:main"
 vernacular-train = "vernacular_ml.train:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "fastapi>=0.115", "httpx>=0.27"]
+# The base model's runtime, for training and serving.
+model = ["torch>=2.5", "transformers>=4.57", "peft>=0.17", "accelerate>=1.0"]
 # Fine-tuning (P3-02b): a GPU host only, `uv run --group train vernacular-train ...`.
-train = ["torch>=2.5", "transformers>=4.57", "peft>=0.17", "datasets>=3", "accelerate>=1.0"]
+train = [{ include-group = "model" }, "datasets>=3"]
+# The translation service (P3-03): `uv run --group serve uvicorn --factory vernacular_ml.service:from_env`.
+serve = [{ include-group = "model" }, "fastapi>=0.115", "uvicorn>=0.32"]
 
 [build-system]
 requires = ["hatchling>=1.25"]

@@ -3,8 +3,8 @@
 TranslateGemma's raw prompt names the languages in a ``<translate>`` tag. Its chat
 template wants ISO 639-1 codes, which Bemba, Tonga and Lozi do not have, so we use
 our own codes here: ``en`` for English and the API's ISO 639-3 codes for the rest.
-Training builds prompts with this module, and the translation service (P3-03) will
-too, so the two cannot drift apart.
+Training and the translation service both build prompts with this module, so the
+two cannot drift apart.
 """
 
 from __future__ import annotations
@@ -26,3 +26,8 @@ def prompt(text: str, source: str, target: str) -> str:
         f"<start_of_turn>user\n<translate source_lang={tag_code(source)} target_lang={tag_code(target)}>\n"
         f"{text}\n</translate><end_of_turn>\n<start_of_turn>model\n"
     )
+
+
+def answer(generated: str) -> str:
+    """The model's translation, without anything after its end-of-turn."""
+    return generated.split(END, 1)[0].strip()

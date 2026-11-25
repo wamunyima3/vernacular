@@ -23,7 +23,8 @@ from pathlib import Path
 from sacrebleu.metrics import CHRF
 
 from .corpus import read_split
-from .prompt import END, ENGLISH, prompt
+from .model import load_base
+from .prompt import END, ENGLISH, answer, prompt
 
 BASE_MODEL = "google/translategemma-4b-it"
 IGNORE = -100  # label index the loss skips
@@ -76,11 +77,6 @@ def chrf_report(exs: Sequence[Example], hypotheses: Sequence[str]) -> dict[str, 
     return dict(report)
 
 
-def answer(generated: str) -> str:
-    """The model's translation, without anything after its end-of-turn."""
-    return generated.split(END, 1)[0].strip()
-
-
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - needs a GPU and the model
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("corpus", type=Path, help="a directory written by vernacular-corpus")
@@ -96,16 +92,9 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - needs a G
     import torch
     from datasets import Dataset
     from peft import LoraConfig, get_peft_model
-    from transformers import (
-        AutoModelForCausalLM,
-        AutoTokenizer,
-        DataCollatorForSeq2Seq,
-        Trainer,
-        TrainingArguments,
-    )
+    from transformers import DataCollatorForSeq2Seq, Trainer, TrainingArguments
 
-    tok = AutoTokenizer.from_pretrained(args.base)
-    model = AutoModelForCausalLM.from_pretrained(args.base, torch_dtype=torch.bfloat16, device_map="auto")
+    tok, model = load_base(args.base)
     model = get_peft_model(
         model,
         LoraConfig(

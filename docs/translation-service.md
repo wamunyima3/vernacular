@@ -20,8 +20,9 @@ Response:
 - `200` with JSON `{ "translation": string, "confidence": number, "model": string }`.
   `confidence` is between 0 and 1. `model` names the model and its version, as it will
   appear to API users (for example `vernacular-mt-0.1`).
-- `422` when the service does not translate that language pair. The API leaves the
-  machine translation out without logging an error.
+- `422` when the service does not translate that language pair, or the request is
+  malformed. The API checks its input first, so in practice it means the pair; it leaves
+  the machine translation out without logging an error.
 - Anything else is an error: the API logs it and leaves the machine translation out.
   Verified results never depend on the service.
 

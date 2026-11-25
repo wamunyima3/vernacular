@@ -115,3 +115,26 @@ exact: the `le="0.2"` bucket divided by the count.
   set `BLOB_URL` on the `api` service (see `.env.example`).
 - Rate limits count per key and per client IP; the API trusts `X-Forwarded-For` only from
   Caddy's network.
+
+## Translation service (optional)
+
+Machine translation (TRN-3) needs the translation service from `ml/` (P3-03), which runs
+the fine-tuned model ([ADR 0013](adr/0013-translategemma.md)). It needs a GPU, so it runs
+on a separate host rather than the API's server; 4B fits a 24 GB card.
+
+1. Train an adapter with `vernacular-train` (see `ml/README.md`) and copy its directory,
+   for example `runs/2026.1`, to the GPU host.
+2. Build and run the image there, with a Hugging Face token for an account that has
+   accepted the Gemma Terms of Use (the base model is gated; it is cached in `/cache`):
+
+   ```bash
+   docker build -t vernacular-mt ml/
+   docker run -d --gpus all --restart unless-stopped -e HF_TOKEN -e MODEL_DIR=/model \
+     -v "$PWD/runs/2026.1:/model:ro" -v hf-cache:/cache -p 8090:8090 vernacular-mt
+   ```
+
+3. Keep port 8090 private to the API server (a firewall rule or a private network), then
+   set `TRANSLATION_SERVICE_URL=http://<gpu-host>:8090` in `deploy/.env.production` and
+   restart `api`. Leave it empty until the P3-05 benchmark shows the model is good enough.
+
+The service answers `GET /healthz` with the model name it reports to API users.

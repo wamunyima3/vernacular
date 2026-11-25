@@ -1,5 +1,5 @@
-from vernacular_ml.prompt import END, prompt, tag_code
-from vernacular_ml.train import IGNORE, Example, answer, chrf_report, encode, examples
+from vernacular_ml.prompt import END, answer, prompt, tag_code
+from vernacular_ml.train import IGNORE, Example, chrf_report, encode, examples
 
 
 def test_prompt_uses_our_codes():
